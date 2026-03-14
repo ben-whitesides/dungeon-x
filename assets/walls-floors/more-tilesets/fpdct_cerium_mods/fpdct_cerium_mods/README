@@ -1,0 +1,37 @@
+This file is to be included with fpdct_cerium_mods.zip which can be
+found at
+https://opengameart.org/content/first-person-dungeon-crawl-art-mods
+
+
+ADDITIONS
+
+
+    + cerium_locked_door_b.png: a door indicating that it needs a key
+    + cerium_locked_bronze_*.png: same, but specifically a bronze key
+    + cerium_locked_silver_*.png: needs a silver key
+    + cerium_locked_golden_*.png: needs a golden key
+
+
+CORRECTIONS
+
+    + cerium_water_b.png: minor pixel error corrected
+
+
+ATTRIBUTION
+
+Original art for Heroine Dusk by Clint Bellanger CC-BY-SA 3.0 or later
+https://github.com/clintbellanger/heroine-dusk
+https://opengameart.org/content/first-person-dungeon-crawl-art-pack
+
+Modified art by Chris Leclair/XCVG CC-BY-SA 3.0 or later
+https://github.com/XCVG/collapsar/tree/cerium
+https://opengameart.org/content/ascension-adventure-tiles
+
+Modified art by Eric Duhamel CC-BY-SA 3.0 or later
+https://opengameart.org/content/first-person-dungeon-crawl-art-mods
+
+Heroine Dusk is created by Clint Bellanger http://clintbellanger.net
+Ascension: Adventure Tiles by Chris Leclair/XCVG (xcvgsystems.net)
+[CC-BY-SA 3.0]
+based on Heroine Dusk by Clint Bellanger (heroinedusk.com)
+[CC-BY-SA 3.0]

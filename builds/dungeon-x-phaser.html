@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<title>Dungeon X — By Order of the Peaky Blinders</title>
+<style>*{margin:0;padding:0;background:#000}canvas{display:block;margin:0 auto}</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+</head><body>
+<script>
+// ============================================================
+// DUNGEON X — Phaser 3 First-Person Dungeon Crawler
+// ============================================================
+
+// --- GAME CONFIG — Centralized magic numbers ---
+const GAME_CONFIG = {
+  viewport: { width: 600, height: 500 },
+  canvas: { width: 800, height: 600 },
+  grid: { size: 8, cellSize: 16 },
+  hud: { x: 610, y: 10, width: 180, height: 200 },
+  minimap: { x: 620, y: 230, cellSize: 16 },
+  combat: { encounterChance: 0.2, potionHeal: 8, potionBonus: 2, fleeDC: 10 },
+  moveDelay: 200,
+  interactDelay: 300,
+  levelUp: { hpDice: 10, manaGain: 2, xpMultiplier: 2.5 },
+  torch: { decrementPerMove: 1 },
+  loot: { potionChance: 0.4, keyChance: 0.2 },
+  depths: [
+    { l: 0, r: 600, t: 0, b: 500 },
+    { l: 100, r: 500, t: 62, b: 438 },
+    { l: 175, r: 425, t: 109, b: 391 },
+    { l: 228, r: 372, t: 141, b: 359 },
+    { l: 262, r: 338, t: 163, b: 337 }
+  ]
+};
+
+// --- GAME DATA ---
+const PLAYER = {
+  name: 'Adventurer', class: 'Fighter', level: 1, xp: 0, xpNext: 300,
+  str: 14, dex: 12, con: 14, int: 10, wis: 10, cha: 10,
+  maxHp: 12, hp: 12, maxMana: 10, mana: 10,
+  ac: 15, attackMod: 4, damageDice: 8, damageBonus: 2, proficiency: 2,
+  potions: 2, keys: 1, torch: 50, maxTorch: 50,
+  weapon: 'Longsword', armor: 'Chain Mail',
+  inventory: [
+    {id:'sword',name:'Longsword',type:'weapon',letter:'S',color:0xaaaacc},
+    {id:'potion1',name:'Health Potion',type:'potion',letter:'P',color:0xff4444},
+    {id:'potion2',name:'Health Potion',type:'potion',letter:'P',color:0xff4444},
+    {id:'key1',name:'Iron Key',type:'key',letter:'K',color:0xffdd44},
+    {id:'armor1',name:'Chain Mail',type:'armor',letter:'A',color:0x888899},
+  ],
+  equipped: { weapon: 0, armor: 4, head: -1, shield: -1, ring: -1 },
+  // Dungeon position
+  x: 1, y: 1, dir: 0 // 0=N,1=E,2=S,3=W
+};
+
+const ENEMIES = {
+  shadow_lurker: { name:'Shadow Lurker', ac:12, maxHp:28, hp:28, attackMod:4, damageDice:6, damageBonus:2, color:0x6633aa, xp:100, weakness:'fire', resist:'ice' },
+  frost_wraith: { name:'Frost Wraith', ac:13, maxHp:22, hp:22, attackMod:5, damageDice:8, damageBonus:3, color:0x66ccff, xp:150, weakness:'fire', resist:'stone' },
+  bone_revenant: { name:'Bone Revenant', ac:16, maxHp:52, hp:52, attackMod:6, damageDice:10, damageBonus:4, color:0xddccaa, xp:250, weakness:'holy', resist:'fire' }
+};
+
+const SPELLS = [
+  { name:'Fire Bolt', dice:8, element:'fire', color:0xff6600, manaCost:2 },
+  { name:'Ice Shard', dice:6, element:'ice', color:0x44aaff, manaCost:2 },
+  { name:'Holy Light', dice:6, element:'holy', color:0xffff66, manaCost:3 }
+];
+
+// 8x8 map: 0=floor, 1=wall, 2=door, 3=locked door
+const MAP = [
+  [1,1,1,1,1,1,1,1],
+  [1,0,0,0,1,0,0,1],
+  [1,0,1,0,2,0,1,1],
+  [1,0,1,0,1,0,0,1],
+  [1,0,0,0,1,3,0,1],
+  [1,1,2,1,1,0,0,1],
+  [1,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1]
+];
+
+const DX = [0,1,0,-1]; // N,E,S,W
+const DY = [-1,0,1,0];
+
+function rollDice(sides) { return Math.floor(Math.random()*sides)+1; }
+function mod(stat) { return Math.floor((stat-10)/2); }
+
+// ============================================================
+// BOOT SCENE
+// ============================================================
+class BootScene extends Phaser.Scene {
+  constructor() { super('Boot'); }
+  create() {
+    this.cameras.main.setBackgroundColor('#0a0a0f');
+    const cx=400, cy=300;
+    this.add.text(cx, cy-60, 'DUNGEON X', {fontSize:'48px',fontFamily:'monospace',color:'#ff8800',fontStyle:'bold'}).setOrigin(0.5);
+    this.add.text(cx, cy, 'A Dungeon Master Tribute', {fontSize:'16px',fontFamily:'monospace',color:'#887766'}).setOrigin(0.5);
+    this.add.text(cx, cy+60, '[ Click to Enter ]', {fontSize:'20px',fontFamily:'monospace',color:'#ffaa44'}).setOrigin(0.5);
+    // Flicker title
+    this.tweens.add({ targets: this.children.list[0], alpha:{from:0.7,to:1}, duration:800, yoyo:true, repeat:-1 });
+    this.input.once('pointerdown', () => this.scene.start('Tavern'));
+  }
+}
+
+// ============================================================
+// TAVERN SCENE
+// ============================================================
+class TavernScene extends Phaser.Scene {
+  constructor() { super('Tavern'); }
+  create() {
+    this.cameras.main.setBackgroundColor('#1a1008');
+    const g = this.add.graphics();
+    // Floor
+    g.fillStyle(0x2a1a0a); g.fillRect(0,350,800,250);
+    // Back wall
+    g.fillStyle(0x3a2a1a); g.fillRect(0,50,800,300);
+    // Ceiling beams
+    g.fillStyle(0x2a1a0a);
+    for(let i=0;i<5;i++) { g.fillRect(0, 60+i*65, 800, 8); }
+    // Fireplace
+    g.fillStyle(0x444444); g.fillRect(340,150,120,200);
+    g.fillStyle(0x222222); g.fillRect(350,170,100,180);
+    // Fire glow
+    this.fireGlow = this.add.graphics();
+    this.time.addEvent({ delay:150, loop:true, callback:()=>{
+      this.fireGlow.clear();
+      const flicker = 0.5+Math.random()*0.5;
+      this.fireGlow.fillStyle(0xff4400, flicker*0.6);
+      this.fireGlow.fillCircle(400, 300, 60+Math.random()*20);
+      this.fireGlow.fillStyle(0xff8800, flicker*0.8);
+      this.fireGlow.fillCircle(400, 310, 30+Math.random()*15);
+      this.fireGlow.fillStyle(0xffcc00, flicker);
+      this.fireGlow.fillCircle(400, 320, 15+Math.random()*10);
+    }});
+
+    // NPCs
+    const npcs = [
+      {x:120, y:280, w:50, h:80, color:0x8b4513, name:'Barkeep', dialog:'Welcome to the Rusty Flagon. Ale?\nWord is, something stirs below the crypts.\nBe careful down there, adventurer.'},
+      {x:600, y:280, w:45, h:75, color:0x4a6741, name:'Merchant', dialog:'Fine wares, fair prices.\nI have potions, torches, keys.\nCome back with gold from the dungeon.'},
+      {x:700, y:260, w:40, h:90, color:0x2a2a3a, name:'Stranger', dialog:'You seek the Sunstone fragments?\nTen pieces, scattered across ten dungeons.\nThe first lies in the Whispering Crypts below.'}
+    ];
+
+    this.dialogBox = null;
+    this.dialogText = null;
+
+    npcs.forEach(npc => {
+      const body = this.add.graphics();
+      body.fillStyle(npc.color); body.fillRect(npc.x-npc.w/2, npc.y-npc.h/2, npc.w, npc.h);
+      // Head
+      body.fillStyle(0xddbb99); body.fillCircle(npc.x, npc.y-npc.h/2-12, 14);
+      const label = this.add.text(npc.x, npc.y-npc.h/2-35, npc.name, {fontSize:'11px',fontFamily:'monospace',color:'#ffcc88'}).setOrigin(0.5);
+      // Click zone
+      const zone = this.add.zone(npc.x, npc.y, npc.w+20, npc.h+40).setInteractive();
+      zone.on('pointerdown', () => this.showDialog(npc.name, npc.dialog));
+    });
+
+    // Enter Dungeon button
+    const btnG = this.add.graphics();
+    btnG.fillStyle(0x443322); btnG.fillRect(310,500,180,40);
+    btnG.lineStyle(2,0xff8800); btnG.strokeRect(310,500,180,40);
+    this.add.text(400,520,'Enter Dungeon',{fontSize:'16px',fontFamily:'monospace',color:'#ff8800'}).setOrigin(0.5);
+    const btnZone = this.add.zone(400,520,180,40).setInteractive();
+    btnZone.on('pointerdown', () => {
+      PLAYER.hp = PLAYER.maxHp; PLAYER.mana = PLAYER.maxMana;
+      PLAYER.torch = PLAYER.maxTorch;
+      PLAYER.x=1; PLAYER.y=1; PLAYER.dir=0;
+      this.scene.start('Dungeon');
+    });
+
+    // Title
+    this.add.text(400,25,'THE RUSTY FLAGON',{fontSize:'22px',fontFamily:'monospace',color:'#ff9944',fontStyle:'bold'}).setOrigin(0.5);
+
+    // Player status
+    this.add.text(10,560,`${PLAYER.name} | Lv${PLAYER.level} ${PLAYER.class} | HP:${PLAYER.hp}/${PLAYER.maxHp} | XP:${PLAYER.xp}/${PLAYER.xpNext}`,{fontSize:'12px',fontFamily:'monospace',color:'#aa8866'});
+    this.add.text(10,578,`Potions:${PLAYER.potions} | Keys:${PLAYER.keys} | Torch:${PLAYER.torch}`,{fontSize:'12px',fontFamily:'monospace',color:'#aa8866'});
+  }
+
+  showDialog(name, text) {
+    if(this.dialogBox) { this.dialogBox.destroy(); this.dialogText.destroy(); this.dialogName.destroy(); }
+    this.dialogBox = this.add.graphics();
+    this.dialogBox.fillStyle(0x111111,0.9); this.dialogBox.fillRect(50,400,700,90);
+    this.dialogBox.lineStyle(1,0xff8800); this.dialogBox.strokeRect(50,400,700,90);
+    this.dialogName = this.add.text(60,405,name,{fontSize:'13px',fontFamily:'monospace',color:'#ffaa44',fontStyle:'bold'});
+    this.dialogText = this.add.text(60,422,text,{fontSize:'12px',fontFamily:'monospace',color:'#ccbbaa',wordWrap:{width:680}});
+  }
+}
+
+// ============================================================
+// DUNGEON SCENE — First Person View
+// ============================================================
+class DungeonScene extends Phaser.Scene {
+  constructor() { super('Dungeon'); }
+
+  create() {
+    this.cameras.main.setBackgroundColor('#0f0f1f');
+    this.gfx = this.add.graphics();
+    this.handGfx = this.add.graphics();
+    this.hudGfx = this.add.graphics();
+    this.minimapGfx = this.add.graphics();
+    this.torchGfx = this.add.graphics();
+
+    // Log text
+    this.logText = this.add.text(10,560,'Entered the Whispering Crypts...',{fontSize:'12px',fontFamily:'monospace',color:'#888877',wordWrap:{width:580}});
+    this.hudText = this.add.text(10,580,'WASD:Move | I:Inventory | Space:Interact',{fontSize:'11px',fontFamily:'monospace',color:'#666655'});
+
+    // Input
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,I,SPACE,ESC');
+    this.moveDelay = 0;
+
+    this.drawView();
+    this.drawHUD();
+    this.drawMinimap();
+    this.drawHands();
+  }
+
+  update(time) {
+    if(time < this.moveDelay) return;
+    let moved = false;
+
+    if(this.keys.W.isDown) { moved = this.tryMove(1); }
+    else if(this.keys.S.isDown) { moved = this.tryMove(-1); }
+    else if(this.keys.A.isDown) { PLAYER.dir = (PLAYER.dir+3)%4; moved = true; }
+    else if(this.keys.D.isDown) { PLAYER.dir = (PLAYER.dir+1)%4; moved = true; }
+    else if(this.keys.I.isDown) { this.scene.launch('Inventory'); this.scene.pause(); this.moveDelay=time+GAME_CONFIG.interactDelay; return; }
+    else if(this.keys.SPACE.isDown) { this.interact(); this.moveDelay=time+GAME_CONFIG.interactDelay; return; }
+
+    if(moved) {
+      this.moveDelay = time + GAME_CONFIG.moveDelay;
+      PLAYER.torch = Math.max(0, PLAYER.torch - GAME_CONFIG.torch.decrementPerMove);
+      this.drawView();
+      this.drawHUD();
+      this.drawMinimap();
+      this.drawHands();
+      // Random encounter on move forward
+      if(this.keys.W.isDown && Math.random() < GAME_CONFIG.combat.encounterChance) {
+        const types = Object.keys(ENEMIES);
+        const type = types[Math.floor(Math.random()*types.length)];
+        this.scene.start('Combat', { enemyType: type });
+      }
+    }
+  }
+
+  tryMove(forward) {
+    const nx = PLAYER.x + DX[PLAYER.dir] * forward;
+    const ny = PLAYER.y + DY[PLAYER.dir] * forward;
+    if(nx<0||nx>=GAME_CONFIG.grid.size||ny<0||ny>=GAME_CONFIG.grid.size) return false;
+    const tile = MAP[ny][nx];
+    if(tile === 1) return false;
+    if(tile === 3) { this.logText.setText('The door is locked. You need a key.'); return false; }
+    if(tile === 2) { MAP[ny][nx] = 0; this.logText.setText('You open the door.'); }
+    PLAYER.x = nx; PLAYER.y = ny;
+    return true;
+  }
+
+  interact() {
+    const fx = PLAYER.x + DX[PLAYER.dir];
+    const fy = PLAYER.y + DY[PLAYER.dir];
+    if(fx<0||fx>=GAME_CONFIG.grid.size||fy<0||fy>=GAME_CONFIG.grid.size) return;
+    const tile = MAP[fy][fx];
+    if(tile === 3 && PLAYER.keys > 0) {
+      PLAYER.keys--;
+      MAP[fy][fx] = 0;
+      this.logText.setText('Used a key. The door creaks open.');
+      this.drawView();
+    } else if(tile === 3) {
+      this.logText.setText('Locked. No key.');
+    } else if(tile === 2) {
+      MAP[fy][fx] = 0;
+      this.logText.setText('Door opened.');
+      this.drawView();
+    }
+  }
+
+  drawView() {
+    const g = this.gfx;
+    g.clear();
+    const VW = GAME_CONFIG.viewport.width, VH = GAME_CONFIG.viewport.height;
+
+    // Base ceiling and floor
+    g.fillStyle(0x0a0a14); g.fillRect(0, 0, VW, VH / 2);
+    g.fillStyle(0x14141e); g.fillRect(0, VH / 2, VW, VH / 2);
+
+    // Nested perspective rectangles (depth 0 = viewport edge, 4 = vanishing)
+    const R = GAME_CONFIG.depths;
+    const leftDir = (PLAYER.dir + 3) % 4;
+    const rightDir = (PLAYER.dir + 1) % 4;
+    const frontCol = [0x3a3a52, 0x32324a, 0x2a2a40, 0x242438];
+    const sideCol = [0x4e4e68, 0x444460, 0x3c3c56, 0x34344c];
+    const ceilCol = [0x0e0e1a, 0x0c0c18, 0x0a0a16, 0x080814];
+    const floorCol = [0x1c1c2e, 0x18182a, 0x151526, 0x121222];
+
+    // Render far to near (painter's algorithm)
+    for (let d = 3; d >= 0; d--) {
+      const o = R[d], i = R[d + 1];
+      const cx = PLAYER.x + DX[PLAYER.dir] * d;
+      const cy = PLAYER.y + DY[PLAYER.dir] * d;
+      const fx = PLAYER.x + DX[PLAYER.dir] * (d + 1);
+      const fy = PLAYER.y + DY[PLAYER.dir] * (d + 1);
+
+      // CEILING segment
+      g.fillStyle(ceilCol[d]);
+      g.beginPath(); g.moveTo(o.l, o.t); g.lineTo(o.r, o.t);
+      g.lineTo(i.r, i.t); g.lineTo(i.l, i.t); g.closePath(); g.fillPath();
+
+      // FLOOR segment
+      g.fillStyle(floorCol[d]);
+      g.beginPath(); g.moveTo(o.l, o.b); g.lineTo(o.r, o.b);
+      g.lineTo(i.r, i.b); g.lineTo(i.l, i.b); g.closePath(); g.fillPath();
+      // Floor tile line
+      g.lineStyle(1, 0x222238, 0.4);
+      g.lineBetween(o.l, o.b, i.l, i.b);
+      g.lineBetween(o.r, o.b, i.r, i.b);
+      g.lineBetween((o.l+o.r)/2, o.b, (i.l+i.r)/2, i.b);
+
+      // LEFT SIDE WALL
+      const lx = cx + DX[leftDir], ly = cy + DY[leftDir];
+      if (lx < 0 || lx >= GAME_CONFIG.grid.size || ly < 0 || ly >= GAME_CONFIG.grid.size || MAP[ly][lx] === 1 || MAP[ly][lx] >= 2) {
+        g.fillStyle(sideCol[d]);
+        g.beginPath(); g.moveTo(o.l, o.t); g.lineTo(i.l, i.t);
+        g.lineTo(i.l, i.b); g.lineTo(o.l, o.b); g.closePath(); g.fillPath();
+        // Brick mortar lines
+        g.lineStyle(1, 0x1a1a2a, 0.5);
+        g.lineBetween(o.l, (o.t+o.b)/2, i.l, (i.t+i.b)/2);
+        const ml = (o.l+i.l)/2, mt = (o.t+i.t)/2, mb = (o.b+i.b)/2;
+        g.lineBetween(ml, mt, ml, (mt+mb)/2);
+        g.lineBetween((o.l+ml)/2, (mt+mb)/2, (o.l+ml)/2, mb);
+      }
+
+      // RIGHT SIDE WALL
+      const rx = cx + DX[rightDir], ry = cy + DY[rightDir];
+      if (rx < 0 || rx >= GAME_CONFIG.grid.size || ry < 0 || ry >= GAME_CONFIG.grid.size || MAP[ry][rx] === 1 || MAP[ry][rx] >= 2) {
+        g.fillStyle(sideCol[d]);
+        g.beginPath(); g.moveTo(o.r, o.t); g.lineTo(i.r, i.t);
+        g.lineTo(i.r, i.b); g.lineTo(o.r, o.b); g.closePath(); g.fillPath();
+        g.lineStyle(1, 0x1a1a2a, 0.5);
+        g.lineBetween(o.r, (o.t+o.b)/2, i.r, (i.t+i.b)/2);
+        const mr = (o.r+i.r)/2, mt2 = (o.t+i.t)/2, mb2 = (o.b+i.b)/2;
+        g.lineBetween(mr, mt2, mr, (mt2+mb2)/2);
+        g.lineBetween((o.r+mr)/2, (mt2+mb2)/2, (o.r+mr)/2, mb2);
+      }
+
+      // FRONT WALL
+      const outOfBounds = fx < 0 || fx >= GAME_CONFIG.grid.size || fy < 0 || fy >= GAME_CONFIG.grid.size;
+      const isWall = !outOfBounds && MAP[fy][fx] === 1;
+      const isDoor = !outOfBounds && (MAP[fy][fx] === 2 || MAP[fy][fx] === 3);
+
+      if (outOfBounds || isWall) {
+        g.fillStyle(frontCol[d]);
+        g.fillRect(i.l, i.t, i.r - i.l, i.b - i.t);
+        // Brick pattern
+        g.lineStyle(1, 0x1a1a2a, 0.4);
+        const h3 = (i.b - i.t) / 3, w2 = (i.r - i.l) / 2;
+        g.lineBetween(i.l, i.t + h3, i.r, i.t + h3);
+        g.lineBetween(i.l, i.t + h3 * 2, i.r, i.t + h3 * 2);
+        g.lineBetween(i.l + w2, i.t, i.l + w2, i.t + h3);
+        g.lineBetween(i.l + w2 * 0.5, i.t + h3, i.l + w2 * 0.5, i.t + h3 * 2);
+        g.lineBetween(i.l + w2 * 1.5, i.t + h3, i.l + w2 * 1.5, i.t + h3 * 2);
+        g.lineBetween(i.l + w2, i.t + h3 * 2, i.l + w2, i.b);
+        // Outline
+        g.lineStyle(1, 0x111120, 0.6);
+        g.strokeRect(i.l, i.t, i.r - i.l, i.b - i.t);
+      } else if (isDoor) {
+        g.fillStyle(frontCol[d]);
+        g.fillRect(i.l, i.t, i.r - i.l, i.b - i.t);
+        const dw = (i.r - i.l) * 0.45, dh = (i.b - i.t) * 0.8;
+        const dx = (i.l + i.r) / 2 - dw / 2, dy = i.b - dh;
+        g.fillStyle(MAP[fy][fx] === 3 ? 0x553318 : 0x664422);
+        g.fillRect(dx, dy, dw, dh);
+        // Door frame
+        g.lineStyle(2, 0x221100); g.strokeRect(dx, dy, dw, dh);
+        // Door planks
+        g.lineStyle(1, 0x331800, 0.4);
+        g.lineBetween(dx + dw * 0.33, dy, dx + dw * 0.33, dy + dh);
+        g.lineBetween(dx + dw * 0.66, dy, dx + dw * 0.66, dy + dh);
+        // Handle or lock
+        if (MAP[fy][fx] === 3) {
+          g.fillStyle(0xffdd44);
+          g.fillCircle(dx + dw * 0.82, dy + dh * 0.45, Math.max(3, 6 - d));
+          g.lineStyle(1, 0xaa8800);
+          g.strokeCircle(dx + dw * 0.82, dy + dh * 0.45, Math.max(3, 6 - d));
+        } else {
+          g.fillStyle(0x997744);
+          g.fillCircle(dx + dw * 0.82, dy + dh * 0.45, Math.max(2, 4 - d));
+        }
+        // Arch top
+        g.lineStyle(2, 0x3a2a1a);
+        g.lineBetween(dx, dy, dx + dw, dy);
+      }
+    }
+
+    // Torch light overlay
+    this.torchGfx.clear();
+    if (PLAYER.torch > 0) {
+      const intensity = Math.min(1, PLAYER.torch / PLAYER.maxTorch);
+      const flicker = 0.7 + Math.random() * 0.3;
+      const alpha = intensity * flicker * 0.1;
+      this.torchGfx.fillStyle(0xffaa44, alpha);
+      this.torchGfx.fillCircle(300, 250, 300);
+      this.torchGfx.fillStyle(0xff8833, alpha * 0.5);
+      this.torchGfx.fillCircle(300, 260, 170);
+    } else {
+      g.fillStyle(0x000000, 0.92);
+      g.fillRect(0, 0, VW, VH);
+    }
+  }
+
+  drawHands() {
+    const h = this.handGfx;
+    h.clear();
+    const VH = 500;
+
+    // Left hand (shield/torch)
+    h.fillStyle(0xddbb99); // skin
+    h.fillRect(60, VH-90, 55, 70);
+    h.fillStyle(0xccaa88);
+    h.fillRect(65, VH-95, 45, 15); // fingers
+
+    // Right hand with weapon
+    h.fillStyle(0xddbb99);
+    h.fillRect(485, VH-90, 55, 70);
+    h.fillStyle(0xccaa88);
+    h.fillRect(490, VH-95, 45, 15);
+
+    if(PLAYER.equipped && PLAYER.equipped.weapon != null && PLAYER.equipped.weapon >= 0) {
+      // Sword blade
+      h.fillStyle(0xaaaacc);
+      h.fillRect(505, VH-180, 8, 100);
+      // Crossguard
+      h.fillStyle(0x886633);
+      h.fillRect(495, VH-85, 30, 6);
+      // Pommel
+      h.fillStyle(0x886633);
+      h.fillRect(505, VH-20, 10, 8);
+    }
+  }
+
+  drawHUD() {
+    const h = this.hudGfx;
+    h.clear();
+    const bx=GAME_CONFIG.hud.x, by=GAME_CONFIG.hud.y, bw=GAME_CONFIG.hud.width;
+
+    // Panel background
+    h.fillStyle(0x111118,0.9); h.fillRect(bx,by,bw,200);
+    h.lineStyle(1,0x333344); h.strokeRect(bx,by,bw,200);
+
+    // HP bar
+    h.fillStyle(0x441111); h.fillRect(bx+10,by+30,bw-20,14);
+    h.fillStyle(0xcc2222); h.fillRect(bx+10,by+30,(bw-20)*(PLAYER.hp/PLAYER.maxHp),14);
+
+    // Mana bar
+    h.fillStyle(0x111144); h.fillRect(bx+10,by+60,bw-20,14);
+    h.fillStyle(0x2244cc); h.fillRect(bx+10,by+60,(bw-20)*(PLAYER.mana/PLAYER.maxMana),14);
+
+    // Torch bar
+    h.fillStyle(0x332200); h.fillRect(bx+10,by+90,bw-20,14);
+    h.fillStyle(0xdd8822); h.fillRect(bx+10,by+90,(bw-20)*(PLAYER.torch/PLAYER.maxTorch),14);
+
+    // Labels (recreate each frame — simple approach)
+    if(this.hudLabels) this.hudLabels.forEach(t=>t.destroy());
+    this.hudLabels = [];
+    const addLabel = (x,y,txt,col) => { this.hudLabels.push(this.add.text(x,y,txt,{fontSize:'11px',fontFamily:'monospace',color:col})); };
+    addLabel(bx+10,by+5,'DUNGEON X','#ff8800');
+    addLabel(bx+10,by+17,`HP: ${PLAYER.hp}/${PLAYER.maxHp}`,'#cc4444');
+    addLabel(bx+10,by+47,`MP: ${PLAYER.mana}/${PLAYER.maxMana}`,'#4466cc');
+    addLabel(bx+10,by+77,`Torch: ${PLAYER.torch}`,'#dd8822');
+    addLabel(bx+10,by+115,`AC: ${PLAYER.ac}  Lv: ${PLAYER.level}`,'#999988');
+    addLabel(bx+10,by+132,`XP: ${PLAYER.xp}/${PLAYER.xpNext}`,'#999988');
+    addLabel(bx+10,by+149,`Keys: ${PLAYER.keys}`,'#ddaa44');
+    addLabel(bx+10,by+166,`Potions: ${PLAYER.potions}`,'#cc4444');
+    addLabel(bx+10,by+183,`Pos: ${PLAYER.x},${PLAYER.y}`,'#666655');
+  }
+
+  drawMinimap() {
+    const m = this.minimapGfx;
+    m.clear();
+    const ox=GAME_CONFIG.minimap.x, oy=GAME_CONFIG.minimap.y, cs=GAME_CONFIG.minimap.cellSize;
+
+    const gs = GAME_CONFIG.grid.size;
+    m.fillStyle(0x111118,0.9); m.fillRect(ox-5,oy-5,cs*gs+10,cs*gs+10);
+    m.lineStyle(1,0x333344); m.strokeRect(ox-5,oy-5,cs*gs+10,cs*gs+10);
+
+    for(let y=0;y<gs;y++) for(let x=0;x<gs;x++) {
+      const tile = MAP[y][x];
+      if(tile===1) m.fillStyle(0x444455);
+      else if(tile===2) m.fillStyle(0x664422);
+      else if(tile===3) m.fillStyle(0xaa6622);
+      else m.fillStyle(0x222233);
+      m.fillRect(ox+x*cs, oy+y*cs, cs-1, cs-1);
+    }
+    // Player
+    m.fillStyle(0x00ff00);
+    m.fillRect(ox+PLAYER.x*cs+4, oy+PLAYER.y*cs+4, cs-8, cs-8);
+    // Direction indicator
+    m.fillStyle(0x44ff44);
+    const px=ox+PLAYER.x*cs+cs/2, py=oy+PLAYER.y*cs+cs/2;
+    m.fillCircle(px+DX[PLAYER.dir]*6, py+DY[PLAYER.dir]*6, 2);
+  }
+}
+
+// ============================================================
+// COMBAT SCENE
+// ============================================================
+class CombatScene extends Phaser.Scene {
+  constructor() { super('Combat'); }
+
+  init(data) {
+    const template = ENEMIES[data.enemyType];
+    this.enemy = { ...template, hp: template.maxHp };
+    this.enemyType = data.enemyType;
+    this.playerTurn = true;
+    this.combatOver = false;
+    this.defending = false;
+  }
+
+  create() {
+    this.cameras.main.setBackgroundColor('#0a0a14');
+    this.gfx = this.add.graphics();
+    this.handGfx = this.add.graphics();
+    this.flashGfx = this.add.graphics();
+
+    // Enemy display
+    this.drawEnemy();
+
+    // Combat log
+    this.logLines = [`A ${this.enemy.name} appears!`];
+    this.logText = this.add.text(10,420,'',{fontSize:'12px',fontFamily:'monospace',color:'#999988',wordWrap:{width:580}});
+    this.updateLog();
+
+    // Action buttons
+    const actions = [
+      {label:'Attack', x:620, y:420, cb:()=>this.doAttack()},
+      {label:'Fire Bolt', x:620, y:455, cb:()=>this.doCastSpell(0)},
+      {label:'Ice Shard', x:620, y:490, cb:()=>this.doCastSpell(1)},
+      {label:'Holy Light', x:620, y:525, cb:()=>this.doCastSpell(2)},
+      {label:'Potion', x:710, y:420, cb:()=>this.doPotion()},
+      {label:'Defend', x:710, y:455, cb:()=>this.doDefend()},
+      {label:'Flee', x:710, y:490, cb:()=>this.doFlee()}
+    ];
+
+    this.buttons = [];
+    actions.forEach(a => {
+      const bg = this.add.graphics();
+      bg.fillStyle(0x222233); bg.fillRect(a.x,a.y,80,28);
+      bg.lineStyle(1,0x555566); bg.strokeRect(a.x,a.y,80,28);
+      const txt = this.add.text(a.x+40,a.y+14,a.label,{fontSize:'11px',fontFamily:'monospace',color:'#ccbbaa'}).setOrigin(0.5);
+      const zone = this.add.zone(a.x+40,a.y+14,80,28).setInteractive();
+      zone.on('pointerdown', () => { if(this.playerTurn && !this.combatOver) a.cb(); });
+      this.buttons.push({bg,txt,zone});
+    });
+
+    // Hands
+    this.drawCombatHands();
+
+    // Player HP display
+    this.playerHpText = this.add.text(10,560,`HP: ${PLAYER.hp}/${PLAYER.maxHp} | MP: ${PLAYER.mana}/${PLAYER.maxMana} | AC: ${PLAYER.ac}`,{fontSize:'12px',fontFamily:'monospace',color:'#cc4444'});
+  }
+
+  drawEnemy() {
+    const g = this.gfx;
+    g.clear();
+
+    // Enemy body (large shape)
+    const ex=300, ey=180, ew=120, eh=160;
+    g.fillStyle(this.enemy.color, 0.8);
+    g.fillRect(ex-ew/2, ey-eh/2, ew, eh);
+
+    // Eyes
+    g.fillStyle(0xff0000);
+    g.fillCircle(ex-20, ey-30, 8);
+    g.fillCircle(ex+20, ey-30, 8);
+    g.fillStyle(0x000000);
+    g.fillCircle(ex-18, ey-30, 4);
+    g.fillCircle(ex+22, ey-30, 4);
+
+    // Name
+    this.add.text(300, 30, this.enemy.name, {fontSize:'20px',fontFamily:'monospace',color:'#'+this.enemy.color.toString(16).padStart(6,'0'),fontStyle:'bold'}).setOrigin(0.5);
+
+    // HP bar
+    g.fillStyle(0x441111); g.fillRect(150,55,300,18);
+    g.fillStyle(0xcc2222); g.fillRect(150,55,300*(this.enemy.hp/this.enemy.maxHp),18);
+    g.lineStyle(1,0x663333); g.strokeRect(150,55,300,18);
+
+    if(!this.enemyHpText) {
+      this.enemyHpText = this.add.text(300,58,`${this.enemy.hp}/${this.enemy.maxHp}`,{fontSize:'11px',fontFamily:'monospace',color:'#ffcccc'}).setOrigin(0.5);
+    } else {
+      this.enemyHpText.setText(`${this.enemy.hp}/${this.enemy.maxHp}`);
+    }
+  }
+
+  drawCombatHands(glowColor) {
+    const h = this.handGfx;
+    h.clear();
+
+    // Left hand
+    h.fillStyle(0xddbb99);
+    h.fillRect(40,350,60,80);
+    h.fillStyle(0xccaa88);
+    h.fillRect(45,345,50,15);
+
+    // Right hand + sword
+    h.fillStyle(0xddbb99);
+    h.fillRect(500,350,60,80);
+    h.fillStyle(0xccaa88);
+    h.fillRect(505,345,50,15);
+
+    if(PLAYER.equipped && PLAYER.equipped.weapon != null && PLAYER.equipped.weapon >= 0) {
+      h.fillStyle(0xaaaacc);
+      h.fillRect(523,260,8,100);
+      h.fillStyle(0x886633);
+      h.fillRect(513,355,30,6);
+    }
+
+    if(glowColor !== undefined) {
+      h.fillStyle(glowColor, 0.4);
+      h.fillCircle(70,380,50);
+      h.fillCircle(530,380,50);
+    }
+  }
+
+  addLog(msg) {
+    this.logLines.push(msg);
+    if(this.logLines.length > 6) this.logLines.shift();
+    this.updateLog();
+  }
+
+  updateLog() {
+    this.logText.setText(this.logLines.join('\n'));
+  }
+
+  doAttack() {
+    const roll = rollDice(20);
+    const total = roll + PLAYER.attackMod;
+    const hit = roll === 20 || (roll !== 1 && total >= this.enemy.ac);
+    const crit = roll === 20;
+    const fumble = roll === 1;
+
+    if(fumble) {
+      this.addLog(`Rolled 1 — FUMBLE! You stumble!`);
+      this.screenFlash(0xff0000, 0.2);
+    } else if(hit) {
+      let dmg = rollDice(PLAYER.damageDice) + PLAYER.damageBonus;
+      if(crit) { dmg += rollDice(PLAYER.damageDice); this.addLog(`NAT 20! CRITICAL HIT!`); this.screenFlash(0xffff00, 0.4); }
+      this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
+      this.addLog(`Rolled ${roll}+${PLAYER.attackMod}=${total} vs AC ${this.enemy.ac} — HIT! ${dmg} damage!`);
+      this.drawEnemy();
+    } else {
+      this.addLog(`Rolled ${roll}+${PLAYER.attackMod}=${total} vs AC ${this.enemy.ac} — MISS!`);
+    }
+
+    this.checkEnemyDead() || this.enemyTurn();
+  }
+
+  doCastSpell(idx) {
+    const spell = SPELLS[idx];
+    if(PLAYER.mana < spell.manaCost) { this.addLog('Not enough mana.'); return; }
+    PLAYER.mana -= spell.manaCost;
+
+    let dmg = rollDice(spell.dice) + mod(PLAYER.int);
+    if(spell.element === this.enemy.weakness) { dmg = Math.floor(dmg*2); this.addLog(`${this.enemy.name} is WEAK to ${spell.element}! Double damage!`); }
+    if(spell.element === this.enemy.resist) { dmg = Math.floor(dmg/2); this.addLog(`${this.enemy.name} RESISTS ${spell.element}!`); }
+
+    this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
+    this.addLog(`${spell.name} hits for ${dmg}!`);
+    this.drawCombatHands(spell.color);
+    this.screenFlash(spell.color, 0.3);
+    this.drawEnemy();
+    this.playerHpText.setText(`HP: ${PLAYER.hp}/${PLAYER.maxHp} | MP: ${PLAYER.mana}/${PLAYER.maxMana} | AC: ${PLAYER.ac}`);
+
+    // Reset hand glow after delay
+    this.time.delayedCall(500, ()=>this.drawCombatHands());
+
+    this.checkEnemyDead() || this.enemyTurn();
+  }
+
+  doPotion() {
+    if(PLAYER.potions <= 0) { this.addLog('No potions left.'); return; }
+    PLAYER.potions--;
+    const heal = rollDice(GAME_CONFIG.combat.potionHeal) + GAME_CONFIG.combat.potionBonus;
+    PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + heal);
+    this.addLog(`Drank potion. Healed ${heal} HP. (${PLAYER.hp}/${PLAYER.maxHp})`);
+    this.playerHpText.setText(`HP: ${PLAYER.hp}/${PLAYER.maxHp} | MP: ${PLAYER.mana}/${PLAYER.maxMana} | AC: ${PLAYER.ac}`);
+    this.enemyTurn();
+  }
+
+  doDefend() {
+    this.defending = true;
+    this.addLog('You brace yourself. AC +2 this round.');
+    this.enemyTurn();
+  }
+
+  doFlee() {
+    const roll = rollDice(20) + mod(PLAYER.dex);
+    const dc = GAME_CONFIG.combat.fleeDC + mod(this.enemy.dex || 12);
+    if(roll >= dc) {
+      this.addLog('You flee successfully!');
+      this.combatOver = true;
+      this.time.delayedCall(1000, ()=>this.scene.start('Dungeon'));
+    } else {
+      this.addLog(`Failed to flee! (${roll} vs DC ${dc})`);
+      this.enemyTurn();
+    }
+  }
+
+  enemyTurn() {
+    if(this.combatOver) return;
+    this.playerTurn = false;
+    this.time.delayedCall(600, () => {
+      const roll = rollDice(20);
+      const total = roll + this.enemy.attackMod;
+      const targetAC = PLAYER.ac + (this.defending ? 2 : 0);
+      this.defending = false;
+
+      if(roll === 1) {
+        this.addLog(`${this.enemy.name} fumbles!`);
+      } else if(roll === 20 || total >= targetAC) {
+        let dmg = rollDice(this.enemy.damageDice) + this.enemy.damageBonus;
+        if(roll === 20) { dmg += rollDice(this.enemy.damageDice); this.addLog(`${this.enemy.name} CRITS!`); }
+        PLAYER.hp = Math.max(0, PLAYER.hp - dmg);
+        this.addLog(`${this.enemy.name}: ${roll}+${this.enemy.attackMod}=${total} vs AC ${targetAC} — ${dmg} damage!`);
+        this.screenFlash(0xff0000, 0.2);
+        this.playerHpText.setText(`HP: ${PLAYER.hp}/${PLAYER.maxHp} | MP: ${PLAYER.mana}/${PLAYER.maxMana} | AC: ${PLAYER.ac}`);
+      } else {
+        this.addLog(`${this.enemy.name}: ${roll}+${this.enemy.attackMod}=${total} vs AC ${targetAC} — MISS!`);
+      }
+
+      if(PLAYER.hp <= 0) {
+        this.addLog('You have fallen...');
+        this.combatOver = true;
+        this.time.delayedCall(2000, () => {
+          PLAYER.hp = PLAYER.maxHp; PLAYER.mana = PLAYER.maxMana;
+          this.scene.start('Tavern');
+        });
+      } else {
+        this.playerTurn = true;
+      }
+    });
+  }
+
+  checkEnemyDead() {
+    if(this.enemy.hp <= 0) {
+      this.addLog(`${this.enemy.name} defeated! +${this.enemy.xp} XP`);
+      PLAYER.xp += this.enemy.xp;
+      // Random loot
+      if(Math.random() < GAME_CONFIG.loot.potionChance) { PLAYER.potions++; this.addLog('Found a potion!'); }
+      if(Math.random() < GAME_CONFIG.loot.keyChance) { PLAYER.keys++; this.addLog('Found a key!'); }
+      // Level up check
+      if(PLAYER.xp >= PLAYER.xpNext) {
+        PLAYER.level++;
+        PLAYER.maxHp += rollDice(GAME_CONFIG.levelUp.hpDice) + mod(PLAYER.con);
+        PLAYER.hp = PLAYER.maxHp;
+        PLAYER.maxMana += GAME_CONFIG.levelUp.manaGain;
+        PLAYER.mana = PLAYER.maxMana;
+        PLAYER.xpNext = Math.floor(PLAYER.xpNext * GAME_CONFIG.levelUp.xpMultiplier);
+        if(PLAYER.level >= 3) PLAYER.proficiency = 3;
+        PLAYER.attackMod = PLAYER.proficiency + mod(PLAYER.str);
+        this.addLog(`LEVEL UP! Now level ${PLAYER.level}!`);
+      }
+      this.combatOver = true;
+      this.time.delayedCall(2000, ()=>this.scene.start('Dungeon'));
+      return true;
+    }
+    return false;
+  }
+
+  screenFlash(color, alpha) {
+    this.flashGfx.clear();
+    this.flashGfx.fillStyle(color, alpha);
+    this.flashGfx.fillRect(0,0,800,600);
+    this.time.delayedCall(150, ()=>this.flashGfx.clear());
+  }
+}
+
+// ============================================================
+// INVENTORY SCENE (Overlay)
+// ============================================================
+class InventoryScene extends Phaser.Scene {
+  constructor() { super('Inventory'); }
+
+  create() {
+    // Semi-transparent background
+    this.add.graphics().fillStyle(0x000000,0.7).fillRect(0,0,800,600);
+
+    const ox=150, oy=80, cs=50;
+    const g = this.add.graphics();
+
+    // Title
+    this.add.text(400,40,'INVENTORY',{fontSize:'22px',fontFamily:'monospace',color:'#ff8800',fontStyle:'bold'}).setOrigin(0.5);
+
+    // Backpack grid 4x6
+    for(let row=0;row<6;row++) for(let col=0;col<4;col++) {
+      g.fillStyle(0x1a1a2a); g.fillRect(ox+col*cs, oy+row*cs, cs-2, cs-2);
+      g.lineStyle(1,0x333344); g.strokeRect(ox+col*cs, oy+row*cs, cs-2, cs-2);
+    }
+
+    // Equipment slots
+    const slots = [
+      {name:'Head', x:520, y:80},
+      {name:'Body', x:520, y:140},
+      {name:'Weapon', x:460, y:200},
+      {name:'Shield', x:580, y:200},
+      {name:'Ring', x:520, y:260}
+    ];
+
+    slots.forEach(s => {
+      g.fillStyle(0x2a1a1a); g.fillRect(s.x, s.y, cs-2, cs-2);
+      g.lineStyle(1,0x554433); g.strokeRect(s.x, s.y, cs-2, cs-2);
+      this.add.text(s.x+cs/2-1, s.y-12, s.name, {fontSize:'10px',fontFamily:'monospace',color:'#887766'}).setOrigin(0.5);
+    });
+
+    // Draw items in backpack
+    PLAYER.inventory.forEach((item, i) => {
+      if(i >= 24) return;
+      const col = i%4, row = Math.floor(i/4);
+      const ix = ox+col*cs+4, iy = oy+row*cs+4;
+      g.fillStyle(item.color); g.fillRect(ix, iy, cs-10, cs-10);
+      this.add.text(ix+(cs-10)/2, iy+(cs-10)/2, item.letter, {fontSize:'18px',fontFamily:'monospace',color:'#ffffff',fontStyle:'bold'}).setOrigin(0.5);
+    });
+
+    // Draw equipped items
+    const eqSlotKeys = ['head','body','weapon','shield','ring'];
+    eqSlotKeys.forEach((key, i) => {
+      if(!PLAYER.equipped || PLAYER.equipped[key] === undefined || PLAYER.equipped[key] === null) return;
+      const idx = PLAYER.equipped[key];
+      if(idx >= 0 && PLAYER.inventory && idx < PLAYER.inventory.length) {
+        const item = PLAYER.inventory[idx];
+        const s = slots[i];
+        g.fillStyle(item.color); g.fillRect(s.x+4, s.y+4, cs-10, cs-10);
+        this.add.text(s.x+cs/2-1, s.y+cs/2-1, item.letter, {fontSize:'18px',fontFamily:'monospace',color:'#ffffff',fontStyle:'bold'}).setOrigin(0.5);
+      }
+    });
+
+    // Stats
+    this.add.text(460,320,`STR:${PLAYER.str} DEX:${PLAYER.dex} CON:${PLAYER.con}`,{fontSize:'11px',fontFamily:'monospace',color:'#aa9988'});
+    this.add.text(460,338,`INT:${PLAYER.int} WIS:${PLAYER.wis} CHA:${PLAYER.cha}`,{fontSize:'11px',fontFamily:'monospace',color:'#aa9988'});
+    this.add.text(460,360,`AC:${PLAYER.ac} ATK:+${PLAYER.attackMod} DMG:d${PLAYER.damageDice}+${PLAYER.damageBonus}`,{fontSize:'11px',fontFamily:'monospace',color:'#ccbbaa'});
+    this.add.text(460,378,`HP:${PLAYER.hp}/${PLAYER.maxHp} MP:${PLAYER.mana}/${PLAYER.maxMana}`,{fontSize:'11px',fontFamily:'monospace',color:'#cc4444'});
+
+    // Close hint
+    this.add.text(400,560,'Press I or ESC to close',{fontSize:'14px',fontFamily:'monospace',color:'#666655'}).setOrigin(0.5);
+
+    // Close on I or ESC
+    this.input.keyboard.on('keydown-I', () => { this.scene.resume('Dungeon'); this.scene.stop(); });
+    this.input.keyboard.on('keydown-ESC', () => { this.scene.resume('Dungeon'); this.scene.stop(); });
+  }
+}
+
+// ============================================================
+// GAME CONFIG
+// ============================================================
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  backgroundColor: '#000000',
+  parent: document.body,
+  scene: [BootScene, TavernScene, DungeonScene, CombatScene, InventoryScene],
+  physics: { default: 'arcade' },
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }
+};
+
+const game = new Phaser.Game(config);
+</script>
+</body></html>

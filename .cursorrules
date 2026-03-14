@@ -1,0 +1,108 @@
+# Dungeon X — Browser Roguelike
+
+## Project
+Single-file browser game. Phaser 3 + vanilla JS. No build tools, no npm.
+Desktop folder: ~/Desktop/Dungeon X/
+Full game bible: docs/dungeon-x-game-bible.md — the CANON. Follow it EXACTLY.
+Combat spec: docs/combat-system-dnd.md
+Design doc: docs/2026-03-08-dungeon-x-design.md
+
+## Stack
+- Phaser 3.80 via CDN (load from: https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js)
+- Single HTML file with embedded JS (split to 2-3 files ONLY if single file exceeds 15,000 lines)
+- Pixel art style, 32x32 tile grid, drawn programmatically with drawPixelRect on canvas
+- Procedural audio via Web Audio API oscillators — no external sound files
+- localStorage for save state, reputation, fragments, best runs
+- No frameworks, no React, no bundlers, no npm, no build tools
+
+## Phase Status
+- Phase 1 + 1.5: DONE (builds/dungeon-x-phase1.html)
+  - Tavern (Rusty Flagon) with Aldric barkeep
+  - 3 enemy types (Shadow Lurker, Bone Revenant, Crypt Crawler)
+  - Torchlight fog-of-war
+  - 4x6 grid inventory with drag-and-drop
+  - Treasure chests + key system
+  - Levers + pushable stones
+  - Food/water survival
+  - 1 Sunstone Fragment (Fragment of Dawn)
+  - Reputation system + NPC dialogue
+  - Procedural audio
+
+## PHASE 2 — BUILD THIS NOW
+Work from builds/dungeon-x-phaser.html (the Phaser 3 version).
+Reference the game bible for ALL design decisions.
+
+### Priority 1: D&D 5e Combat System
+- Attack rolls: d20 + modifier vs target AC. Miss = miss (no guaranteed damage)
+- Four damage types: Physical, Fire, Ice, Lightning (enemies have resistances)
+- Initiative: d20 + DEX modifier, higher goes first
+- Saving throws: STR/DEX/CON/INT/WIS/CHA, DC = 8 + modifier
+- Death: HP hits 0 = dead. Permadeath. Reset to tavern with nothing.
+- See docs/combat-system-dnd.md for full stat blocks
+
+### Priority 2: Class Selection (4 classes)
+- **Fighter:** STR 16, CON 14, DEX 12. Heavy armor (AC 18). Power Strike (2x damage, 3/rest). Shield Wall (+2 AC, 1 turn). Cleave (hit adjacent enemy on kill).
+- **Ranger:** DEX 16, WIS 14, STR 12. Medium armor (AC 15). Twin Shot (2 arrows). Trap Set (1d8 on trigger). Track (reveals enemies 1 room ahead for 5 turns).
+- **Mage:** INT 16, WIS 14, DEX 10. No armor (AC 12). Fireball (3d6 area). Frost Nova (1d6 + slow). Lightning Bolt (4d6 line). Shield (absorb 10 HP). Mana pool: 20, regen 2/turn.
+- **Cleric:** WIS 16, CON 14, STR 12. Medium armor (AC 16). Heal (2d8+WIS). Smite (2d6 radiant). Turn Undead (flee 3 turns). Bless (+2 attack for 5 turns). 15 mana, regen 1/turn.
+- Class selection screen at game start, before entering tavern
+
+### Priority 3: Multi-Floor Dungeon System
+- Dungeon 1: Whispering Crypts (2 floors). See game bible Section 5.1.
+- Floor transitions: staircase tiles. Going down = new floor generated.
+- Each floor: 5-8 rooms connected by corridors. Procedural layout.
+- Rooms contain: enemies, treasure, traps, puzzles, boss rooms (floor 2)
+- Mini-boss on Floor 1: Vault Warden (AC 16, HP 45, shield mechanic)
+- Dungeon boss on Floor 2: Crypt Lord (AC 18, HP 80, raise dead ability)
+- Fragment of Dawn in boss room after defeating Crypt Lord
+
+### Priority 4: Overworld Path
+- Simple path from Thornhaven (tavern) to dungeon entrance
+- Random encounter chance on path (25% per tile)
+- Path enemies: weaker than dungeon enemies (Wolves, Bandits, Giant Spiders)
+- Visual: grassy tiles, trees, road. Day/night cycle (cosmetic only)
+
+### Priority 5: Daily Seeded Dungeons
+- Use date string as seed: "2026-03-09" → deterministic RNG
+- Same seed = same layout, same enemies, same loot for all players
+- Leaderboard: fastest clear time stored in localStorage
+- New seed every day at midnight
+
+## Architecture Rules
+- Game state object: { player, inventory, dungeon, floor, reputation, fragments[], dailySeed }
+- Scene management: TitleScene → ClassSelectScene → TavernScene → OverworldScene → DungeonScene → CombatScene
+- Combat is turn-based: player action → enemy action → repeat
+- Inventory: 4x6 grid (24 slots) + 6 equipment slots (head, chest, legs, weapon, offhand, ring)
+- All enemy stat blocks in the game bible are CANON — use exact numbers
+
+## Build Rules
+- Output to builds/dungeon-x-phase2.html
+- Keep Phase 1 build intact (don't overwrite)
+- ONE HTML file. All JS inline or in <script> tags.
+- Phaser 3 patterns: use Scenes, GameObjects, Tilemaps, Input events
+- Test every change in browser. Must not crash on load.
+- Performance: target 60fps on M4 Mac, 30fps minimum on mobile Safari
+- No external assets — draw everything programmatically (rectangles, circles, text)
+- Color palette: dark fantasy (deep purples, warm torchlight oranges, cool stone grays)
+- Font: monospace for all text (16px for UI, 12px for tooltips)
+
+## Game Bible Quick Reference (Section Numbers)
+- Section 1: Design Pillars (10 pillars)
+- Section 2: Story (Sunstone myth, Dorevus, Thornhaven)
+- Section 3: Classes & Stats
+- Section 4: Combat System
+- Section 5: Dungeons (5.1-5.10, all 10 dungeons fully specced)
+- Section 6: Enemies & Bestiary (54 enemies with full stat blocks)
+- Section 7: Items & Economy
+- Section 8: NPCs & Reputation
+- Section 9: Meta Systems (daily dungeons, death, progression)
+- Section 10: Build Protocol (9 phases)
+
+## What NOT to Do
+- Don't use Webpack, Vite, or any bundler
+- Don't add npm dependencies
+- Don't create a server — this is a static HTML file
+- Don't use WebGL shaders — keep it simple canvas/Phaser rendering
+- Don't change Phase 1 mechanics that already work
+- Don't skip the class selection screen
+- Don't make combat feel like a slot machine — misses should be common, hits should feel earned

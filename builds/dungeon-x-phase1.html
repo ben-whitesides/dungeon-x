@@ -1,0 +1,3201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DUNGEON X</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0a0f;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+  font-family: monospace;
+}
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  cursor: pointer;
+}
+#muteBtn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: #1a1a2e;
+  color: #c8a840;
+  border: 2px solid #c8a840;
+  padding: 6px 14px;
+  font-family: monospace;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 100;
+}
+#muteBtn:hover { background: #2a2a3e; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<button id="muteBtn">SOUND: ON</button>
+<script>
+// ============================================================
+// DUNGEON X — Enhanced with Inventory & Drag-Drop Systems
+// Single-file browser dungeon crawler
+// ============================================================
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = 960, H = 640;
+canvas.width = W;
+canvas.height = H;
+
+function resizeCanvas() {
+  const scale = Math.min(window.innerWidth / W, window.innerHeight / H);
+  canvas.style.width = (W * scale) + 'px';
+  canvas.style.height = (H * scale) + 'px';
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ============================================================
+// GAME STATE
+// ============================================================
+const GameState = {
+  TITLE: 'title',
+  TAVERN: 'tavern',
+  DUNGEON: 'dungeon',
+  COMBAT: 'combat',
+  PUZZLE: 'puzzle',
+  VICTORY: 'victory',
+  GAMEOVER: 'gameover',
+  SUMMARY: 'summary',
+  FRAGMENT: 'fragment',
+  JOURNEY: 'journey',
+  INVENTORY: 'inventory'
+};
+
+let state = GameState.TITLE;
+let prevState = null;
+let frameCount = 0;
+let lastTime = 0;
+
+// ============================================================
+// ITEM DEFINITIONS
+// ============================================================
+const ITEM_DEFS = {
+  iron_sword: {
+    id: 'iron_sword', name: 'Iron Sword', type: 'weapon', slot: 'right_hand',
+    weight: 5, stackable: false, maxStack: 1, draggable: true,
+    description: 'A sturdy iron blade. Standard melee weapon.',
+    atkBonus: 5
+  },
+  wooden_shield: {
+    id: 'wooden_shield', name: 'Wooden Shield', type: 'armor', slot: 'left_hand',
+    weight: 4, stackable: false, maxStack: 1, draggable: true,
+    description: 'A solid wooden shield. Provides basic defense.',
+    defBonus: 3
+  },
+  leather_cap: {
+    id: 'leather_cap', name: 'Leather Cap', type: 'armor', slot: 'head',
+    weight: 2, stackable: false, maxStack: 1, draggable: true,
+    description: 'A simple leather cap. Light head protection.',
+    defBonus: 1
+  },
+  torch_item: {
+    id: 'torch_item', name: 'Torch', type: 'consumable', slot: 'left_hand',
+    weight: 1, stackable: true, maxStack: 5, draggable: true,
+    description: 'A wooden torch. Equip in hand or right-click to restore 30% torch meter.',
+    useEffect: 'torch'
+  },
+  bread: {
+    id: 'bread', name: 'Bread', type: 'consumable', slot: null,
+    weight: 1, stackable: true, maxStack: 5, draggable: true,
+    description: 'A loaf of bread. Restores 25 food.',
+    useEffect: 'food'
+  },
+  water_flask: {
+    id: 'water_flask', name: 'Water Flask', type: 'consumable', slot: null,
+    weight: 1, stackable: true, maxStack: 5, draggable: true,
+    description: 'A flask of water. Restores 30 water.',
+    useEffect: 'water'
+  },
+  health_potion: {
+    id: 'health_potion', name: 'Health Potion', type: 'consumable', slot: null,
+    weight: 1, stackable: true, maxStack: 5, draggable: true,
+    description: 'A red potion. Restores 30 HP.',
+    useEffect: 'health'
+  },
+  mana_potion: {
+    id: 'mana_potion', name: 'Mana Potion', type: 'consumable', slot: null,
+    weight: 1, stackable: true, maxStack: 5, draggable: true,
+    description: 'A blue potion. Restores 30 mana.',
+    useEffect: 'mana'
+  },
+  iron_key: {
+    id: 'iron_key', name: 'Iron Key', type: 'key', slot: null,
+    weight: 1, stackable: false, maxStack: 1, draggable: true,
+    description: 'A rusty iron key. Might fit a standard lock.'
+  },
+  gold_key: {
+    id: 'gold_key', name: 'Gold Key', type: 'key', slot: null,
+    weight: 1, stackable: false, maxStack: 1, draggable: true,
+    description: 'An ornate golden key. Opens magically sealed doors.'
+  },
+  fire_scroll: {
+    id: 'fire_scroll', name: 'Fire Scroll', type: 'scroll', slot: null,
+    weight: 1, stackable: false, maxStack: 1, draggable: true,
+    description: 'A powerful fire spell scroll. One use.',
+    useEffect: 'fire_scroll'
+  }
+};
+
+function createItem(defId, count) {
+  const def = ITEM_DEFS[defId];
+  if (!def) return null;
+  return { ...def, count: count || 1 };
+}
+
+// ============================================================
+// INVENTORY SYSTEM
+// ============================================================
+const BACKPACK_COLS = 4;
+const BACKPACK_ROWS = 6;
+const BACKPACK_SIZE = BACKPACK_COLS * BACKPACK_ROWS;
+const SLOT_SIZE = 48;
+const SLOT_PAD = 2;
+
+let inventory = {
+  equipment: {
+    head: null,
+    chest: null,
+    left_hand: null,
+    right_hand: null,
+    legs: null,
+    feet: null
+  },
+  backpack: new Array(BACKPACK_SIZE).fill(null),
+  maxWeight: 60
+};
+
+function getInventoryWeight() {
+  let w = 0;
+  for (const slot of Object.values(inventory.equipment)) {
+    if (slot) w += slot.weight * (slot.count || 1);
+  }
+  for (const item of inventory.backpack) {
+    if (item) w += item.weight * (item.count || 1);
+  }
+  return w;
+}
+
+function addToBackpack(item) {
+  if (!item) return false;
+  // Try stacking first
+  if (item.stackable) {
+    for (let i = 0; i < BACKPACK_SIZE; i++) {
+      const slot = inventory.backpack[i];
+      if (slot && slot.id === item.id && slot.count < slot.maxStack) {
+        const canAdd = Math.min(item.count, slot.maxStack - slot.count);
+        slot.count += canAdd;
+        item.count -= canAdd;
+        if (item.count <= 0) return true;
+      }
+    }
+  }
+  // Find empty slot
+  for (let i = 0; i < BACKPACK_SIZE; i++) {
+    if (!inventory.backpack[i]) {
+      inventory.backpack[i] = { ...item };
+      return true;
+    }
+  }
+  return false; // Full
+}
+
+function removeFromBackpack(index) {
+  const item = inventory.backpack[index];
+  inventory.backpack[index] = null;
+  return item;
+}
+
+function hasItemInInventory(itemId) {
+  for (const slot of Object.values(inventory.equipment)) {
+    if (slot && slot.id === itemId) return true;
+  }
+  for (const item of inventory.backpack) {
+    if (item && item.id === itemId) return true;
+  }
+  return false;
+}
+
+function removeItemById(itemId) {
+  for (let i = 0; i < BACKPACK_SIZE; i++) {
+    if (inventory.backpack[i] && inventory.backpack[i].id === itemId) {
+      if (inventory.backpack[i].count > 1) {
+        inventory.backpack[i].count--;
+      } else {
+        inventory.backpack[i] = null;
+      }
+      return true;
+    }
+  }
+  for (const slotName of Object.keys(inventory.equipment)) {
+    if (inventory.equipment[slotName] && inventory.equipment[slotName].id === itemId) {
+      inventory.equipment[slotName] = null;
+      return true;
+    }
+  }
+  return false;
+}
+
+function useConsumable(item) {
+  if (!item || item.type !== 'consumable') return false;
+  switch (item.useEffect) {
+    case 'torch':
+      player.torch = Math.min(player.maxTorch, player.torch + 30);
+      showNotification('Torch brightness restored! +30%', '#c88020');
+      return true;
+    case 'food':
+      player.food = Math.min(player.maxFood, player.food + 25);
+      showNotification('Ate bread. +25 food.', '#c8a060');
+      return true;
+    case 'water':
+      player.water = Math.min(player.maxWater, player.water + 30);
+      showNotification('Drank water. +30 water.', '#4090c8');
+      return true;
+    case 'health':
+      player.hp = Math.min(player.maxHp, player.hp + 30);
+      showNotification('Health restored! +30 HP', '#c83030');
+      return true;
+    case 'mana':
+      player.mana = Math.min(player.maxMana, player.mana + 30);
+      showNotification('Mana restored! +30 MP', '#3050c8');
+      return true;
+    case 'fire_scroll':
+      showNotification('Fire Scroll used! Massive fire damage!', '#c85020');
+      return true;
+  }
+  return false;
+}
+
+function initStartingInventory() {
+  inventory.equipment = {
+    head: createItem('leather_cap'),
+    chest: null,
+    left_hand: createItem('wooden_shield'),
+    right_hand: createItem('iron_sword'),
+    legs: null,
+    feet: null
+  };
+  inventory.backpack = new Array(BACKPACK_SIZE).fill(null);
+  addToBackpack(createItem('torch_item', 3));
+  addToBackpack(createItem('bread', 2));
+  addToBackpack(createItem('water_flask', 1));
+  addToBackpack(createItem('health_potion', 1));
+  addToBackpack(createItem('mana_potion', 1));
+  addToBackpack(createItem('iron_key', 1));
+}
+
+// Drag state
+let dragState = {
+  active: false,
+  item: null,
+  sourceSlot: null,
+  mouseX: 0,
+  mouseY: 0
+};
+
+// ============================================================
+// PLAYER STATS
+// ============================================================
+let player = {
+  hp: 100, maxHp: 100,
+  mana: 80, maxMana: 80,
+  torch: 100, maxTorch: 100,
+  food: 100, maxFood: 100,
+  water: 100, maxWater: 100,
+  gold: 0, xp: 0,
+  x: 1, y: 1, dir: 0,
+  hasAncientScroll: false,
+  hasHeartOfDungeon: false,
+  hasFragment: false,
+  enemiesSlain: 0,
+  secretsFound: 0,
+  spells: ['fire', 'ice', 'stone'],
+  slainTypes: {},
+  stepCount: 0
+};
+
+// Dungeon map 8x8 — 0=open,1=wall,2=door,3=locked,4=enemy,5=treasure,6=heart,7=clue,8=entrance,9=fragment,10=lever,11=pushstone
+const dungeonMap = [
+  [1,1,1,1,1,1,1,1],
+  [1,8,0,1,0,4,6,1],
+  [1,0,10,1,0,0,0,1],
+  [1,0,4,0,11,1,0,1],
+  [1,1,2,1,0,1,0,1],
+  [1,7,0,1,4,0,0,1],
+  [1,0,0,3,0,0,5,1],
+  [1,1,1,1,1,1,1,1]
+];
+
+const dungeonMapOriginal = dungeonMap.map(r => [...r]);
+
+let explored = [];
+function resetExplored() {
+  explored = [];
+  for (let y = 0; y < 8; y++) {
+    explored[y] = [];
+    for (let x = 0; x < 8; x++) explored[y][x] = false;
+  }
+}
+
+let doorStates = {};
+function resetDoors() {
+  doorStates = {};
+  doorStates['4,2'] = false;
+  doorStates['6,3'] = true;
+}
+
+// Interactive object states
+let leverState = { pulled: false };
+let pushStoneState = { pushed: false, holdStart: 0, holding: false };
+let sconces = {}; // key: "x,y" -> true/false (lit/unlit)
+let chestOpened = {};
+let secretPassageOpen = false;
+let hiddenAlcoveOpen = false;
+let hiddenAlcoveLooted = false;
+
+let enemies = {};
+function resetEnemies() {
+  enemies = {};
+  enemies['2,3'] = {
+    name: 'Shadow Lurker', type: 'shadow_lurker',
+    hp: 50, maxHp: 50, atk: 10, def: 3,
+    weaknesses: { fire: 1.8 }, resistances: { ice: 0.4 },
+    xpReward: 25, goldReward: 20
+  };
+  enemies['4,5'] = {
+    name: 'Frost Wraith', type: 'frost_wraith',
+    hp: 40, maxHp: 40, atk: 14, def: 2,
+    weaknesses: { fire: 2.0 }, resistances: { stone: 0.5 },
+    xpReward: 35, goldReward: 30
+  };
+  enemies['5,1'] = {
+    name: 'Bone Revenant', type: 'bone_revenant',
+    hp: 70, maxHp: 70, atk: 16, def: 6,
+    weaknesses: { stone: 1.5 }, resistances: { fire: 0.6 },
+    xpReward: 50, goldReward: 40,
+    drops: ['gold_key']
+  };
+}
+
+let combat = {
+  enemy: null, enemyPos: null,
+  log: [], playerTurn: true,
+  animTimer: 0, shakeTimer: 0,
+  flashTimer: 0, flashColor: null
+};
+
+let tavern = {
+  dialogueActive: false, dialogueText: '', dialogueSpeaker: '',
+  noticeBoard: false, selectedDungeon: -1,
+  hoveredNpc: -1, hoveredDungeon: -1
+};
+
+const tavernNpcs = [
+  {
+    name: 'Barkeep Grizzwald',
+    x: 430, y: 240, w: 80, h: 110,
+    dialogue: [
+      "Another brave soul, eh? The Crypts below have been restless. Strange sounds at night...",
+      "Word of advice — fire is your friend in the dark. Most things down there hate it.",
+      "Check the notice board. Two jobs posted today. Neither one's easy."
+    ],
+    veteranDialogue: [
+      "Well well, the {title} returns! Your exploits are becoming the talk of the tavern.",
+      "Fire still works on most of them, but I hear the Bone Revenant shrugs it off. Try stone.",
+      "The notice board has the same job... but the crypts never get easier, friend."
+    ],
+    dialogueIndex: 0
+  },
+  {
+    name: 'Old Merrick',
+    x: 160, y: 340, w: 70, h: 90,
+    dialogue: [
+      "I went down there once. ONCE. The darkness... it moves. Keep your torch lit or you're dead.",
+      "There's a door on the lower level that won't budge. Some kind of magic seal. The marking nearby might be a clue.",
+      "\"Where flame meets stone\" — that's what the wall said. Make of that what you will."
+    ],
+    veteranDialogue: [
+      "I've heard the stories... they say you faced the Bone Revenant and lived. Is it true?",
+      "The sealed door hides more than treasure now. Something ancient stirs beyond it.",
+      "\"Where flame meets stone\" — you already know. But there are deeper secrets yet..."
+    ],
+    dialogueIndex: 0
+  },
+  {
+    name: 'Lyra the Scout',
+    x: 650, y: 360, w: 70, h: 90,
+    dialogue: [
+      "The Shadow Lurkers are weak to fire. Don't waste your ice on them — they'll just laugh.",
+      "There's something powerful hidden behind a locked door. Worth finding if you can crack the seal.",
+      "I've mapped part of the upper corridors. The Heart of the Dungeon is somewhere in the northeast."
+    ],
+    veteranDialogue: [
+      "Word travels fast. The scouts are saying you found something ancient down there...",
+      "Three creatures guard the crypts now. The Frost Wraith burns easy, but watch for the Revenant's blade.",
+      "There are rumors of fragments — pieces of a sunstone scattered across ten dungeons. You may have found one."
+    ],
+    dialogueIndex: 0
+  }
+];
+
+const dungeonOptions = [
+  {
+    name: 'The Whispering Crypts',
+    difficulty: 2,
+    description: 'Ancient burial chambers beneath the tavern. Shadow creatures roam the halls. A powerful artifact is rumored to lie within.'
+  },
+  {
+    name: 'Goblin Warrens',
+    difficulty: 3,
+    description: 'Twisting tunnels carved by goblin clans. Dangerous and disorienting. (Coming in Phase 2)'
+  }
+];
+
+let journey = { timer: 0, ready: false };
+let fragmentDiscover = { timer: 0, glowPulse: 0 };
+let titleFlicker = 0;
+let titlePulse = 0;
+
+let notification = { text: '', timer: 0, color: '#c8a840' };
+function showNotification(text, color, duration) {
+  color = color || '#c8a840';
+  duration = duration || 120;
+  notification = { text: text, timer: duration, color: color };
+}
+
+// Interaction prompt
+let interactionPrompt = '';
+let showLegend = false;
+
+// ============================================================
+// REPUTATION & PERSISTENCE SYSTEM
+// ============================================================
+function loadReputation() {
+  try {
+    const data = localStorage.getItem('dungeonx_reputation');
+    return data ? JSON.parse(data) : {
+      totalRuns: 0, totalEnemiesSlain: 0, totalGold: 0,
+      deepestFloor: 0, fragmentsFound: [], slainEnemyTypes: []
+    };
+  } catch(e) {
+    return { totalRuns: 0, totalEnemiesSlain: 0, totalGold: 0, deepestFloor: 0, fragmentsFound: [], slainEnemyTypes: [] };
+  }
+}
+
+function saveReputation(rep) {
+  try { localStorage.setItem('dungeonx_reputation', JSON.stringify(rep)); } catch(e) {}
+}
+
+function getReputationTitle(rep) {
+  const runs = rep.totalRuns;
+  if (runs >= 21) return 'Legendary Champion';
+  if (runs >= 11) return 'Feared Warrior';
+  if (runs >= 6) return 'Seasoned Adventurer';
+  if (runs >= 3) return 'Dungeon Delver';
+  if (runs >= 1) return 'Curious Wanderer';
+  return 'Unknown Stranger';
+}
+
+function completeRun() {
+  const rep = loadReputation();
+  rep.totalRuns++;
+  rep.totalEnemiesSlain += player.enemiesSlain;
+  rep.totalGold += player.gold;
+  rep.deepestFloor = Math.max(rep.deepestFloor, 1);
+  for (const t of Object.keys(player.slainTypes)) {
+    if (!rep.slainEnemyTypes.includes(t)) rep.slainEnemyTypes.push(t);
+  }
+  if (player.hasFragment && !rep.fragmentsFound.includes('fragment_of_dawn')) {
+    rep.fragmentsFound.push('fragment_of_dawn');
+  }
+  saveReputation(rep);
+}
+
+function loadFragmentCount() {
+  return loadReputation().fragmentsFound.length;
+}
+
+function getWhispers() {
+  const rep = loadReputation();
+  const whispers = [];
+  if (rep.fragmentsFound.includes('fragment_of_dawn')) whispers.push('...they say the Stranger found the Fragment of Dawn...');
+  if (rep.slainEnemyTypes.includes('frost_wraith')) whispers.push('...conquered the Frost Wraith with nothing but a spark spell...');
+  if (rep.slainEnemyTypes.includes('bone_revenant')) whispers.push('...faced the Bone Revenant and lived to tell the tale...');
+  if (rep.slainEnemyTypes.includes('shadow_lurker')) whispers.push('...the one who walks in darkness without fear...');
+  if (rep.totalEnemiesSlain >= 10) whispers.push('...a warrior who has slain ' + rep.totalEnemiesSlain + ' creatures of the deep...');
+  if (rep.totalGold >= 200) whispers.push('...pockets heavy with ' + rep.totalGold + ' gold from the crypts...');
+  if (rep.totalRuns >= 10) whispers.push('...descended into the crypts ' + rep.totalRuns + ' times and returned each time...');
+  if (whispers.length === 0) {
+    whispers.push('...another soul enters the crypts...');
+    whispers.push('...the darkness stirs below...');
+  }
+  return whispers;
+}
+
+function saveBestStats() {
+  try {
+    const best = loadBestStats() || { gold: 0, enemies: 0, secrets: 0 };
+    if (player.gold > best.gold) best.gold = player.gold;
+    if (player.enemiesSlain > best.enemies) best.enemies = player.enemiesSlain;
+    if (player.secretsFound > best.secrets) best.secrets = player.secretsFound;
+    localStorage.setItem('dungeonx_best', JSON.stringify(best));
+  } catch(e) {}
+}
+
+function loadBestStats() {
+  try {
+    const data = localStorage.getItem('dungeonx_best');
+    return data ? JSON.parse(data) : null;
+  } catch(e) { return null; }
+}
+
+// ============================================================
+// AUDIO ENGINE
+// ============================================================
+let audioCtx = null;
+let masterGain = null;
+let isMuted = false;
+let currentMusic = null;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.3;
+  masterGain.connect(audioCtx.destination);
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  if (masterGain) masterGain.gain.value = isMuted ? 0 : 0.3;
+  document.getElementById('muteBtn').textContent = 'SOUND: ' + (isMuted ? 'OFF' : 'ON');
+}
+
+document.getElementById('muteBtn').addEventListener('click', toggleMute);
+
+function stopMusic() {
+  if (currentMusic) {
+    currentMusic.forEach(function(n) { try { n.stop(); } catch(e) {} });
+    currentMusic = null;
+  }
+}
+
+function playNote(freq, duration, type, gainVal, delay) {
+  type = type || 'square'; gainVal = gainVal || 0.1; delay = delay || 0;
+  if (!audioCtx) return null;
+  var osc = audioCtx.createOscillator();
+  var gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(gainVal, audioCtx.currentTime + delay);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+  osc.connect(gain);
+  gain.connect(masterGain);
+  osc.start(audioCtx.currentTime + delay);
+  osc.stop(audioCtx.currentTime + delay + duration);
+  return osc;
+}
+
+function playFootstep() {
+  if (!audioCtx) return;
+  var osc = audioCtx.createOscillator();
+  var gain = audioCtx.createGain();
+  osc.type = 'square';
+  osc.frequency.value = 80 + Math.random() * 40;
+  gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+  osc.connect(gain); gain.connect(masterGain);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.08);
+}
+
+function playCombatHit() {
+  if (!audioCtx) return;
+  var n1 = audioCtx.createOscillator(); var g1 = audioCtx.createGain();
+  n1.type = 'sawtooth'; n1.frequency.value = 150;
+  g1.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  g1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+  n1.connect(g1); g1.connect(masterGain); n1.start(); n1.stop(audioCtx.currentTime + 0.15);
+  var n2 = audioCtx.createOscillator(); var g2 = audioCtx.createGain();
+  n2.type = 'square'; n2.frequency.value = 60;
+  g2.gain.setValueAtTime(0.12, audioCtx.currentTime);
+  g2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+  n2.connect(g2); g2.connect(masterGain); n2.start(); n2.stop(audioCtx.currentTime + 0.1);
+}
+
+function playSpellSound(element) {
+  if (!audioCtx) return;
+  var freqs = { fire: [440,660,880], ice: [330,495,220], stone: [110,165,130], combo: [440,550,660,880] };
+  var f = freqs[element] || freqs.fire;
+  f.forEach(function(freq, i) { playNote(freq, 0.3, 'sine', 0.08, i * 0.08); });
+}
+
+function playFizzle() {
+  if (!audioCtx) return;
+  var osc = audioCtx.createOscillator(); var gain = audioCtx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.4);
+  gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+  osc.connect(gain); gain.connect(masterGain); osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+}
+
+function playVictory() {
+  if (!audioCtx) return;
+  [262,330,392,523,392,523,659].forEach(function(f,i) { playNote(f, 0.3, 'square', 0.1, i*0.15); });
+}
+
+function playDeath() {
+  if (!audioCtx) return;
+  [220,196,165,131,110].forEach(function(f,i) { playNote(f, 0.5, 'sawtooth', 0.08, i*0.2); });
+}
+
+function playDoorOpen() {
+  if (!audioCtx) return;
+  playNote(130, 0.3, 'square', 0.08, 0);
+  playNote(165, 0.3, 'square', 0.08, 0.1);
+  playNote(196, 0.4, 'square', 0.08, 0.2);
+}
+
+function playTreasure() {
+  if (!audioCtx) return;
+  [523,659,784,1047].forEach(function(f,i) { playNote(f, 0.25, 'sine', 0.1, i*0.1); });
+}
+
+function playFragmentFanfare() {
+  if (!audioCtx) return;
+  [330,392,440,523,587,659,784,880,1047].forEach(function(f,i) { playNote(f, 0.5, 'sine', 0.1, i*0.12); });
+}
+
+function playEnemySound(type) {
+  if (!audioCtx) return;
+  if (type === 'shadow_lurker') {
+    playNote(65, 0.5, 'sawtooth', 0.06, 0); playNote(55, 0.6, 'sawtooth', 0.04, 0.15);
+  } else if (type === 'frost_wraith') {
+    playNote(880, 0.4, 'sine', 0.05, 0); playNote(1100, 0.5, 'sine', 0.04, 0.1); playNote(660, 0.6, 'sine', 0.03, 0.25);
+  } else if (type === 'bone_revenant') {
+    for (var i = 0; i < 6; i++) playNote(200 + Math.random()*100, 0.06, 'square', 0.08, i*0.07);
+    playNote(110, 0.3, 'sawtooth', 0.05, 0.4);
+  }
+}
+
+function playLeverSound() {
+  if (!audioCtx) return;
+  playNote(100, 0.3, 'sawtooth', 0.1, 0);
+  playNote(80, 0.4, 'sawtooth', 0.08, 0.15);
+  playNote(60, 0.5, 'square', 0.06, 0.3);
+}
+
+function playStoneGrind() {
+  if (!audioCtx) return;
+  for (var i = 0; i < 8; i++) playNote(60 + Math.random()*40, 0.1, 'sawtooth', 0.05, i*0.08);
+}
+
+function playClank() {
+  if (!audioCtx) return;
+  playNote(200, 0.1, 'square', 0.12, 0);
+  playNote(150, 0.15, 'sawtooth', 0.08, 0.05);
+}
+
+function playChestOpen() {
+  if (!audioCtx) return;
+  playNote(200, 0.2, 'square', 0.08, 0);
+  playNote(300, 0.2, 'sine', 0.06, 0.1);
+  playNote(400, 0.3, 'sine', 0.08, 0.2);
+}
+
+function playItemPickup() {
+  if (!audioCtx) return;
+  playNote(500, 0.15, 'sine', 0.08, 0);
+  playNote(700, 0.15, 'sine', 0.06, 0.08);
+}
+
+let ambientNodes = [];
+function stopAmbient() {
+  ambientNodes.forEach(function(n) { try { n.stop(); } catch(e) {} });
+  ambientNodes = [];
+}
+
+function startTavernMusic() {
+  stopAmbient();
+  if (!audioCtx) return;
+  var pad = audioCtx.createOscillator(); var padGain = audioCtx.createGain();
+  var padFilter = audioCtx.createBiquadFilter();
+  pad.type = 'sine'; pad.frequency.value = 130.81; padGain.gain.value = 0.04;
+  padFilter.type = 'lowpass'; padFilter.frequency.value = 400;
+  pad.connect(padFilter); padFilter.connect(padGain); padGain.connect(masterGain);
+  pad.start(); ambientNodes.push(pad);
+  var pad2 = audioCtx.createOscillator(); var pad2Gain = audioCtx.createGain();
+  pad2.type = 'sine'; pad2.frequency.value = 196; pad2Gain.gain.value = 0.025;
+  pad2.connect(pad2Gain); pad2Gain.connect(masterGain);
+  pad2.start(); ambientNodes.push(pad2);
+  var melodyNotes = [262,294,330,262,247,220,247,262]; var melodyIdx = 0;
+  function playMelodyNote() {
+    if (!audioCtx || ambientNodes.length === 0) return;
+    playNote(melodyNotes[melodyIdx], 0.8, 'triangle', 0.03, 0);
+    melodyIdx = (melodyIdx + 1) % melodyNotes.length;
+    setTimeout(playMelodyNote, 800);
+  }
+  setTimeout(playMelodyNote, 1000);
+}
+
+function startDungeonAmbient() {
+  stopAmbient();
+  if (!audioCtx) return;
+  var drone = audioCtx.createOscillator(); var droneGain = audioCtx.createGain();
+  var droneFilter = audioCtx.createBiquadFilter();
+  drone.type = 'sawtooth'; drone.frequency.value = 55; droneGain.gain.value = 0.03;
+  droneFilter.type = 'lowpass'; droneFilter.frequency.value = 200;
+  drone.connect(droneFilter); droneFilter.connect(droneGain); droneGain.connect(masterGain);
+  drone.start(); ambientNodes.push(drone);
+  var eNotes = [440,466,392,415,349,370]; var eIdx = 0;
+  function playExploreNote() {
+    if (!audioCtx || ambientNodes.length === 0) return;
+    playNote(eNotes[eIdx], 1.5, 'sine', 0.015, 0);
+    eIdx = (eIdx + 1) % eNotes.length;
+    setTimeout(playExploreNote, 3000 + Math.random() * 3000);
+  }
+  setTimeout(playExploreNote, 2000);
+}
+
+function startCombatMusic() {
+  stopAmbient();
+  if (!audioCtx) return;
+  var bass = audioCtx.createOscillator(); var bassGain = audioCtx.createGain();
+  bass.type = 'square'; bass.frequency.value = 82.41; bassGain.gain.value = 0.05;
+  bass.connect(bassGain); bassGain.connect(masterGain); bass.start(); ambientNodes.push(bass);
+  function playBeat() {
+    if (!audioCtx || ambientNodes.length === 0) return;
+    playNote(55, 0.08, 'square', 0.1, 0);
+    playNote(55, 0.08, 'square', 0.1, 0.25);
+    playNote(80, 0.06, 'square', 0.07, 0.5);
+    setTimeout(playBeat, 600);
+  }
+  setTimeout(playBeat, 300);
+}
+
+// ============================================================
+// PIXEL ART DRAWING HELPERS
+// ============================================================
+function drawPixelRect(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
+}
+
+function drawPixelBorder(x, y, w, h, color, thickness) {
+  thickness = thickness || 2;
+  ctx.strokeStyle = color; ctx.lineWidth = thickness;
+  ctx.strokeRect(Math.floor(x)+0.5, Math.floor(y)+0.5, Math.floor(w), Math.floor(h));
+}
+
+function drawPixelText(text, x, y, color, size, align) {
+  color = color || '#c8a840'; size = size || 16; align = align || 'left';
+  ctx.fillStyle = color; ctx.font = size + 'px monospace';
+  ctx.textAlign = align; ctx.textBaseline = 'top';
+  ctx.fillText(text, Math.floor(x), Math.floor(y));
+}
+
+// ============================================================
+// ITEM ICON DRAWING
+// ============================================================
+function drawItemIcon(item, x, y, size) {
+  if (!item) return;
+  var s = size || 48;
+  var cx = x + s/2, cy = y + s/2;
+  var sc = s / 48;
+  switch(item.id) {
+    case 'iron_sword':
+      drawPixelRect(cx - 2*sc, cy - 18*sc, 4*sc, 30*sc, '#a0a0b0');
+      drawPixelRect(cx - 2*sc, cy - 20*sc, 4*sc, 6*sc, '#c0c0d0');
+      drawPixelRect(cx - 8*sc, cy + 10*sc, 16*sc, 4*sc, '#6a5a3a');
+      drawPixelRect(cx - 2*sc, cy + 14*sc, 4*sc, 6*sc, '#5a4a2a');
+      break;
+    case 'wooden_shield':
+      drawPixelRect(cx - 12*sc, cy - 14*sc, 24*sc, 28*sc, '#6a5030');
+      drawPixelRect(cx - 10*sc, cy - 12*sc, 20*sc, 24*sc, '#8a6840');
+      drawPixelRect(cx - 1*sc, cy - 14*sc, 2*sc, 28*sc, '#5a4020');
+      drawPixelRect(cx - 10*sc, cy - 1*sc, 20*sc, 2*sc, '#5a4020');
+      drawPixelRect(cx - 4*sc, cy - 4*sc, 8*sc, 8*sc, '#a08050');
+      break;
+    case 'leather_cap':
+      drawPixelRect(cx - 12*sc, cy - 4*sc, 24*sc, 12*sc, '#8a6a40');
+      drawPixelRect(cx - 10*sc, cy - 10*sc, 20*sc, 10*sc, '#7a5a30');
+      drawPixelRect(cx - 6*sc, cy - 14*sc, 12*sc, 6*sc, '#6a4a20');
+      break;
+    case 'iron_key':
+      drawPixelRect(cx - 2*sc, cy - 10*sc, 4*sc, 20*sc, '#8a8a9a');
+      drawPixelRect(cx - 6*sc, cy - 14*sc, 12*sc, 8*sc, '#8a8a9a');
+      drawPixelRect(cx - 4*sc, cy - 12*sc, 8*sc, 4*sc, '#6a6a7a');
+      drawPixelRect(cx + 0*sc, cy + 6*sc, 6*sc, 3*sc, '#8a8a9a');
+      drawPixelRect(cx + 0*sc, cy + 2*sc, 4*sc, 3*sc, '#8a8a9a');
+      break;
+    case 'gold_key':
+      drawPixelRect(cx - 2*sc, cy - 10*sc, 4*sc, 20*sc, '#c8a840');
+      drawPixelRect(cx - 6*sc, cy - 14*sc, 12*sc, 8*sc, '#c8a840');
+      drawPixelRect(cx - 4*sc, cy - 12*sc, 8*sc, 4*sc, '#a08830');
+      drawPixelRect(cx + 0*sc, cy + 6*sc, 6*sc, 3*sc, '#c8a840');
+      drawPixelRect(cx + 0*sc, cy + 2*sc, 4*sc, 3*sc, '#c8a840');
+      break;
+    case 'torch_item':
+      drawPixelRect(cx - 2*sc, cy - 4*sc, 4*sc, 18*sc, '#6a4a20');
+      drawPixelRect(cx - 4*sc, cy - 12*sc, 8*sc, 10*sc, '#c88020');
+      drawPixelRect(cx - 3*sc, cy - 16*sc, 6*sc, 6*sc, '#e8a030');
+      drawPixelRect(cx - 1*sc, cy - 18*sc, 3*sc, 4*sc, '#f0c040');
+      break;
+    case 'bread':
+      drawPixelRect(cx - 10*sc, cy - 4*sc, 20*sc, 10*sc, '#c8a060');
+      drawPixelRect(cx - 8*sc, cy - 8*sc, 16*sc, 6*sc, '#b09050');
+      drawPixelRect(cx - 6*sc, cy + 2*sc, 12*sc, 4*sc, '#a08040');
+      break;
+    case 'water_flask':
+      drawPixelRect(cx - 6*sc, cy - 4*sc, 12*sc, 16*sc, '#4080c0');
+      drawPixelRect(cx - 4*sc, cy - 10*sc, 8*sc, 8*sc, '#4080c0');
+      drawPixelRect(cx - 2*sc, cy - 14*sc, 4*sc, 6*sc, '#6a5a3a');
+      drawPixelRect(cx - 8*sc, cy + 0*sc, 16*sc, 8*sc, '#3070b0');
+      break;
+    case 'health_potion':
+      drawPixelRect(cx - 6*sc, cy - 2*sc, 12*sc, 14*sc, '#c83030');
+      drawPixelRect(cx - 4*sc, cy - 8*sc, 8*sc, 8*sc, '#c83030');
+      drawPixelRect(cx - 2*sc, cy - 12*sc, 4*sc, 6*sc, '#6a5a3a');
+      drawPixelRect(cx - 8*sc, cy + 2*sc, 16*sc, 6*sc, '#e04040');
+      break;
+    case 'mana_potion':
+      drawPixelRect(cx - 6*sc, cy - 2*sc, 12*sc, 14*sc, '#3050c8');
+      drawPixelRect(cx - 4*sc, cy - 8*sc, 8*sc, 8*sc, '#3050c8');
+      drawPixelRect(cx - 2*sc, cy - 12*sc, 4*sc, 6*sc, '#6a5a3a');
+      drawPixelRect(cx - 8*sc, cy + 2*sc, 16*sc, 6*sc, '#4060e0');
+      break;
+    case 'fire_scroll':
+      drawPixelRect(cx - 8*sc, cy - 12*sc, 16*sc, 24*sc, '#d0c8a0');
+      drawPixelRect(cx - 10*sc, cy - 12*sc, 4*sc, 24*sc, '#b0a880');
+      drawPixelRect(cx + 6*sc, cy - 12*sc, 4*sc, 24*sc, '#b0a880');
+      drawPixelRect(cx - 4*sc, cy - 6*sc, 8*sc, 2*sc, '#c85020');
+      drawPixelRect(cx - 4*sc, cy + 0*sc, 8*sc, 2*sc, '#c85020');
+      drawPixelRect(cx - 4*sc, cy + 6*sc, 8*sc, 2*sc, '#c85020');
+      break;
+    default:
+      drawPixelRect(cx - 8*sc, cy - 8*sc, 16*sc, 16*sc, '#5a5a6a');
+      break;
+  }
+}
+
+// ============================================================
+// TITLE SCREEN
+// ============================================================
+function drawTitleScreen() {
+  ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, H);
+  titlePulse += 0.03;
+  titleFlicker = Math.sin(titlePulse) * 0.3 + 0.7;
+  var grd = ctx.createRadialGradient(W/2, 200, 10, W/2, 200, 300);
+  grd.addColorStop(0, 'rgba(255, 140, 40, ' + (0.15 * titleFlicker) + ')');
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = titleFlicker;
+  drawPixelText('DUNGEON X', W/2, 140, '#c8a840', 72, 'center');
+  ctx.globalAlpha = 1;
+  drawPixelText('A Descent Into Darkness', W/2, 230, '#8a7a4a', 20, 'center');
+  drawPixelRect(W/2 - 200, 270, 400, 2, '#4a3a20');
+  drawPixelRect(W/2 - 60, 300, 120, 80, '#1a1a2e');
+  drawPixelRect(W/2 - 65, 295, 130, 8, '#3a3a4e');
+  drawPixelRect(W/2 - 65, 375, 130, 8, '#3a3a4e');
+  drawPixelRect(W/2 - 60, 300, 8, 80, '#3a3a4e');
+  drawPixelRect(W/2 + 52, 300, 8, 80, '#3a3a4e');
+  var eGrd = ctx.createRadialGradient(W/2, 340, 5, W/2, 340, 50);
+  eGrd.addColorStop(0, 'rgba(255, 100, 20, ' + (0.3 * titleFlicker) + ')');
+  eGrd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = eGrd; ctx.fillRect(W/2 - 50, 310, 100, 60);
+  if (Math.floor(frameCount / 30) % 2 === 0) {
+    drawPixelText('Press any key to enter the tavern', W/2, 440, '#6a6a7a', 18, 'center');
+  }
+  var fragCount = loadFragmentCount();
+  if (fragCount > 0) {
+    ctx.globalAlpha = 0.6 + Math.sin(frameCount * 0.04) * 0.4;
+    drawPixelText('Sunstone Fragments: ' + fragCount + '/10', W/2, 490, '#c8a840', 16, 'center');
+    ctx.globalAlpha = 1;
+  }
+  var rep = loadReputation();
+  if (rep.totalRuns > 0) drawPixelText(getReputationTitle(rep), W/2, 520, '#8a7a5a', 16, 'center');
+  drawPixelText('Phase 1 Prototype', W/2, 560, '#3a3a4a', 14, 'center');
+  var best = loadBestStats();
+  if (best && best.gold > 0) {
+    drawPixelText('Best Run: ' + best.gold + ' gold | ' + best.enemies + ' slain | ' + best.secrets + ' secrets', W/2, 590, '#3a3a4a', 12, 'center');
+  }
+}
+
+// ============================================================
+// TAVERN SCENE
+// ============================================================
+function drawTavern() {
+  ctx.fillStyle = '#2a1a0e'; ctx.fillRect(0, 0, W, H);
+  for (var x = 0; x < W; x += 40) {
+    for (var y = 350; y < H; y += 30) {
+      drawPixelRect(x, y, 40, 30, ((x/40 + y/30) % 2 === 0) ? '#3a2814' : '#2e2010');
+    }
+  }
+  drawPixelRect(0, 0, W, 200, '#3a2814');
+  for (var i = 0; i < 10; i++) drawPixelRect(0, i*20, W, 20, i%2===0 ? '#3e2c18' : '#362410');
+  drawPixelRect(60, 80, 100, 120, '#1a0a04');
+  drawPixelRect(55, 75, 110, 10, '#5a4a3a');
+  drawPixelRect(55, 195, 110, 10, '#5a4a3a');
+  var fireBright = 0.6 + Math.random() * 0.4;
+  var fireGrd = ctx.createRadialGradient(110, 170, 5, 110, 150, 60);
+  fireGrd.addColorStop(0, 'rgba(255, 160, 40, ' + fireBright + ')');
+  fireGrd.addColorStop(0.5, 'rgba(255, 80, 20, ' + (fireBright*0.6) + ')');
+  fireGrd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = fireGrd; ctx.fillRect(60, 100, 100, 100);
+  for (var i = 0; i < 5; i++) {
+    var fx = 85 + i*12 + Math.random()*4, fy = 160 - Math.random()*30, fh = 15 + Math.random()*20;
+    drawPixelRect(fx, fy, 6, fh, 'rgba(255, ' + (100+Math.random()*100) + ', 20, ' + (0.5+Math.random()*0.5) + ')');
+  }
+  var warmGrd = ctx.createRadialGradient(110, 150, 50, 110, 150, 400);
+  warmGrd.addColorStop(0, 'rgba(255, 140, 40, 0.08)'); warmGrd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = warmGrd; ctx.fillRect(0, 0, W, H);
+  drawPixelRect(350, 230, 220, 20, '#5a4a3a');
+  drawPixelRect(350, 250, 220, 100, '#4a3a2a');
+  drawPixelRect(350, 248, 220, 4, '#6a5a4a');
+  for (var i = 0; i < 3; i++) {
+    drawPixelRect(360+i*65, 130, 50, 60, '#5a3a1a');
+    drawPixelRect(360+i*65, 135, 50, 4, '#7a5a2a');
+    drawPixelRect(360+i*65, 155, 50, 4, '#7a5a2a');
+    drawPixelRect(360+i*65, 175, 50, 4, '#7a5a2a');
+  }
+  drawPixelRect(355, 110, 210, 8, '#5a4a3a');
+  var bColors = ['#4a8a4a','#8a4a4a','#4a4a8a','#8a8a4a','#8a4a8a','#4a8a8a'];
+  for (var i = 0; i < 6; i++) {
+    drawPixelRect(365+i*32, 85, 12, 25, bColors[i]);
+    drawPixelRect(367+i*32, 82, 8, 5, bColors[i]);
+  }
+  drawBarkeep(tavern.hoveredNpc === 0);
+  drawPixelRect(130, 370, 80, 50, '#5a4020');
+  drawPixelRect(140, 420, 8, 30, '#4a3018');
+  drawPixelRect(200, 420, 8, 30, '#4a3018');
+  drawPixelRect(155, 360, 14, 16, '#8a7a6a');
+  drawPixelRect(169, 366, 5, 8, '#8a7a6a');
+  drawNpcMerrick(tavern.hoveredNpc === 1);
+  drawPixelRect(620, 380, 80, 50, '#5a4020');
+  drawPixelRect(630, 430, 8, 30, '#4a3018');
+  drawPixelRect(690, 430, 8, 30, '#4a3018');
+  drawPixelRect(645, 372, 20, 14, '#9a9a8a');
+  drawNpcLyra(tavern.hoveredNpc === 2);
+  drawNoticeBoard();
+  drawPixelRect(W/2-50, 0, 100, 8, '#5a4a3a');
+  drawPixelRect(W/2-2, 0, 4, 40, '#4a4040');
+  for (var i = -2; i <= 2; i++) {
+    var cx = W/2 + i*20;
+    drawPixelRect(cx-3, 35, 6, 10, '#e8d8a0');
+    drawPixelRect(cx-2, 28, 4, 8, 'rgba(255, 200, 60, ' + (0.5+Math.random()*0.5) + ')');
+  }
+  var tavernRep = loadReputation();
+  if (tavernRep.totalRuns > 0) {
+    drawPixelText('The Rusty Flagon welcomes ' + getReputationTitle(tavernRep), W/2, 12, '#8a7a5a', 14, 'center');
+  } else {
+    drawPixelText('The Rusty Flagon', W/2, 12, '#8a7a5a', 14, 'center');
+  }
+  drawTrophyWall(40, 210);
+  if (tavernRep.totalRuns >= 5) drawWhispers();
+  if (tavern.dialogueActive) drawDialogueBox();
+  if (tavern.noticeBoard) drawNoticeBoardOverlay();
+  if (!tavern.dialogueActive && !tavern.noticeBoard) {
+    drawPixelText('Click NPCs to talk | Click Notice Board to see quests', W/2, H-30, '#5a5a6a', 14, 'center');
+  }
+}
+
+function drawTrophyWall(tx, ty) {
+  var rep = loadReputation();
+  drawPixelRect(tx, ty, 120, 8, '#5a4a3a');
+  drawPixelText('TROPHIES', tx+60, ty-14, '#6a5a3a', 10, 'center');
+  for (var i = 0; i < 10; i++) {
+    var fx = tx+4+i*11, fy = ty+12;
+    if (i < rep.fragmentsFound.length) {
+      ctx.globalAlpha = 0.6 + Math.sin(frameCount*0.05+i)*0.4;
+      drawPixelRect(fx, fy, 9, 9, '#c8a840'); ctx.globalAlpha = 1;
+    } else { drawPixelRect(fx, fy, 9, 9, '#1a1a1a'); }
+    drawPixelBorder(fx, fy, 9, 9, '#3a3a3a', 1);
+  }
+  var eTypes = ['shadow_lurker','frost_wraith','bone_revenant'];
+  var sColors = ['#6a2a6a','#4080c0','#80c040'];
+  var sNames = ['SL','FW','BR'];
+  for (var i = 0; i < 3; i++) {
+    var sx = tx+8+i*38, sy = ty+28;
+    var slain = rep.slainEnemyTypes.includes(eTypes[i]);
+    drawPixelRect(sx, sy, 28, 22, slain ? sColors[i] : '#2a2a2a');
+    drawPixelText(sNames[i], sx+14, sy+5, slain ? '#ffffff' : '#4a4a4a', 10, 'center');
+  }
+  drawPixelText('RUNS: ' + rep.totalRuns, tx+60, ty+56, '#6a6a7a', 10, 'center');
+}
+
+function drawWhispers() {
+  var whispers = getWhispers();
+  if (whispers.length === 0) return;
+  var speed = 0.008;
+  var cycle = Math.floor(frameCount * speed) % whispers.length;
+  ctx.globalAlpha = Math.abs(Math.sin(frameCount * speed * Math.PI)) * 0.35;
+  drawPixelText(whispers[cycle], 20, H-60, '#6a5a4a', 11, 'left');
+  var cycle2 = (cycle + 1) % whispers.length;
+  ctx.globalAlpha = Math.abs(Math.cos(frameCount * speed * Math.PI)) * 0.3;
+  drawPixelText(whispers[cycle2], W-20, H-75, '#6a5a4a', 11, 'right');
+  ctx.globalAlpha = 1;
+}
+
+function drawBarkeep(highlighted) {
+  var x = 440, y = 215;
+  drawPixelRect(x, y+30, 50, 60, highlighted ? '#5a3a2a' : '#4a2a1a');
+  drawPixelRect(x+8, y+45, 34, 40, '#8a8a7a');
+  drawPixelRect(x+10, y, 30, 30, '#d4a574');
+  drawPixelRect(x+16, y+10, 4, 4, '#2a2a2a');
+  drawPixelRect(x+30, y+10, 4, 4, '#2a2a2a');
+  drawPixelRect(x+14, y+18, 22, 4, '#5a3a1a');
+  drawPixelRect(x+8, y-2, 34, 8, '#5a3a1a');
+  if (highlighted) drawPixelText('Grizzwald', x+25, y-18, '#c8a840', 12, 'center');
+}
+
+function drawNpcMerrick(highlighted) {
+  var x = 160, y = 310;
+  drawPixelRect(x+10, y+30, 40, 50, highlighted ? '#4a4a6a' : '#3a3a5a');
+  drawPixelRect(x+5, y+25, 50, 55, highlighted ? '#3a3a5a' : '#2a2a4a');
+  drawPixelRect(x+15, y+2, 28, 28, '#c89a6a');
+  drawPixelRect(x+20, y+12, 4, 4, '#2a2a2a');
+  drawPixelRect(x+32, y+12, 4, 4, '#2a2a2a');
+  drawPixelRect(x+18, y+20, 22, 12, '#8a8a8a');
+  drawPixelRect(x+10, y-2, 38, 10, '#2a2a4a');
+  drawPixelRect(x+12, y+6, 34, 4, '#2a2a4a');
+  if (highlighted) drawPixelText('Old Merrick', x+29, y-18, '#c8a840', 12, 'center');
+}
+
+function drawNpcLyra(highlighted) {
+  var x = 650, y = 320;
+  drawPixelRect(x+10, y+28, 36, 50, highlighted ? '#4a6a4a' : '#3a5a3a');
+  drawPixelRect(x+12, y+30, 32, 30, highlighted ? '#6a5a3a' : '#5a4a2a');
+  drawPixelRect(x+14, y, 28, 28, '#d4a880');
+  drawPixelRect(x+20, y+10, 4, 4, '#2a5a2a');
+  drawPixelRect(x+32, y+10, 4, 4, '#2a5a2a');
+  drawPixelRect(x+12, y-2, 32, 8, '#8a3a1a');
+  drawPixelRect(x+40, y+4, 6, 20, '#8a3a1a');
+  drawPixelRect(x+2, y+10, 4, 40, '#6a5a3a');
+  if (highlighted) drawPixelText('Lyra', x+28, y-18, '#c8a840', 12, 'center');
+}
+
+function drawNoticeBoard() {
+  var bx = 770, by = 60;
+  drawPixelRect(bx, by, 120, 140, '#5a4020');
+  drawPixelRect(bx+4, by+4, 112, 132, '#6a5030');
+  drawPixelRect(bx+2, by+2, 4, 4, '#8a8a8a');
+  drawPixelRect(bx+114, by+2, 4, 4, '#8a8a8a');
+  drawPixelRect(bx+2, by+134, 4, 4, '#8a8a8a');
+  drawPixelRect(bx+114, by+134, 4, 4, '#8a8a8a');
+  drawPixelRect(bx+12, by+15, 45, 50, '#d8d0b0');
+  drawPixelRect(bx+62, by+20, 45, 45, '#d0c8a8');
+  drawPixelRect(bx+20, by+75, 80, 50, '#d4ccb0');
+  drawPixelText('QUEST', bx+22, by+22, '#3a2a1a', 10);
+  drawPixelText('QUEST', bx+68, by+26, '#3a2a1a', 10);
+  drawPixelText('NOTICE', bx+35, by+82, '#3a2a1a', 11);
+  drawPixelText('BOARD', bx+38, by+96, '#3a2a1a', 11);
+  drawPixelRect(bx+32, by+12, 6, 6, '#c83030');
+  drawPixelRect(bx+82, by+17, 6, 6, '#c83030');
+  if (mouseX >= bx && mouseX <= bx+120 && mouseY >= by && mouseY <= by+140) {
+    drawPixelText('Notice Board', bx+60, by-16, '#c8a840', 12, 'center');
+  }
+}
+
+function drawDialogueBox() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; ctx.fillRect(0, 0, W, H);
+  drawPixelRect(80, H-200, W-160, 170, '#1a1a2e');
+  drawPixelBorder(80, H-200, W-160, 170, '#c8a840', 3);
+  drawPixelText(tavern.dialogueSpeaker, 110, H-190, '#c8a840', 18);
+  var maxW = W - 240, words = tavern.dialogueText.split(' '), line = '', ly = H-160;
+  for (var wi = 0; wi < words.length; wi++) {
+    var test = line + words[wi] + ' ';
+    ctx.font = '16px monospace';
+    if (ctx.measureText(test).width > maxW) {
+      drawPixelText(line, 110, ly, '#c8c8d0', 16); line = words[wi] + ' '; ly += 22;
+    } else { line = test; }
+  }
+  drawPixelText(line, 110, ly, '#c8c8d0', 16);
+  if (Math.floor(frameCount/25)%2===0) drawPixelText('[Click or press Enter to continue]', W/2, H-50, '#6a6a7a', 13, 'center');
+}
+
+function drawNoticeBoardOverlay() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, W, H);
+  drawPixelRect(150, 60, W-300, H-120, '#2a1a0e');
+  drawPixelBorder(150, 60, W-300, H-120, '#c8a840', 3);
+  drawPixelText('DUNGEON NOTICE BOARD', W/2, 80, '#c8a840', 24, 'center');
+  drawPixelRect(250, 108, W-500, 2, '#5a4a3a');
+  dungeonOptions.forEach(function(d, i) {
+    var dy = 130 + i*200;
+    var hovered = tavern.hoveredDungeon === i;
+    drawPixelRect(180, dy, W-360, 170, hovered ? '#3a2a18' : '#2a1a0e');
+    drawPixelBorder(180, dy, W-360, 170, hovered ? '#c8a840' : '#5a4a3a', 2);
+    drawPixelText(d.name, 210, dy+15, '#c8a840', 20);
+    for (var s = 0; s < 5; s++) drawPixelText('\u2620', 210+s*24, dy+45, s < d.difficulty ? '#c83030' : '#3a3a3a', 18);
+    var descWords = d.description.split(' '), descLine = '', descY = dy+75;
+    for (var wi = 0; wi < descWords.length; wi++) {
+      var test = descLine + descWords[wi] + ' ';
+      ctx.font = '14px monospace';
+      if (ctx.measureText(test).width > W-440) {
+        drawPixelText(descLine, 210, descY, '#9a9aaa', 14); descLine = descWords[wi] + ' '; descY += 18;
+      } else { descLine = test; }
+    }
+    drawPixelText(descLine, 210, descY, '#9a9aaa', 14);
+    if (i === 0) {
+      var btnX = W-360, btnY = dy+125;
+      drawPixelRect(btnX, btnY, 140, 30, hovered ? '#4a6a4a' : '#3a5a3a');
+      drawPixelBorder(btnX, btnY, 140, 30, '#5a8a5a', 2);
+      drawPixelText('ENTER DUNGEON', btnX+10, btnY+7, '#c8d8c8', 14);
+    } else { drawPixelText('COMING SOON', W-310, dy+132, '#5a5a5a', 14); }
+  });
+  drawPixelText('[ESC or Click outside to close]', W/2, H-55, '#6a6a7a', 13, 'center');
+}
+
+// ============================================================
+// DUNGEON RENDERING — First Person Pseudo-3D
+// ============================================================
+const DIR_DX = [0, 1, 0, -1];
+const DIR_DY = [-1, 0, 1, 0];
+const DIR_NAMES = ['North', 'East', 'South', 'West'];
+
+function getTile(x, y) {
+  if (x < 0 || x >= 8 || y < 0 || y >= 8) return 1;
+  return dungeonMap[y][x];
+}
+
+function isWall(x, y) {
+  var t = getTile(x, y);
+  if (t === 1) return true;
+  if (t === 10 && !leverState.pulled) return false; // lever tile is walkable
+  if (t === 10 && leverState.pulled) return false;
+  if (t === 11 && !pushStoneState.pushed) return true; // pushable stone blocks passage
+  if (t === 11 && pushStoneState.pushed) return false;
+  if (t === 2 && doorStates['4,2'] === false) return true;
+  if (t === 3 && doorStates['6,3'] === true) return true;
+  return false;
+}
+
+function getFacingTile() {
+  var fx = player.x + DIR_DX[player.dir];
+  var fy = player.y + DIR_DY[player.dir];
+  return { x: fx, y: fy, tile: getTile(fx, fy) };
+}
+
+function drawDungeon() {
+  ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, H);
+  var viewW = 640, viewH = 480, viewX = 10, viewY = 10;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(viewX, viewY, viewW, viewH); ctx.clip();
+  drawFirstPersonView(viewX, viewY, viewW, viewH);
+  ctx.restore();
+  drawPixelBorder(viewX, viewY, viewW, viewH, '#3a3a4e', 3);
+  drawHUD();
+  drawMinimap(700, 30, 230, 230);
+  drawPixelText('WASD: Move | [I]nventory | [U]se | [H]elp', W/2+100, H-25, '#4a4a5a', 12, 'center');
+  drawPixelText('Facing ' + DIR_NAMES[player.dir], viewX+viewW/2, viewY+viewH+8, '#6a6a7a', 14, 'center');
+
+  // Interaction prompt — large, pulsing, impossible to miss
+  if (interactionPrompt) {
+    var promptPulse = 0.7 + Math.sin(frameCount * 0.08) * 0.3;
+    drawPixelRect(viewX+20, viewY+viewH-70, viewW-40, 50, 'rgba(0,0,0,0.9)');
+    drawPixelBorder(viewX+20, viewY+viewH-70, viewW-40, 50, `rgba(200, 168, 64, ${promptPulse})`, 2);
+    drawPixelText(interactionPrompt, viewX+viewW/2, viewY+viewH-56, '#c8a840', 16, 'center');
+    // Add secondary hint for doors
+    var facing = getFacingTile();
+    if (facing.tile === 2 || facing.tile === 3) {
+      drawPixelText('(or click the door in view)', viewX+viewW/2, viewY+viewH-36, '#6a6a7a', 12, 'center');
+    }
+  }
+
+  // Notification
+  if (notification.timer > 0) {
+    notification.timer--;
+    ctx.globalAlpha = Math.min(1, notification.timer / 30);
+    drawPixelRect(viewX+20, viewY+viewH-95, viewW-40, 28, 'rgba(0,0,0,0.8)');
+    drawPixelText(notification.text, viewX+viewW/2, viewY+viewH-90, notification.color, 14, 'center');
+    ctx.globalAlpha = 1;
+  }
+
+  // Clue tile
+  var tile = getTile(player.x, player.y);
+  if (tile === 7) {
+    drawPixelRect(viewX+60, viewY+viewH-130, viewW-120, 50, 'rgba(0,0,0,0.85)');
+    drawPixelBorder(viewX+60, viewY+viewH-130, viewW-120, 50, '#8a6a30', 2);
+    drawPixelText('Wall Marking: "Where flame meets stone, the path reveals itself"', viewX+viewW/2, viewY+viewH-118, '#c8a840', 13, 'center');
+    drawPixelText('[Press P to cast spell combination]', viewX+viewW/2, viewY+viewH-98, '#6a6a7a', 12, 'center');
+  }
+}
+
+function drawFirstPersonView(vx, vy, vw, vh) {
+  var torchRatio = player.torch / player.maxTorch;
+  var torchRadius = Math.floor(torchRatio * 3) + (torchRatio > 0.05 ? 1 : 0);
+  var flicker = 0.85 + Math.random() * 0.15;
+  var brightness = torchRatio * flicker;
+
+  var ceilGrd = ctx.createLinearGradient(vx, vy, vx, vy+vh/2);
+  ceilGrd.addColorStop(0, 'rgba(15, 12, 10, ' + (brightness*0.3) + ')');
+  ceilGrd.addColorStop(1, 'rgba(30, 25, 20, ' + (brightness*0.5) + ')');
+  ctx.fillStyle = ceilGrd; ctx.fillRect(vx, vy, vw, vh/2);
+
+  var floorGrd = ctx.createLinearGradient(vx, vy+vh/2, vx, vy+vh);
+  floorGrd.addColorStop(0, 'rgba(40, 35, 28, ' + (brightness*0.5) + ')');
+  floorGrd.addColorStop(1, 'rgba(20, 18, 14, ' + (brightness*0.3) + ')');
+  ctx.fillStyle = floorGrd; ctx.fillRect(vx, vy+vh/2, vw, vh/2);
+
+  for (var dist = Math.min(torchRadius, 4); dist >= 0; dist--) {
+    var distBright = brightness * (1 - dist * 0.2);
+    if (distBright <= 0) continue;
+    var fx = player.x + DIR_DX[player.dir] * dist;
+    var fy = player.y + DIR_DY[player.dir] * dist;
+    var leftDir = (player.dir + 3) % 4;
+    var rightDir = (player.dir + 1) % 4;
+    var scale = 1 / (dist + 1);
+    var wallH = vh * scale;
+    var wallW = vw * scale;
+    var cx = vx + vw/2;
+    var cy = vy + vh/2;
+
+    for (var side = -2; side <= 2; side++) {
+      var sx = fx + DIR_DX[leftDir] * (-side);
+      var sy = fy + DIR_DY[leftDir] * (-side);
+      if (isWall(sx, sy)) {
+        var sideOffset = side * wallW * 0.5;
+        var wx = cx + sideOffset - wallW * 0.25;
+        var wy = cy - wallH/2;
+        drawWallBlock(wx, wy, wallW*0.5, wallH, distBright, dist, side);
+      }
+    }
+
+    var lx = fx + DIR_DX[leftDir], ly = fy + DIR_DY[leftDir];
+    if (isWall(lx, ly)) drawSideWall(cx-wallW/2, cy-wallH/2, wallW*0.15, wallH, distBright, 'left', dist);
+    var rx = fx + DIR_DX[rightDir], ry = fy + DIR_DY[rightDir];
+    if (isWall(rx, ry)) drawSideWall(cx+wallW/2-wallW*0.15, cy-wallH/2, wallW*0.15, wallH, distBright, 'right', dist);
+
+    if (isWall(fx, fy)) {
+      drawFrontWall(cx-wallW/2, cy-wallH/2, wallW, wallH, distBright, dist, fx, fy);
+      break;
+    }
+
+    if (fx >= 0 && fx < 8 && fy >= 0 && fy < 8) explored[fy][fx] = true;
+  }
+
+  if (torchRatio > 0.05) {
+    var tGrd = ctx.createRadialGradient(vx+vw/2, vy+vh*0.6, 0, vx+vw/2, vy+vh*0.6, vw*0.7);
+    tGrd.addColorStop(0, 'rgba(255, 140, 40, ' + (brightness*0.06) + ')');
+    tGrd.addColorStop(0.6, 'rgba(255, 80, 20, ' + (brightness*0.02) + ')');
+    tGrd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = tGrd; ctx.fillRect(vx, vy, vw, vh);
+  }
+
+  if (torchRatio < 0.4) {
+    ctx.fillStyle = 'rgba(0, 0, 0, ' + Math.min(0.85, (0.4-torchRatio)*1.5) + ')';
+    ctx.fillRect(vx, vy, vw, vh);
+  }
+  if (torchRatio <= 0.05) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.95)'; ctx.fillRect(vx, vy, vw, vh);
+    drawPixelText('Your torch sputters...', vx+vw/2, vy+vh/2, '#3a2a1a', 20, 'center');
+  }
+  explored[player.y][player.x] = true;
+}
+
+function drawWallBlock(x, y, w, h, brightness, dist, side) {
+  var r = Math.floor(60*brightness), g = Math.floor(55*brightness), b = Math.floor(50*brightness);
+  ctx.fillStyle = 'rgb('+r+','+g+','+b+')'; ctx.fillRect(x, y, w, h);
+  var blockH = h/4;
+  for (var i = 0; i < 4; i++) {
+    ctx.fillStyle = 'rgb('+Math.floor(40*brightness)+','+Math.floor(38*brightness)+','+Math.floor(35*brightness)+')';
+    ctx.fillRect(x, y+i*blockH, w, 2);
+    ctx.fillRect(x + w*0.5 + (i%2)*w*0.3, y+i*blockH, 2, blockH);
+  }
+  if ((dist+side)%3===0 && brightness > 0.3) {
+    ctx.fillStyle = 'rgb(20, '+Math.floor(80*brightness)+', 20)';
+    ctx.fillRect(x+w*0.2, y+h*0.7, w*0.1, h*0.05);
+    ctx.fillRect(x+w*0.25, y+h*0.67, w*0.08, h*0.03);
+  }
+}
+
+function drawSideWall(x, y, w, h, brightness, side, dist) {
+  ctx.fillStyle = 'rgb('+Math.floor(45*brightness)+','+Math.floor(42*brightness)+','+Math.floor(38*brightness)+')';
+  ctx.fillRect(x, y, w, h);
+  var blockH = h/4;
+  for (var i = 0; i < 4; i++) {
+    ctx.fillStyle = 'rgb('+Math.floor(30*brightness)+','+Math.floor(28*brightness)+','+Math.floor(25*brightness)+')';
+    ctx.fillRect(x, y+i*blockH, w, 1);
+  }
+}
+
+function drawFrontWall(x, y, w, h, brightness, dist, fx, fy) {
+  var tile = getTile(fx, fy);
+  var r = Math.floor(65*brightness), g = Math.floor(60*brightness), b = Math.floor(55*brightness);
+  ctx.fillStyle = 'rgb('+r+','+g+','+b+')'; ctx.fillRect(x, y, w, h);
+
+  var blockH = h/5, blockW = w/4;
+  for (var by2 = 0; by2 < 5; by2++) {
+    for (var bx2 = 0; bx2 < 4; bx2++) {
+      var offset = (by2%2)*blockW*0.5;
+      var br = r + Math.floor((Math.random()-0.5)*10);
+      var bg = g + Math.floor((Math.random()-0.5)*10);
+      var bb = b + Math.floor((Math.random()-0.5)*10);
+      ctx.fillStyle = 'rgb('+Math.max(0,br)+','+Math.max(0,bg)+','+Math.max(0,bb)+')';
+      ctx.fillRect(x+bx2*blockW+offset, y+by2*blockH, blockW-2, blockH-2);
+    }
+  }
+
+  ctx.fillStyle = 'rgb('+Math.floor(35*brightness)+','+Math.floor(33*brightness)+','+Math.floor(30*brightness)+')';
+  for (var i = 1; i < 5; i++) ctx.fillRect(x, y+i*blockH, w, 2);
+  for (var i = 1; i < 4; i++) ctx.fillRect(x+i*blockW, y, 2, h);
+
+  // Door rendering
+  if (tile === 2 || tile === 3) {
+    var doorW = w*0.4, doorH = h*0.7;
+    var dx = x + (w - doorW)/2, dy = y + h - doorH;
+    if (tile === 3 && doorStates['6,3']) {
+      ctx.fillStyle = 'rgb('+Math.floor(50*brightness)+', '+Math.floor(30*brightness)+', '+Math.floor(15*brightness)+')';
+      ctx.fillRect(dx, dy, doorW, doorH);
+      // Lock/keyhole
+      ctx.fillStyle = 'rgb('+Math.floor(180*brightness)+', '+Math.floor(150*brightness)+', '+Math.floor(40*brightness)+')';
+      ctx.fillRect(dx+doorW/2-6, dy+doorH/2-6, 12, 12);
+      // Keyhole shape
+      ctx.fillStyle = 'rgb('+Math.floor(20*brightness)+', '+Math.floor(15*brightness)+', '+Math.floor(10*brightness)+')';
+      ctx.fillRect(dx+doorW/2-2, dy+doorH/2-3, 4, 4);
+      ctx.fillRect(dx+doorW/2-1, dy+doorH/2+1, 2, 5);
+      // Runes
+      ctx.fillStyle = 'rgb('+Math.floor(100*brightness)+', '+Math.floor(40*brightness)+', '+Math.floor(40*brightness)+')';
+      for (var ri = 0; ri < 3; ri++) ctx.fillRect(dx+8, dy+15+ri*doorH*0.25, doorW-16, 3);
+      ctx.fillStyle = 'rgb('+Math.floor(80*brightness)+', '+Math.floor(60*brightness)+', '+Math.floor(30*brightness)+')';
+      ctx.fillRect(dx-4, dy-4, doorW+8, 8);
+    } else if (tile === 2 && doorStates['4,2'] === false) {
+      ctx.fillStyle = 'rgb('+Math.floor(70*brightness)+', '+Math.floor(45*brightness)+', '+Math.floor(20*brightness)+')';
+      ctx.fillRect(dx, dy, doorW, doorH);
+      ctx.fillStyle = 'rgb('+Math.floor(50*brightness)+', '+Math.floor(32*brightness)+', '+Math.floor(14*brightness)+')';
+      for (var pi = 0; pi < 4; pi++) ctx.fillRect(dx+pi*doorW/4, dy, 2, doorH);
+      // Keyhole on regular door
+      ctx.fillStyle = 'rgb('+Math.floor(150*brightness)+', '+Math.floor(130*brightness)+', '+Math.floor(80*brightness)+')';
+      ctx.fillRect(dx+doorW-14, dy+doorH/2-4, 8, 8);
+      ctx.fillStyle = 'rgb('+Math.floor(30*brightness)+', '+Math.floor(20*brightness)+', '+Math.floor(10*brightness)+')';
+      ctx.fillRect(dx+doorW-12, dy+doorH/2-2, 3, 3);
+      ctx.fillRect(dx+doorW-11, dy+doorH/2+1, 1, 3);
+    }
+  }
+
+  // Lever rendering
+  if (tile === 10 && dist <= 1) {
+    var leverX = x + w*0.45, leverY = y + h*0.2;
+    var leverH2 = h*0.5;
+    // Bracket
+    ctx.fillStyle = 'rgb('+Math.floor(100*brightness)+', '+Math.floor(90*brightness)+', '+Math.floor(80*brightness)+')';
+    ctx.fillRect(leverX-2, leverY, 8, leverH2);
+    // Handle
+    if (leverState.pulled) {
+      ctx.fillStyle = 'rgb('+Math.floor(140*brightness)+', '+Math.floor(60*brightness)+', '+Math.floor(30*brightness)+')';
+      ctx.fillRect(leverX-4, leverY+leverH2-12, 12, 12);
+    } else {
+      ctx.fillStyle = 'rgb('+Math.floor(140*brightness)+', '+Math.floor(60*brightness)+', '+Math.floor(30*brightness)+')';
+      ctx.fillRect(leverX-4, leverY, 12, 12);
+    }
+  }
+
+  // Pushable stone rendering
+  if (tile === 11 && dist <= 1 && !pushStoneState.pushed) {
+    var stoneX = x + w*0.3, stoneY = y + h*0.3;
+    var stoneW = w*0.4, stoneH2 = h*0.4;
+    ctx.fillStyle = 'rgb('+Math.floor(75*brightness)+', '+Math.floor(70*brightness)+', '+Math.floor(60*brightness)+')';
+    ctx.fillRect(stoneX, stoneY, stoneW, stoneH2);
+    // Cracks
+    ctx.fillStyle = 'rgb('+Math.floor(40*brightness)+', '+Math.floor(38*brightness)+', '+Math.floor(32*brightness)+')';
+    ctx.fillRect(stoneX+stoneW*0.3, stoneY+stoneH2*0.2, 2, stoneH2*0.6);
+    ctx.fillRect(stoneX+stoneW*0.2, stoneY+stoneH2*0.5, stoneW*0.3, 2);
+  }
+
+  // Cracks on wall
+  if (dist < 2 && brightness > 0.4) {
+    ctx.fillStyle = 'rgba(0, 0, 0, ' + (brightness*0.3) + ')';
+    ctx.fillRect(x+w*0.3, y+h*0.2, 2, h*0.15);
+    ctx.fillRect(x+w*0.3, y+h*0.35, w*0.05, 2);
+    ctx.fillRect(x+w*0.7, y+h*0.6, 2, h*0.1);
+  }
+}
+
+// ============================================================
+// HUD
+// ============================================================
+function drawHUD() {
+  var hudY = 500;
+  var barW = 140, barH = 14;
+
+  // HP Bar
+  drawPixelText('HP', 20, hudY, '#c83030', 12);
+  drawPixelRect(42, hudY, barW, barH, '#2a1010');
+  drawPixelRect(42, hudY, barW * (player.hp / player.maxHp), barH, '#c83030');
+  drawPixelBorder(42, hudY, barW, barH, '#5a2020');
+  drawPixelText(player.hp + '/' + player.maxHp, 42+barW/2, hudY+1, '#e8c8c8', 11, 'center');
+
+  // Mana Bar
+  drawPixelText('MP', 20, hudY+18, '#3050c8', 12);
+  drawPixelRect(42, hudY+18, barW, barH, '#101030');
+  drawPixelRect(42, hudY+18, barW * (player.mana / player.maxMana), barH, '#3050c8');
+  drawPixelBorder(42, hudY+18, barW, barH, '#202050');
+  drawPixelText(player.mana + '/' + player.maxMana, 42+barW/2, hudY+19, '#c8c8e8', 11, 'center');
+
+  // Torch Meter
+  var torchPct = player.torch / player.maxTorch;
+  var torchColor = torchPct > 0.5 ? '#c88020' : torchPct > 0.2 ? '#c85020' : '#c83020';
+  drawPixelText('TORCH', 195, hudY, '#c88020', 12);
+  drawPixelRect(242, hudY, barW, barH, '#1a1008');
+  drawPixelRect(242, hudY, barW * torchPct, barH, torchColor);
+  drawPixelBorder(242, hudY, barW, barH, '#5a4010');
+  drawPixelText(Math.floor(player.torch) + '%', 242+barW/2, hudY+1, '#e8d8a8', 11, 'center');
+
+  // Food Bar
+  var foodPct = player.food / player.maxFood;
+  var foodColor = foodPct > 0.3 ? '#c8a060' : '#c86030';
+  drawPixelText('FOOD', 195, hudY+18, '#c8a060', 12);
+  drawPixelRect(242, hudY+18, barW, barH, '#1a1408');
+  drawPixelRect(242, hudY+18, barW * foodPct, barH, foodColor);
+  drawPixelBorder(242, hudY+18, barW, barH, '#5a4a10');
+  drawPixelText(Math.floor(player.food), 242+barW/2, hudY+19, '#e8d8a8', 11, 'center');
+
+  // Water Bar
+  var waterPct = player.water / player.maxWater;
+  var waterColor = waterPct > 0.3 ? '#4090c8' : '#c84040';
+  drawPixelText('WATER', 195, hudY+36, '#4090c8', 12);
+  drawPixelRect(242, hudY+36, barW, barH, '#081018');
+  drawPixelRect(242, hudY+36, barW * waterPct, barH, waterColor);
+  drawPixelBorder(242, hudY+36, barW, barH, '#204050');
+  drawPixelText(Math.floor(player.water), 242+barW/2, hudY+37, '#c8d8e8', 11, 'center');
+
+  // Gold & Floor
+  drawPixelText('Gold: ' + player.gold, 400, hudY, '#c8a840', 14);
+  drawPixelText('Floor: B1', 400, hudY+18, '#8a8a9a', 14);
+
+  // Inventory hints
+  if (player.hasAncientScroll) drawPixelText('Ancient Scroll', 400, hudY+36, '#a080c0', 13);
+  if (player.hasHeartOfDungeon) drawPixelText('Heart of the Dungeon!', 400, hudY+36, '#c8a840', 13);
+
+  // Fragment indicator
+  if (player.hasFragment) {
+    ctx.globalAlpha = 0.5 + Math.sin(frameCount * 0.05) * 0.5;
+    drawPixelRect(560, hudY+36, 10, 10, '#c8a840');
+    ctx.globalAlpha = 1;
+    drawPixelText('Fragment of Dawn', 576, hudY+36, '#c8a840', 13);
+  }
+
+  // Spells & controls
+  drawPixelText('[F]ire [I]ce [S]tone | [P]uzzle | [I]nventory | [U]se', 20, hudY+56, '#5a5a6a', 11);
+
+  // Quick inventory slots (first 4 backpack items)
+  var qx = 400, qy = hudY+54;
+  drawPixelText('Quick:', qx, qy, '#5a5a6a', 11);
+  for (var i = 0; i < 4; i++) {
+    var sx = qx + 48 + i*30, sy = qy-2;
+    drawPixelRect(sx, sy, 26, 26, '#0a0a14');
+    drawPixelBorder(sx, sy, 26, 26, '#3a3a4e', 1);
+    if (inventory.backpack[i]) {
+      drawItemIcon(inventory.backpack[i], sx+1, sy+1, 24);
+    }
+  }
+
+  // Weight indicator
+  var cw = getInventoryWeight();
+  drawPixelText('Wt: ' + cw + '/' + inventory.maxWeight, 570, hudY+56, cw > inventory.maxWeight ? '#c83030' : '#6a6a7a', 11);
+
+  // Position info
+  drawPixelText(player.x + ',' + player.y, 630, hudY+56, '#3a3a4a', 10);
+}
+
+// ============================================================
+// MINIMAP
+// ============================================================
+function drawMinimap(mx, my, mw, mh) {
+  var cellW = mw/8, cellH = mh/8;
+  drawPixelRect(mx-4, my-4, mw+8, mh+8, '#0a0a0f');
+  drawPixelBorder(mx-4, my-4, mw+8, mh+8, '#3a3a4e', 2);
+  drawPixelText('MAP', mx+mw/2, my-20, '#6a6a7a', 12, 'center');
+
+  for (var y = 0; y < 8; y++) {
+    for (var x = 0; x < 8; x++) {
+      var cx2 = mx+x*cellW, cy2 = my+y*cellH;
+      if (!explored[y][x]) { drawPixelRect(cx2, cy2, cellW-1, cellH-1, '#0a0a0f'); continue; }
+      var tile = dungeonMap[y][x];
+      var color = '#1a1a2e';
+      if (tile === 1) color = '#4a4a5a';
+      else if (tile === 0 || tile === 4 || tile === 7 || tile === 8 || tile === 10) color = '#2a2a3e';
+      else if (tile === 11) color = pushStoneState.pushed ? '#2a2a3e' : '#5a5a5a';
+      else if (tile === 2) color = doorStates['4,2'] === false ? '#6a4a2a' : '#2a2a3e';
+      else if (tile === 3) color = doorStates['6,3'] ? '#8a4a4a' : '#2a2a3e';
+      else if (tile === 5) color = '#c8a840';
+      else if (tile === 6) color = '#40c880';
+      else if (tile === 9) color = '#c8a840';
+      drawPixelRect(cx2, cy2, cellW-1, cellH-1, color);
+      if (tile === 4 && enemies[x+','+y]) drawPixelRect(cx2+cellW/4, cy2+cellH/4, cellW/2, cellH/2, '#c83030');
+      if (tile === 7) drawPixelRect(cx2+cellW/3, cy2+cellH/3, cellW/3, cellH/3, '#c8a840');
+      if (tile === 10) drawPixelRect(cx2+cellW/3, cy2+cellH/3, cellW/3, cellH/3, '#8a6a3a');
+    }
+  }
+
+  var px = mx+player.x*cellW+cellW/4, py = my+player.y*cellH+cellH/4;
+  drawPixelRect(px, py, cellW/2, cellH/2, '#40c8f0');
+  var arrowSize = cellW/3;
+  ctx.fillStyle = '#80e0ff'; ctx.beginPath();
+  var acx = px+cellW/4, acy = py+cellH/4;
+  if (player.dir === 0) { ctx.moveTo(acx, acy-arrowSize); ctx.lineTo(acx-arrowSize/2, acy); ctx.lineTo(acx+arrowSize/2, acy); }
+  else if (player.dir === 1) { ctx.moveTo(acx+arrowSize, acy); ctx.lineTo(acx, acy-arrowSize/2); ctx.lineTo(acx, acy+arrowSize/2); }
+  else if (player.dir === 2) { ctx.moveTo(acx, acy+arrowSize); ctx.lineTo(acx-arrowSize/2, acy); ctx.lineTo(acx+arrowSize/2, acy); }
+  else { ctx.moveTo(acx-arrowSize, acy); ctx.lineTo(acx, acy-arrowSize/2); ctx.lineTo(acx, acy+arrowSize/2); }
+  ctx.fill();
+}
+
+// ============================================================
+// COMBAT SYSTEM
+// ============================================================
+function drawCombat() {
+  ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, H);
+  var enemy = combat.enemy;
+  if (!enemy) return;
+  var shakeX = 0, shakeY = 0;
+  if (combat.shakeTimer > 0) { combat.shakeTimer--; shakeX = (Math.random()-0.5)*8; shakeY = (Math.random()-0.5)*8; }
+  ctx.save(); ctx.translate(shakeX, shakeY);
+  var bgGrd = ctx.createRadialGradient(W/2, 250, 50, W/2, 250, 350);
+  bgGrd.addColorStop(0, '#1a1510'); bgGrd.addColorStop(1, '#0a0a0f');
+  ctx.fillStyle = bgGrd; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#1a1510'; ctx.fillRect(0, 300, W, 340);
+  if (enemy.type === 'frost_wraith') drawFrostWraith(W/2-80, 80, 160, 220);
+  else if (enemy.type === 'bone_revenant') drawBoneRevenant(W/2-80, 80, 160, 220);
+  else drawShadowLurker(W/2-80, 80, 160, 220);
+  if (combat.flashTimer > 0) { combat.flashTimer--; ctx.fillStyle = combat.flashColor || 'rgba(255, 100, 30, 0.3)'; ctx.fillRect(0, 0, W, H); }
+  ctx.restore();
+
+  drawPixelText(enemy.name, W/2, 20, '#c83030', 24, 'center');
+  drawPixelRect(W/2-120, 50, 240, 16, '#2a1010');
+  drawPixelRect(W/2-120, 50, 240*(enemy.hp/enemy.maxHp), 16, '#c83030');
+  drawPixelBorder(W/2-120, 50, 240, 16, '#5a2020');
+  drawPixelText(enemy.hp+'/'+enemy.maxHp, W/2, 51, '#e8c8c8', 12, 'center');
+  drawPixelText('Your HP:', 30, 330, '#c83030', 14);
+  drawPixelRect(120, 330, 180, 16, '#2a1010');
+  drawPixelRect(120, 330, 180*(player.hp/player.maxHp), 16, '#c83030');
+  drawPixelBorder(120, 330, 180, 16, '#5a2020');
+  drawPixelText(player.hp+'/'+player.maxHp, 200, 331, '#e8c8c8', 12, 'center');
+  drawPixelText('Your MP:', 30, 354, '#3050c8', 14);
+  drawPixelRect(120, 354, 180, 16, '#101030');
+  drawPixelRect(120, 354, 180*(player.mana/player.maxMana), 16, '#3050c8');
+  drawPixelBorder(120, 354, 180, 16, '#202050');
+  drawPixelText(player.mana+'/'+player.maxMana, 200, 355, '#c8c8e8', 12, 'center');
+
+  drawPixelRect(20, 390, W-40, 130, '#0a0a14');
+  drawPixelBorder(20, 390, W-40, 130, '#3a3a4e');
+  drawPixelText('COMBAT LOG', 40, 395, '#6a6a7a', 12);
+  var logStart = Math.max(0, combat.log.length-5);
+  for (var i = logStart; i < combat.log.length; i++) {
+    var entry = combat.log[i];
+    drawPixelText(entry.text, 40, 412+(i-logStart)*20, entry.color || '#c8c8d0', 14);
+  }
+
+  if (combat.playerTurn && combat.animTimer <= 0) {
+    var actions = [
+      { key: '1', name: 'ATTACK', color: '#8a8a8a', desc: 'Physical strike' },
+      { key: '2', name: 'FIRE', color: '#c85020', desc: getSpellDesc(enemy, 'fire', 15) },
+      { key: '3', name: 'ICE', color: '#2060c8', desc: getSpellDesc(enemy, 'ice', 12) },
+      { key: '4', name: 'STONE', color: '#8a7a5a', desc: getSpellDesc(enemy, 'stone', 14) },
+      { key: '5', name: 'FLEE', color: '#6a6a3a', desc: 'Run away (50%)' }
+    ];
+    actions.forEach(function(a, i) {
+      var bx = 15+i*188, by = 540;
+      var hovered = mouseX >= bx && mouseX <= bx+178 && mouseY >= by && mouseY <= by+60;
+      drawPixelRect(bx, by, 178, 55, hovered ? '#2a2a3e' : '#1a1a2e');
+      drawPixelBorder(bx, by, 178, 55, a.color, 2);
+      drawPixelText('['+a.key+'] '+a.name, bx+8, by+8, a.color, 16);
+      drawPixelText(a.desc, bx+8, by+32, '#6a6a7a', 10);
+    });
+  } else if (!combat.playerTurn) {
+    drawPixelText('Enemy is attacking...', W/2, 570, '#c85050', 18, 'center');
+  }
+}
+
+function getSpellDesc(enemy, element, cost) {
+  if (enemy.weaknesses && enemy.weaknesses[element]) return cost + ' MP - SUPER EFFECTIVE!';
+  if (enemy.resistances && enemy.resistances[element]) return cost + ' MP - RESISTED';
+  return cost + ' MP';
+}
+
+function drawShadowLurker(x, y, w, h) {
+  ctx.fillStyle = '#1a0a1a'; ctx.beginPath();
+  ctx.ellipse(x+w/2, y+h*0.6, w*0.4, h*0.4, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#3a1a3a';
+  for (var i = 0; i < 5; i++) {
+    var tx = x+w*0.2+i*w*0.15+Math.sin(frameCount*0.05+i)*8;
+    var ty = y+h*0.7+Math.cos(frameCount*0.04+i*2)*5;
+    ctx.fillRect(tx, ty, 8, 30+Math.sin(frameCount*0.03+i)*10);
+  }
+  ctx.fillStyle = '#2a1028'; ctx.beginPath();
+  ctx.ellipse(x+w/2, y+h*0.35, w*0.3, h*0.25, 0, 0, Math.PI*2); ctx.fill();
+  var eyeGlow = 0.7+Math.sin(frameCount*0.08)*0.3;
+  var eyeY = y+h*0.32;
+  var eGrd = ctx.createRadialGradient(x+w*0.38, eyeY, 2, x+w*0.38, eyeY, 20);
+  eGrd.addColorStop(0, 'rgba(255, 40, 40, '+eyeGlow+')'); eGrd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = eGrd; ctx.fillRect(x+w*0.25, eyeY-15, 40, 30);
+  var eGrd2 = ctx.createRadialGradient(x+w*0.62, eyeY, 2, x+w*0.62, eyeY, 20);
+  eGrd2.addColorStop(0, 'rgba(255, 40, 40, '+eyeGlow+')'); eGrd2.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = eGrd2; ctx.fillRect(x+w*0.5, eyeY-15, 40, 30);
+  ctx.fillStyle = 'rgba(255, 60, 60, '+eyeGlow+')';
+  ctx.fillRect(x+w*0.36, eyeY-3, 8, 6); ctx.fillRect(x+w*0.60, eyeY-3, 8, 6);
+  ctx.fillStyle = 'rgba(10, 0, 10, 0.6)'; ctx.beginPath();
+  ctx.ellipse(x+w/2, y+h*0.9, w*0.5, h*0.08, 0, 0, Math.PI*2); ctx.fill();
+  for (var i = 0; i < 3; i++) {
+    var px2 = x+w*0.3+Math.sin(frameCount*0.02+i*2.5)*w*0.3;
+    var py2 = y+h*0.3-frameCount%60+i*20;
+    ctx.fillStyle = 'rgba(80, 20, 80, '+Math.max(0, 1-(frameCount%60)/60)*0.5+')';
+    ctx.fillRect(px2, py2, 4, 4);
+  }
+}
+
+function drawFrostWraith(x, y, w, h) {
+  var pulse = 0.5+Math.sin(frameCount*0.06)*0.3;
+  var gGrd = ctx.createRadialGradient(x+w/2, y+h*0.5, 10, x+w/2, y+h*0.5, w*0.6);
+  gGrd.addColorStop(0, 'rgba(100, 180, 255, '+(pulse*0.25)+')'); gGrd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gGrd; ctx.fillRect(x-20, y-20, w+40, h+40);
+  ctx.globalAlpha = 0.6+pulse*0.2;
+  ctx.fillStyle = '#a0d0f0'; ctx.beginPath();
+  ctx.ellipse(x+w/2, y+h*0.45, w*0.28, h*0.35, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#d0e8ff'; ctx.beginPath();
+  ctx.ellipse(x+w/2, y+h*0.4, w*0.18, h*0.2, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(140, 200, 240, '+(0.4+pulse*0.2)+')';
+  for (var i = 0; i < 4; i++) {
+    var tx = x+w*0.3+i*w*0.12+Math.sin(frameCount*0.04+i*1.5)*10;
+    drawPixelRect(tx, y+h*0.65, 8, 30+Math.sin(frameCount*0.03+i)*15, 'rgba(140, 200, 240, '+(0.3+pulse*0.15)+')');
+  }
+  for (var i = 0; i < 6; i++) {
+    var angle = frameCount*0.02+i*Math.PI/3;
+    var radius = 40+Math.sin(frameCount*0.03+i)*15;
+    var cx2 = x+w/2+Math.cos(angle)*radius, cy2 = y+h*0.4+Math.sin(angle)*radius*0.6;
+    var size = 3+Math.sin(frameCount*0.05+i*2)*2;
+    ctx.fillStyle = 'rgba(200, 230, 255, '+(0.5+Math.sin(frameCount*0.04+i)*0.3)+')';
+    ctx.fillRect(cx2, cy2, size, size);
+  }
+  var eyeGlow = 0.7+Math.sin(frameCount*0.1)*0.3;
+  ctx.fillStyle = 'rgba(150, 220, 255, '+eyeGlow+')';
+  ctx.fillRect(x+w*0.37, y+h*0.35-2, 6, 5); ctx.fillRect(x+w*0.57, y+h*0.35-2, 6, 5);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgba(20, 40, 60, 0.3)'; ctx.beginPath();
+  ctx.ellipse(x+w/2, y+h*0.88, w*0.35, h*0.05, 0, 0, Math.PI*2); ctx.fill();
+}
+
+function drawBoneRevenant(x, y, w, h) {
+  ctx.fillStyle = 'rgba(0, 20, 0, 0.4)'; ctx.beginPath();
+  ctx.ellipse(x+w/2, y+h*0.92, w*0.4, h*0.06, 0, 0, Math.PI*2); ctx.fill();
+  drawPixelRect(x+w*0.35, y+h*0.65, 10, h*0.25, '#c8b890');
+  drawPixelRect(x+w*0.55, y+h*0.65, 10, h*0.25, '#c8b890');
+  drawPixelRect(x+w*0.34, y+h*0.72, 12, 6, '#a09870');
+  drawPixelRect(x+w*0.54, y+h*0.72, 12, 6, '#a09870');
+  drawPixelRect(x+w*0.28, y+h*0.35, w*0.44, h*0.32, '#3a3a3a');
+  drawPixelRect(x+w*0.30, y+h*0.37, w*0.40, h*0.08, '#4a4a4a');
+  drawPixelRect(x+w*0.30, y+h*0.48, w*0.40, h*0.08, '#4a4a4a');
+  for (var i = 0; i < 5; i++) drawPixelRect(x+w*0.28+i*w*0.09, y+h*0.63+Math.sin(i*2.1)*5, 8, 10+Math.sin(i)*5, '#3a3a3a');
+  for (var i = 0; i < 3; i++) drawPixelRect(x+w*0.35, y+h*0.42+i*8, w*0.30, 3, '#b0a080');
+  drawPixelRect(x+w*0.20, y+h*0.38, 8, h*0.22, '#c8b890');
+  drawPixelRect(x+w*0.72, y+h*0.38, 8, h*0.22, '#c8b890');
+  drawPixelRect(x+w*0.18, y+h*0.34, 14, 10, '#5a5a5a');
+  drawPixelRect(x+w*0.70, y+h*0.34, 14, 10, '#5a5a5a');
+  var swordSway = Math.sin(frameCount*0.04)*3;
+  drawPixelRect(x+w*0.73, y+h*0.25+swordSway, 6, h*0.38, '#d8d0b0');
+  drawPixelRect(x+w*0.70, y+h*0.55+swordSway, 14, 6, '#6a5a3a');
+  drawPixelRect(x+w*0.74, y+h*0.22+swordSway, 4, 8, '#e8e0c0');
+  drawPixelRect(x+w*0.35, y+h*0.15, w*0.30, h*0.20, '#d8c8a0');
+  drawPixelRect(x+w*0.37, y+h*0.12, w*0.26, h*0.08, '#d0c090');
+  drawPixelRect(x+w*0.38, y+h*0.30, w*0.24, h*0.06, '#c0b080');
+  for (var i = 0; i < 4; i++) drawPixelRect(x+w*0.40+i*8, y+h*0.30, 4, 5, '#e0d8c0');
+  var eyeGlow = 0.6+Math.sin(frameCount*0.07)*0.4;
+  ctx.fillStyle = 'rgba(60, 220, 60, '+eyeGlow+')';
+  ctx.fillRect(x+w*0.40, y+h*0.21, 8, 6); ctx.fillRect(x+w*0.56, y+h*0.21, 8, 6);
+  var egGrd = ctx.createRadialGradient(x+w*0.44, y+h*0.24, 2, x+w*0.44, y+h*0.24, 18);
+  egGrd.addColorStop(0, 'rgba(60, 220, 60, '+(eyeGlow*0.5)+')'); egGrd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = egGrd; ctx.fillRect(x+w*0.30, y+h*0.14, 35, 25);
+  for (var i = 0; i < 4; i++) {
+    var px2 = x+w*0.2+Math.sin(frameCount*0.015+i*2.2)*w*0.35;
+    var py2 = y+h*0.4-(frameCount*0.5+i*25)%60;
+    ctx.fillStyle = 'rgba(40, 180, 40, '+Math.max(0, 0.4-((frameCount*0.5+i*25)%60)/60)*0.4+')';
+    ctx.fillRect(px2, py2, 5, 5);
+  }
+}
+
+function executeCombatAction(action) {
+  if (!combat.playerTurn || combat.animTimer > 0) return;
+  var enemy = combat.enemy;
+  if (!enemy) return;
+  combat.playerTurn = false;
+  combat.animTimer = 30;
+
+  if (action === 'attack') {
+    var dmg = Math.max(1, 10 + Math.floor(Math.random()*8) - enemy.def);
+    // Weapon bonus from equipment
+    if (inventory.equipment.right_hand && inventory.equipment.right_hand.atkBonus) dmg += inventory.equipment.right_hand.atkBonus;
+    enemy.hp -= dmg;
+    combat.log.push({ text: 'You strike the '+enemy.name+' for '+dmg+' damage!', color: '#c8c8d0' });
+    playCombatHit(); combat.shakeTimer = 10; combat.flashTimer = 5;
+    combat.flashColor = 'rgba(255, 255, 255, 0.15)';
+  } else if (action === 'fire' || action === 'ice' || action === 'stone') {
+    var spellData = {
+      fire: { cost: 15, baseDmg: 20, range: 10, color: '#c85020', weakColor: '#c88020', flashColor: 'rgba(255, 80, 20, 0.4)' },
+      ice: { cost: 12, baseDmg: 18, range: 8, color: '#3060c8', weakColor: '#60a0e0', flashColor: 'rgba(40, 80, 200, 0.3)' },
+      stone: { cost: 14, baseDmg: 22, range: 6, color: '#8a7a5a', weakColor: '#c8b870', flashColor: 'rgba(140, 120, 60, 0.3)' }
+    };
+    var sd = spellData[action];
+    if (player.mana < sd.cost) { combat.log.push({ text: 'Not enough mana!', color: '#c85050' }); combat.playerTurn = true; combat.animTimer = 0; return; }
+    player.mana -= sd.cost;
+    var dmg = sd.baseDmg + Math.floor(Math.random()*sd.range);
+    var weakMult = enemy.weaknesses && enemy.weaknesses[action];
+    var resistMult = enemy.resistances && enemy.resistances[action];
+    var spellName = action.charAt(0).toUpperCase()+action.slice(1);
+    if (weakMult) { dmg = Math.floor(dmg*weakMult); combat.log.push({ text: spellName+' Spell hits! '+enemy.name+' is WEAK! '+dmg+' damage!', color: sd.weakColor }); }
+    else if (resistMult) { dmg = Math.floor(dmg*resistMult); combat.log.push({ text: spellName+' Spell barely affects '+enemy.name+'! RESISTED! Only '+dmg+' damage.', color: '#6a6a7a' }); }
+    else { combat.log.push({ text: spellName+' Spell deals '+dmg+' damage!', color: sd.color }); }
+    enemy.hp -= dmg;
+    playSpellSound(action === 'stone' ? 'fire' : action);
+    combat.shakeTimer = 15; combat.flashTimer = 10; combat.flashColor = sd.flashColor;
+  } else if (action === 'flee') {
+    if (Math.random() < 0.5) {
+      combat.log.push({ text: 'You fled successfully!', color: '#8a8a4a' });
+      setTimeout(function() {
+        state = GameState.DUNGEON; startDungeonAmbient();
+        var backDir = (player.dir+2)%4;
+        var bx = player.x+DIR_DX[backDir], by2 = player.y+DIR_DY[backDir];
+        if (!isWall(bx, by2)) { player.x = bx; player.y = by2; }
+      }, 500);
+      return;
+    } else { combat.log.push({ text: 'Failed to flee!', color: '#c85050' }); }
+  }
+
+  if (enemy.hp <= 0) {
+    enemy.hp = 0;
+    combat.log.push({ text: enemy.name+' is defeated!', color: '#40c840' });
+    player.gold += enemy.goldReward; player.xp += enemy.xpReward;
+    player.enemiesSlain++;
+    if (enemy.type) player.slainTypes[enemy.type] = true;
+    combat.log.push({ text: '+'+enemy.goldReward+' gold, +'+enemy.xpReward+' XP', color: '#c8a840' });
+    // Drop items
+    if (enemy.drops) {
+      enemy.drops.forEach(function(dropId) {
+        var dropItem = createItem(dropId);
+        if (dropItem) {
+          if (addToBackpack(dropItem)) {
+            combat.log.push({ text: 'Obtained: '+dropItem.name+'!', color: '#c8a840' });
+          } else {
+            combat.log.push({ text: dropItem.name+' dropped but your pack is full!', color: '#c85050' });
+          }
+        }
+      });
+    }
+    playVictory();
+    delete enemies[combat.enemyPos];
+    setTimeout(function() {
+      state = GameState.DUNGEON; startDungeonAmbient();
+      showNotification('Enemy defeated! The shadows recede...', '#40c840');
+    }, 1500);
+    return;
+  }
+  setTimeout(function() { enemyTurn(); }, 800);
+}
+
+function enemyTurn() {
+  var enemy = combat.enemy;
+  if (!enemy || enemy.hp <= 0) return;
+  var dmg = Math.max(1, enemy.atk - 2 + Math.floor(Math.random()*5));
+  // Defense bonus from equipment
+  var defBonus = 0;
+  for (var slot in inventory.equipment) {
+    if (inventory.equipment[slot] && inventory.equipment[slot].defBonus) defBonus += inventory.equipment[slot].defBonus;
+  }
+  dmg = Math.max(1, dmg - defBonus);
+  player.hp -= dmg;
+  combat.log.push({ text: enemy.name+' attacks you for '+dmg+' damage!', color: '#c85050' });
+  playCombatHit(); combat.shakeTimer = 8; combat.flashTimer = 5;
+  combat.flashColor = 'rgba(200, 40, 40, 0.3)';
+  if (player.hp <= 0) {
+    player.hp = 0;
+    combat.log.push({ text: 'You have been slain...', color: '#c83030' });
+    playDeath();
+    setTimeout(function() { state = GameState.GAMEOVER; }, 1500);
+    return;
+  }
+  combat.playerTurn = true; combat.animTimer = 0;
+}
+
+// ============================================================
+// PUZZLE SYSTEM
+// ============================================================
+var puzzleState = { selectedSpells: [], message: '', msgTimer: 0 };
+
+function drawPuzzleScreen() {
+  ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, H);
+  var grd = ctx.createRadialGradient(W/2, H/2-50, 30, W/2, H/2, 300);
+  grd.addColorStop(0, 'rgba(100, 60, 20, 0.1)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
+  drawPixelText('ARCANE COMBINATION', W/2, 40, '#c8a840', 28, 'center');
+  drawPixelText('"Where flame meets stone, the path reveals itself"', W/2, 80, '#8a7a5a', 16, 'center');
+  drawPixelRect(W/2-300, 108, 600, 2, '#3a3a4e');
+  drawPixelText('Select two elements to combine:', W/2, 130, '#8a8aaa', 16, 'center');
+
+  var spells = [
+    { name: 'FIRE', color: '#c85020', key: '1', icon: 'flame' },
+    { name: 'ICE', color: '#2060c8', key: '2', icon: 'crystal' },
+    { name: 'STONE', color: '#8a7a5a', key: '3', icon: 'rock' }
+  ];
+  spells.forEach(function(s, i) {
+    var bx = W/2-270+i*190, by = 170;
+    var selected = puzzleState.selectedSpells.includes(s.name.toLowerCase());
+    var hovered = mouseX >= bx && mouseX <= bx+160 && mouseY >= by && mouseY <= by+120;
+    drawPixelRect(bx, by, 160, 120, selected ? '#2a2a3e' : (hovered ? '#1a1a2e' : '#0f0f1a'));
+    drawPixelBorder(bx, by, 160, 120, selected ? '#c8a840' : s.color, selected ? 3 : 2);
+    if (s.icon === 'flame') {
+      drawPixelRect(bx+60, by+20, 10, 30, '#c85020'); drawPixelRect(bx+55, by+25, 20, 20, '#c88020'); drawPixelRect(bx+65, by+15, 8, 15, '#c8a020');
+    } else if (s.icon === 'crystal') {
+      drawPixelRect(bx+62, by+18, 16, 35, '#2060c8'); drawPixelRect(bx+58, by+25, 24, 20, '#40a0e0'); drawPixelRect(bx+66, by+15, 8, 10, '#80c0f0');
+    } else if (s.icon === 'rock') {
+      drawPixelRect(bx+55, by+25, 30, 25, '#6a5a3a'); drawPixelRect(bx+60, by+20, 20, 30, '#8a7a5a'); drawPixelRect(bx+65, by+30, 15, 15, '#5a4a2a');
+    }
+    drawPixelText('['+s.key+'] '+s.name, bx+80, by+70, s.color, 18, 'center');
+    drawPixelText(selected ? 'SELECTED' : 'Click to select', bx+80, by+95, selected ? '#c8a840' : '#5a5a6a', 11, 'center');
+  });
+
+  if (puzzleState.selectedSpells.length === 2) {
+    var cbx = W/2-80, cby = 320;
+    var hovered = mouseX >= cbx && mouseX <= cbx+160 && mouseY >= cby && mouseY <= cby+45;
+    drawPixelRect(cbx, cby, 160, 45, hovered ? '#3a3a2a' : '#2a2a1a');
+    drawPixelBorder(cbx, cby, 160, 45, '#c8a840', 3);
+    drawPixelText('CAST COMBO', cbx+80, cby+13, '#c8a840', 20, 'center');
+  }
+  drawPixelText('Selected: '+(puzzleState.selectedSpells.length > 0 ? puzzleState.selectedSpells.join(' + ').toUpperCase() : 'None'), W/2, 390, '#8a8a9a', 16, 'center');
+  if (puzzleState.msgTimer > 0) {
+    puzzleState.msgTimer--;
+    drawPixelRect(W/2-250, 430, 500, 40, 'rgba(0,0,0,0.8)');
+    drawPixelText(puzzleState.message, W/2, 440, puzzleState.msgColor || '#c8c8d0', 16, 'center');
+  }
+  drawPixelText('Mana Cost: 10 | Your Mana: '+player.mana, W/2, 490, '#5a5a7a', 14, 'center');
+  drawPixelText('[ESC] Return to dungeon', W/2, 550, '#5a5a6a', 14, 'center');
+}
+
+function attemptPuzzleCast() {
+  if (puzzleState.selectedSpells.length !== 2) return;
+  if (player.mana < 10) { puzzleState.message = 'Not enough mana!'; puzzleState.msgColor = '#c85050'; puzzleState.msgTimer = 90; return; }
+  player.mana -= 10;
+  var sorted = puzzleState.selectedSpells.slice().sort();
+  if (sorted[0] === 'fire' && sorted[1] === 'stone') {
+    playSpellSound('combo');
+    puzzleState.message = 'The sealed door glows with magma... it opens!';
+    puzzleState.msgColor = '#c8a840'; puzzleState.msgTimer = 120;
+    doorStates['6,3'] = false; player.secretsFound++;
+    setTimeout(function() { state = GameState.DUNGEON; showNotification('The sealed door is now open!', '#c8a840', 180); }, 2000);
+  } else {
+    playFizzle();
+    puzzleState.message = 'The elements fizzle and dissipate. Wrong combination...';
+    puzzleState.msgColor = '#8a5050'; puzzleState.msgTimer = 90;
+  }
+  puzzleState.selectedSpells = [];
+}
+
+function togglePuzzleSpell(spell) {
+  var idx = puzzleState.selectedSpells.indexOf(spell);
+  if (idx >= 0) { puzzleState.selectedSpells.splice(idx, 1); }
+  else {
+    if (puzzleState.selectedSpells.length >= 2) puzzleState.selectedSpells.shift();
+    puzzleState.selectedSpells.push(spell);
+  }
+}
+
+// ============================================================
+// GAME OVER / VICTORY / FRAGMENT / JOURNEY SCREENS
+// ============================================================
+function drawGameOver() {
+  ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, H);
+  var grd = ctx.createRadialGradient(W/2, H/2, 100, W/2, H/2, 400);
+  grd.addColorStop(0, 'rgba(80, 10, 10, 0.2)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
+  drawPixelText('YOU HAVE FALLEN', W/2, H/2-80, '#c83030', 36, 'center');
+  drawPixelText('The darkness claims another soul...', W/2, H/2-30, '#6a3030', 18, 'center');
+  drawPixelText('Gold collected: '+player.gold, W/2, H/2+40, '#8a8a8a', 16, 'center');
+  drawPixelText('Enemies slain: '+player.enemiesSlain, W/2, H/2+65, '#8a8a8a', 16, 'center');
+  if (!player._runCompleted) { player._runCompleted = true; completeRun(); }
+  if (Math.floor(frameCount/30)%2===0) drawPixelText('Press any key to return to the tavern', W/2, H/2+130, '#5a5a6a', 16, 'center');
+}
+
+function drawVictoryScreen() {
+  ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, H);
+  var grd = ctx.createRadialGradient(W/2, 200, 50, W/2, 200, 350);
+  grd.addColorStop(0, 'rgba(200, 168, 64, 0.15)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
+  drawPixelText('VICTORY!', W/2, 80, '#c8a840', 48, 'center');
+  drawPixelText('You found the Heart of the Dungeon!', W/2, 140, '#a08830', 20, 'center');
+  drawPixelRect(W/2-30, 180, 60, 60, '#c83040');
+  drawPixelRect(W/2-20, 190, 40, 40, '#e84060');
+  drawPixelRect(W/2-10, 200, 20, 20, '#ff6080');
+  var hGrd = ctx.createRadialGradient(W/2, 210, 10, W/2, 210, 60);
+  hGrd.addColorStop(0, 'rgba(255, 80, 100, 0.3)'); hGrd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = hGrd; ctx.fillRect(W/2-60, 160, 120, 100);
+  drawPixelRect(200, 270, W-400, 2, '#3a3a4e');
+  drawPixelText('RUN SUMMARY', W/2, 290, '#c8a840', 22, 'center');
+  drawPixelText('Gold Earned: '+player.gold, W/2, 330, '#c8a840', 18, 'center');
+  drawPixelText('Enemies Slain: '+player.enemiesSlain, W/2, 360, '#c8c8d0', 18, 'center');
+  drawPixelText('Secrets Found: '+player.secretsFound, W/2, 390, '#a080c0', 18, 'center');
+  if (player.hasAncientScroll) drawPixelText('Ancient Scroll recovered!', W/2, 420, '#80c0e0', 16, 'center');
+  if (player.hasFragment) {
+    ctx.globalAlpha = 0.6+Math.sin(frameCount*0.05)*0.4;
+    drawPixelText('Fragment of Dawn secured!', W/2, 445, '#c8a840', 16, 'center');
+    ctx.globalAlpha = 1;
+  }
+  var victFragCount = loadFragmentCount() + (player.hasFragment ? (loadReputation().fragmentsFound.includes('fragment_of_dawn') ? 0 : 1) : 0);
+  drawPixelText('Sunstone Fragments: '+victFragCount+'/10', W/2, 468, '#8a7a5a', 14, 'center');
+  saveBestStats();
+  if (!player._runCompleted) { player._runCompleted = true; completeRun(); }
+  if (Math.floor(frameCount/30)%2===0) drawPixelText('Press any key to return to the tavern', W/2, 500, '#5a5a6a', 16, 'center');
+}
+
+function drawFragmentScreen() {
+  fragmentDiscover.timer++; fragmentDiscover.glowPulse += 0.04;
+  ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, H);
+  var glowIntensity = Math.min(1, fragmentDiscover.timer/60) * (0.6+Math.sin(fragmentDiscover.glowPulse)*0.3);
+  var fGrd = ctx.createRadialGradient(W/2, 260, 20, W/2, 260, 350);
+  fGrd.addColorStop(0, 'rgba(200, 168, 64, '+(glowIntensity*0.4)+')');
+  fGrd.addColorStop(0.4, 'rgba(180, 140, 40, '+(glowIntensity*0.2)+')');
+  fGrd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = fGrd; ctx.fillRect(0, 0, W, H);
+  var fy = 200, fScale = Math.min(1, fragmentDiscover.timer/40);
+  ctx.save(); ctx.translate(W/2, fy+30); ctx.scale(fScale, fScale);
+  drawPixelRect(-20, -30, 40, 60, '#c8a840'); drawPixelRect(-15, -35, 30, 70, '#e0c050');
+  drawPixelRect(-8, -38, 16, 76, '#f0d860'); drawPixelRect(-5, -20, 10, 40, '#fff0a0');
+  ctx.restore();
+  for (var i = 0; i < 8; i++) {
+    var angle = fragmentDiscover.glowPulse*0.5+i*Math.PI/4;
+    var radius = 60+Math.sin(fragmentDiscover.glowPulse+i)*20;
+    var sx = W/2+Math.cos(angle)*radius, sy = fy+30+Math.sin(angle)*radius*0.7;
+    ctx.globalAlpha = 0.3+Math.sin(fragmentDiscover.glowPulse*2+i*1.5)*0.3;
+    drawPixelRect(sx-2, sy-2, 4, 4, '#ffe080'); ctx.globalAlpha = 1;
+  }
+  ctx.globalAlpha = Math.min(1, Math.max(0, (fragmentDiscover.timer-30)/40));
+  drawPixelText('FRAGMENT OF DAWN DISCOVERED', W/2, 100, '#c8a840', 32, 'center'); ctx.globalAlpha = 1;
+  ctx.globalAlpha = Math.min(1, Math.max(0, (fragmentDiscover.timer-60)/40));
+  drawPixelText('1 of 10 Sunstone Fragments found', W/2, 310, '#a09040', 20, 'center'); ctx.globalAlpha = 1;
+  ctx.globalAlpha = Math.min(1, Math.max(0, (fragmentDiscover.timer-90)/40));
+  drawPixelText('Legend says the complete Sunstone can heal the world...', W/2, 360, '#7a6a3a', 16, 'center'); ctx.globalAlpha = 1;
+  if (fragmentDiscover.timer > 60) drawPixelRect(W/2-200, 290, 400, 2, '#5a4a20');
+  if (fragmentDiscover.timer > 120 && Math.floor(frameCount/30)%2===0) drawPixelText('Press any key to continue', W/2, 440, '#5a5a6a', 16, 'center');
+}
+
+function drawJourneyScreen() {
+  journey.timer++;
+  ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, H);
+  var jGrd = ctx.createRadialGradient(W/2, H/2, 50, W/2, H/2, 400);
+  jGrd.addColorStop(0, 'rgba(40, 30, 20, 0.3)'); jGrd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = jGrd; ctx.fillRect(0, 0, W, H);
+  drawPixelText('The Whispering Crypts', W/2, 80, '#c8a840', 28, 'center');
+  drawPixelRect(W/2-180, 115, 360, 2, '#3a3a4e');
+  drawPixelText('Preparing for journey'+'.'.repeat(Math.floor(journey.timer/20)%4), W/2, 160, '#8a8a9a', 18, 'center');
+  drawPixelRect(W/2-100, 210, 200, 120, '#1a1a2e');
+  drawPixelBorder(W/2-100, 210, 200, 120, '#3a3a4e', 2);
+  drawPixelRect(W/2-30, 240, 60, 70, '#0a0a14');
+  drawPixelRect(W/2-35, 235, 70, 8, '#4a4a5a');
+  var tFlicker = 0.5+Math.random()*0.5;
+  drawPixelRect(W/2-50, 250, 6, 12, 'rgba(255, 140, 40, '+tFlicker+')');
+  drawPixelRect(W/2+44, 250, 6, 12, 'rgba(255, 140, 40, '+tFlicker+')');
+  if (journey.ready) {
+    var ftx = W/2-170, fty = 370;
+    var ftHovered = mouseX >= ftx && mouseX <= ftx+150 && mouseY >= fty && mouseY <= fty+50;
+    drawPixelRect(ftx, fty, 150, 50, ftHovered ? '#2a3a2a' : '#1a2a1a');
+    drawPixelBorder(ftx, fty, 150, 50, '#4a8a4a', 2);
+    drawPixelText('FAST TRAVEL', ftx+75, fty+10, '#60c060', 16, 'center');
+    drawPixelText('Enter now', ftx+75, fty+32, '#5a7a5a', 12, 'center');
+    var ptx = W/2+20, pty = 370;
+    drawPixelRect(ptx, pty, 150, 50, '#1a1a1a');
+    drawPixelBorder(ptx, pty, 150, 50, '#3a3a3a', 2);
+    drawPixelText('TAKE THE PATH', ptx+75, pty+10, '#4a4a4a', 16, 'center');
+    drawPixelText('Coming Phase 2', ptx+75, pty+32, '#3a3a3a', 12, 'center');
+  }
+  drawPixelText('[ESC] Return to tavern', W/2, H-40, '#5a5a6a', 14, 'center');
+}
+
+// ============================================================
+// INVENTORY SCREEN
+// ============================================================
+function drawInventoryScreen() {
+  // Dark overlay
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.92)'; ctx.fillRect(0, 0, W, H);
+
+  drawPixelText('INVENTORY', W/2, 12, '#c8a840', 24, 'center');
+  drawPixelRect(W/2-150, 38, 300, 2, '#3a3a4e');
+
+  // === LEFT SIDE: Character silhouette with equipment slots ===
+  var charX = 80, charY = 60;
+
+  // Body silhouette background
+  drawPixelRect(charX, charY, 280, 420, '#0f0f1a');
+  drawPixelBorder(charX, charY, 280, 420, '#3a3a4e', 2);
+  drawPixelText('EQUIPMENT', charX+140, charY+8, '#8a8a9a', 14, 'center');
+
+  // Draw humanoid silhouette
+  var silX = charX+140, silY = charY+230;
+  // Head circle
+  ctx.fillStyle = '#1a1a2e'; ctx.beginPath();
+  ctx.ellipse(silX, silY-130, 25, 30, 0, 0, Math.PI*2); ctx.fill();
+  // Body
+  drawPixelRect(silX-20, silY-95, 40, 80, '#1a1a2e');
+  // Arms
+  drawPixelRect(silX-55, silY-90, 30, 12, '#1a1a2e');
+  drawPixelRect(silX+25, silY-90, 30, 12, '#1a1a2e');
+  // Legs
+  drawPixelRect(silX-18, silY-15, 14, 60, '#1a1a2e');
+  drawPixelRect(silX+4, silY-15, 14, 60, '#1a1a2e');
+  // Feet
+  drawPixelRect(silX-22, silY+45, 18, 10, '#1a1a2e');
+  drawPixelRect(silX+4, silY+45, 18, 10, '#1a1a2e');
+
+  // Equipment slots - draw as bordered rectangles at body positions
+  var eqSlots = [
+    { name: 'head', label: 'HEAD', x: silX-25, y: silY-170, w: 50, h: 50 },
+    { name: 'chest', label: 'CHEST', x: silX-25, y: silY-105, w: 50, h: 50 },
+    { name: 'left_hand', label: 'L.HAND', x: silX-90, y: silY-105, w: 50, h: 50 },
+    { name: 'right_hand', label: 'R.HAND', x: silX+40, y: silY-105, w: 50, h: 50 },
+    { name: 'legs', label: 'LEGS', x: silX-25, y: silY-40, w: 50, h: 50 },
+    { name: 'feet', label: 'FEET', x: silX-25, y: silY+20, w: 50, h: 50 }
+  ];
+
+  eqSlots.forEach(function(slot) {
+    var item = inventory.equipment[slot.name];
+    var isHover = mouseX >= slot.x && mouseX <= slot.x+slot.w && mouseY >= slot.y && mouseY <= slot.y+slot.h;
+    var isDragTarget = dragState.active && dragState.item && dragState.item.slot === slot.name;
+
+    drawPixelRect(slot.x, slot.y, slot.w, slot.h, '#0a0a14');
+    var borderColor = isDragTarget ? '#c8a840' : (isHover ? '#6a6a8a' : '#3a3a4e');
+    drawPixelBorder(slot.x, slot.y, slot.w, slot.h, borderColor, isDragTarget ? 3 : 2);
+
+    if (item && !(dragState.active && dragState.sourceSlot && dragState.sourceSlot.type === 'equipment' && dragState.sourceSlot.slot === slot.name)) {
+      drawItemIcon(item, slot.x+1, slot.y+1, slot.w-2);
+    }
+
+    drawPixelText(slot.label, slot.x+slot.w/2, slot.y+slot.h+2, '#5a5a6a', 9, 'center');
+
+    // Tooltip on hover
+    if (isHover && item && !dragState.active) {
+      drawItemTooltip(item, mouseX+10, mouseY-40);
+    }
+  });
+
+  // === RIGHT SIDE: Grid backpack ===
+  var gridX = 500, gridY = 60;
+  var cellSize = SLOT_SIZE + SLOT_PAD*2;
+
+  drawPixelRect(gridX-10, gridY, BACKPACK_COLS*cellSize+20, 20, '#0f0f1a');
+  drawPixelText('BACKPACK', gridX-10+BACKPACK_COLS*cellSize/2+10, gridY+3, '#8a8a9a', 14, 'center');
+
+  for (var row = 0; row < BACKPACK_ROWS; row++) {
+    for (var col = 0; col < BACKPACK_COLS; col++) {
+      var idx = row*BACKPACK_COLS+col;
+      var sx = gridX + col*cellSize;
+      var sy = gridY + 24 + row*cellSize;
+      var item = inventory.backpack[idx];
+      var isHover = mouseX >= sx && mouseX <= sx+cellSize && mouseY >= sy && mouseY <= sy+cellSize;
+      var isDragTarget = dragState.active && !item;
+
+      drawPixelRect(sx, sy, cellSize, cellSize, '#0a0a14');
+      var borderColor2 = isDragTarget ? '#4a6a4a' : (isHover ? '#6a6a8a' : '#2a2a3e');
+      drawPixelBorder(sx, sy, cellSize, cellSize, borderColor2, isDragTarget ? 2 : 1);
+
+      if (item && !(dragState.active && dragState.sourceSlot && dragState.sourceSlot.type === 'backpack' && dragState.sourceSlot.index === idx)) {
+        drawItemIcon(item, sx+SLOT_PAD, sy+SLOT_PAD, SLOT_SIZE);
+        // Stack count
+        if (item.stackable && item.count > 1) {
+          drawPixelRect(sx+cellSize-16, sy+cellSize-14, 16, 14, 'rgba(0,0,0,0.8)');
+          drawPixelText(''+item.count, sx+cellSize-8, sy+cellSize-13, '#c8c8d0', 11, 'center');
+        }
+      }
+
+      // Tooltip
+      if (isHover && item && !dragState.active) {
+        drawItemTooltip(item, mouseX+10, mouseY-40);
+      }
+    }
+  }
+
+  // === BOTTOM: Stats bars ===
+  var statY = gridY + 24 + BACKPACK_ROWS*cellSize + 15;
+  // Food bar
+  drawPixelText('FOOD', gridX, statY, '#c8a060', 12);
+  drawPixelRect(gridX+42, statY, 120, 14, '#1a1408');
+  drawPixelRect(gridX+42, statY, 120*(player.food/player.maxFood), 14, player.food > 30 ? '#c8a060' : '#c86030');
+  drawPixelBorder(gridX+42, statY, 120, 14, '#5a4a10');
+  drawPixelText(Math.floor(player.food)+'', gridX+102, statY+1, '#e8d8a8', 11, 'center');
+
+  // Water bar
+  drawPixelText('WATER', gridX, statY+18, '#4090c8', 12);
+  drawPixelRect(gridX+42, statY+18, 120, 14, '#081018');
+  drawPixelRect(gridX+42, statY+18, 120*(player.water/player.maxWater), 14, player.water > 30 ? '#4090c8' : '#c84040');
+  drawPixelBorder(gridX+42, statY+18, 120, 14, '#204050');
+  drawPixelText(Math.floor(player.water)+'', gridX+102, statY+19, '#c8d8e8', 11, 'center');
+
+  // Weight
+  var curW = getInventoryWeight();
+  drawPixelText('Weight: '+curW+'/'+inventory.maxWeight, gridX+175, statY+5, curW > inventory.maxWeight ? '#c83030' : '#6a6a7a', 13);
+
+  // === Draw dragged item at cursor ===
+  if (dragState.active && dragState.item) {
+    ctx.globalAlpha = 0.75;
+    drawItemIcon(dragState.item, dragState.mouseX-SLOT_SIZE/2, dragState.mouseY-SLOT_SIZE/2, SLOT_SIZE);
+    ctx.globalAlpha = 1;
+  }
+
+  // Instructions
+  drawPixelText('[I] or [ESC] Close | Drag items to equip/move | Right-click to use', W/2, H-20, '#5a5a6a', 12, 'center');
+}
+
+function drawItemTooltip(item, tx, ty) {
+  if (ty < 10) ty = 10;
+  if (tx + 220 > W) tx = W - 230;
+  var tw = 210, th = 70;
+  if (item.description) th += 18;
+  if (item.atkBonus) th += 16;
+  if (item.defBonus) th += 16;
+  drawPixelRect(tx, ty, tw, th, 'rgba(10, 10, 20, 0.95)');
+  drawPixelBorder(tx, ty, tw, th, '#c8a840', 2);
+  drawPixelText(item.name, tx+8, ty+6, '#c8a840', 14);
+  drawPixelText(item.type.toUpperCase(), tx+8, ty+24, '#6a6a8a', 11);
+  drawPixelText('Wt: '+item.weight, tx+tw-40, ty+24, '#6a6a7a', 11);
+  var infoY = ty+40;
+  if (item.atkBonus) { drawPixelText('ATK +'+item.atkBonus, tx+8, infoY, '#c85050', 11); infoY += 16; }
+  if (item.defBonus) { drawPixelText('DEF +'+item.defBonus, tx+8, infoY, '#5050c8', 11); infoY += 16; }
+  if (item.description) {
+    // Word wrap description
+    var words = item.description.split(' '), line = '';
+    ctx.font = '10px monospace';
+    for (var wi = 0; wi < words.length; wi++) {
+      var test = line + words[wi] + ' ';
+      if (ctx.measureText(test).width > tw-16) {
+        drawPixelText(line, tx+8, infoY, '#8a8a9a', 10); line = words[wi]+' '; infoY += 14;
+      } else { line = test; }
+    }
+    drawPixelText(line, tx+8, infoY, '#8a8a9a', 10);
+  }
+}
+
+// ============================================================
+// INPUT HANDLING
+// ============================================================
+var mouseX = 0, mouseY = 0;
+var keysDown = {};
+var mouseDown = false;
+
+canvas.addEventListener('mousemove', function(e) {
+  var rect = canvas.getBoundingClientRect();
+  mouseX = (e.clientX - rect.left) * (W / rect.width);
+  mouseY = (e.clientY - rect.top) * (H / rect.height);
+
+  // Update drag position
+  if (dragState.active) {
+    dragState.mouseX = mouseX;
+    dragState.mouseY = mouseY;
+  }
+
+  // Push stone hold tracking
+  if (mouseDown && state === GameState.DUNGEON && pushStoneState.holding) {
+    // Keep tracking
+  }
+
+  // Lever drag tracking
+  if (mouseDown && state === GameState.DUNGEON && leverDragState.active) {
+    leverDragState.currentY = mouseY;
+  }
+
+  // Tavern hover detection
+  if (state === GameState.TAVERN && !tavern.dialogueActive && !tavern.noticeBoard) {
+    tavern.hoveredNpc = -1;
+    if (mouseX >= 410 && mouseX <= 510 && mouseY >= 200 && mouseY <= 350) tavern.hoveredNpc = 0;
+    if (mouseX >= 130 && mouseX <= 230 && mouseY >= 290 && mouseY <= 430) tavern.hoveredNpc = 1;
+    if (mouseX >= 620 && mouseX <= 730 && mouseY >= 300 && mouseY <= 440) tavern.hoveredNpc = 2;
+  }
+
+  if (state === GameState.TAVERN && tavern.noticeBoard) {
+    tavern.hoveredDungeon = -1;
+    if (mouseX >= 180 && mouseX <= W-180) {
+      if (mouseY >= 130 && mouseY <= 300) tavern.hoveredDungeon = 0;
+      if (mouseY >= 330 && mouseY <= 500) tavern.hoveredDungeon = 1;
+    }
+  }
+});
+
+// Lever drag state
+var leverDragState = { active: false, startY: 0, currentY: 0 };
+
+canvas.addEventListener('mousedown', function(e) {
+  initAudio();
+  mouseDown = true;
+  var rect = canvas.getBoundingClientRect();
+  var cx = (e.clientX - rect.left) * (W / rect.width);
+  var cy = (e.clientY - rect.top) * (H / rect.height);
+
+  // Inventory drag start
+  if (state === GameState.INVENTORY) {
+    handleInventoryMouseDown(cx, cy, e.button);
+    return;
+  }
+
+  // Dungeon interactions
+  if (state === GameState.DUNGEON) {
+    var facing = getFacingTile();
+    // Lever interaction
+    if (facing.tile === 10 && !leverState.pulled && isFacingDistance1(facing)) {
+      var viewX = 10, viewY = 10, viewW = 640, viewH = 480;
+      if (cx >= viewX+viewW*0.35 && cx <= viewX+viewW*0.65 && cy >= viewY+viewH*0.1 && cy <= viewY+viewH*0.7) {
+        leverDragState.active = true;
+        leverDragState.startY = cy;
+        leverDragState.currentY = cy;
+      }
+    }
+    // Push stone interaction
+    if (facing.tile === 11 && !pushStoneState.pushed && isFacingDistance1(facing)) {
+      var viewX2 = 10, viewY2 = 10, viewW2 = 640, viewH2 = 480;
+      if (cx >= viewX2+viewW2*0.2 && cx <= viewX2+viewW2*0.8 && cy >= viewY2+viewH2*0.2 && cy <= viewY2+viewH2*0.8) {
+        pushStoneState.holding = true;
+        pushStoneState.holdStart = Date.now();
+      }
+    }
+    // Chest interaction
+    if (facing.tile === 5 && isFacingDistance1(facing)) {
+      handleChestClick(facing);
+    }
+    // Door click — use key on door by clicking in viewport
+    if ((facing.tile === 2 || facing.tile === 3) && isFacingDistance1(facing)) {
+      var vX = 10, vY = 10, vW = 640, vH = 480;
+      if (cx >= vX && cx <= vX+vW && cy >= vY && cy <= vY+vH) {
+        handleUseKey();
+      }
+    }
+  }
+});
+
+canvas.addEventListener('mouseup', function(e) {
+  mouseDown = false;
+  var rect = canvas.getBoundingClientRect();
+  var cx = (e.clientX - rect.left) * (W / rect.width);
+  var cy = (e.clientY - rect.top) * (H / rect.height);
+
+  // Inventory drag end
+  if (state === GameState.INVENTORY && dragState.active) {
+    handleInventoryDrop(cx, cy);
+    return;
+  }
+
+  // Lever release
+  if (leverDragState.active) {
+    var dragDist = leverDragState.currentY - leverDragState.startY;
+    if (dragDist >= 60) {
+      // Successfully pulled!
+      leverState.pulled = true;
+      secretPassageOpen = true;
+      // Open secret passage - change wall at (3,0) row 0 to open, but let's change (1,3) wall
+      // Actually let's open the wall between (0,3) or make the map change meaningful
+      // We'll change tile at row 2 col 3 (the wall) to open
+      if (dungeonMap[2][3] === 1) dungeonMap[2][3] = 0;
+      playLeverSound();
+      showNotification('The lever clicks! A secret passage grinds open!', '#c8a840', 180);
+    } else {
+      playClank();
+      showNotification('The lever springs back. Pull harder!', '#6a6a7a');
+    }
+    leverDragState.active = false;
+  }
+
+  // Push stone release
+  if (pushStoneState.holding) {
+    pushStoneState.holding = false;
+  }
+});
+
+function isFacingDistance1(facing) {
+  var fx = player.x + DIR_DX[player.dir];
+  var fy = player.y + DIR_DY[player.dir];
+  return fx === facing.x && fy === facing.y;
+}
+
+canvas.addEventListener('click', function(e) {
+  initAudio();
+  var rect = canvas.getBoundingClientRect();
+  var cx = (e.clientX - rect.left) * (W / rect.width);
+  var cy = (e.clientY - rect.top) * (H / rect.height);
+
+  if (state === GameState.TITLE) { enterTavern(); return; }
+  if (state === GameState.TAVERN) { handleTavernClick(cx, cy); return; }
+  if (state === GameState.COMBAT) { handleCombatClick(cx, cy); return; }
+  if (state === GameState.PUZZLE) { handlePuzzleClick(cx, cy); return; }
+  if (state === GameState.GAMEOVER || state === GameState.VICTORY) { resetGame(); enterTavern(); return; }
+  if (state === GameState.FRAGMENT) {
+    if (fragmentDiscover.timer > 120) { state = GameState.DUNGEON; startDungeonAmbient(); showNotification('The Fragment of Dawn pulses with ancient warmth...', '#c8a840', 180); }
+    return;
+  }
+  if (state === GameState.JOURNEY) {
+    if (journey.ready) {
+      var ftx = W/2-170, fty = 370;
+      if (cx >= ftx && cx <= ftx+150 && cy >= fty && cy <= fty+50) { startDungeon(); return; }
+    }
+    return;
+  }
+});
+
+// Right-click for using items in inventory
+canvas.addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+  if (state === GameState.INVENTORY) {
+    var rect = canvas.getBoundingClientRect();
+    var cx = (e.clientX - rect.left) * (W / rect.width);
+    var cy = (e.clientY - rect.top) * (H / rect.height);
+    handleInventoryRightClick(cx, cy);
+  }
+});
+
+function handleInventoryMouseDown(cx, cy, button) {
+  if (button !== 0) return; // Left click only for drag
+
+  var gridX = 500, gridY = 60;
+  var cellSize = SLOT_SIZE + SLOT_PAD*2;
+  var silX = 80+140, silY = 60+230;
+
+  // Check backpack slots
+  for (var row = 0; row < BACKPACK_ROWS; row++) {
+    for (var col = 0; col < BACKPACK_COLS; col++) {
+      var idx = row*BACKPACK_COLS+col;
+      var sx = gridX + col*cellSize;
+      var sy = gridY + 24 + row*cellSize;
+      if (cx >= sx && cx <= sx+cellSize && cy >= sy && cy <= sy+cellSize) {
+        if (inventory.backpack[idx]) {
+          dragState.active = true;
+          dragState.item = inventory.backpack[idx];
+          dragState.sourceSlot = { type: 'backpack', index: idx };
+          dragState.mouseX = cx;
+          dragState.mouseY = cy;
+          return;
+        }
+      }
+    }
+  }
+
+  // Check equipment slots
+  var eqSlots = [
+    { name: 'head', x: silX-25, y: silY-170, w: 50, h: 50 },
+    { name: 'chest', x: silX-25, y: silY-105, w: 50, h: 50 },
+    { name: 'left_hand', x: silX-90, y: silY-105, w: 50, h: 50 },
+    { name: 'right_hand', x: silX+40, y: silY-105, w: 50, h: 50 },
+    { name: 'legs', x: silX-25, y: silY-40, w: 50, h: 50 },
+    { name: 'feet', x: silX-25, y: silY+20, w: 50, h: 50 }
+  ];
+
+  for (var i = 0; i < eqSlots.length; i++) {
+    var slot = eqSlots[i];
+    if (cx >= slot.x && cx <= slot.x+slot.w && cy >= slot.y && cy <= slot.y+slot.h) {
+      if (inventory.equipment[slot.name]) {
+        dragState.active = true;
+        dragState.item = inventory.equipment[slot.name];
+        dragState.sourceSlot = { type: 'equipment', slot: slot.name };
+        dragState.mouseX = cx;
+        dragState.mouseY = cy;
+        return;
+      }
+    }
+  }
+}
+
+function handleInventoryDrop(cx, cy) {
+  if (!dragState.active || !dragState.item) { dragState.active = false; return; }
+
+  var gridX = 500, gridY = 60;
+  var cellSize = SLOT_SIZE + SLOT_PAD*2;
+  var silX = 80+140, silY = 60+230;
+  var dropped = false;
+
+  // Check drop on equipment slots
+  var eqSlots = [
+    { name: 'head', x: silX-25, y: silY-170, w: 50, h: 50 },
+    { name: 'chest', x: silX-25, y: silY-105, w: 50, h: 50 },
+    { name: 'left_hand', x: silX-90, y: silY-105, w: 50, h: 50 },
+    { name: 'right_hand', x: silX+40, y: silY-105, w: 50, h: 50 },
+    { name: 'legs', x: silX-25, y: silY-40, w: 50, h: 50 },
+    { name: 'feet', x: silX-25, y: silY+20, w: 50, h: 50 }
+  ];
+
+  for (var i = 0; i < eqSlots.length; i++) {
+    var slot = eqSlots[i];
+    if (cx >= slot.x && cx <= slot.x+slot.w && cy >= slot.y && cy <= slot.y+slot.h) {
+      // Allow equip if: item.slot matches the slot name, OR item can go in hand slots (keys, torches)
+      var canEquip = (dragState.item.slot === slot.name);
+      // Keys and consumables can be held in either hand
+      if (!canEquip && (slot.name === 'left_hand' || slot.name === 'right_hand')) {
+        if (dragState.item.type === 'key' || dragState.item.type === 'consumable' || dragState.item.type === 'scroll') {
+          canEquip = true;
+        }
+      }
+      if (canEquip) {
+        // Equip the item
+        var existing = inventory.equipment[slot.name];
+        // Remove from source
+        if (dragState.sourceSlot.type === 'backpack') {
+          inventory.backpack[dragState.sourceSlot.index] = existing; // swap
+        } else if (dragState.sourceSlot.type === 'equipment') {
+          inventory.equipment[dragState.sourceSlot.slot] = existing;
+        }
+        inventory.equipment[slot.name] = dragState.item;
+        dropped = true;
+        playItemPickup();
+      }
+      break;
+    }
+  }
+
+  // Check drop on backpack slots
+  if (!dropped) {
+    for (var row = 0; row < BACKPACK_ROWS; row++) {
+      for (var col = 0; col < BACKPACK_COLS; col++) {
+        var idx = row*BACKPACK_COLS+col;
+        var sx = gridX + col*cellSize;
+        var sy = gridY + 24 + row*cellSize;
+        if (cx >= sx && cx <= sx+cellSize && cy >= sy && cy <= sy+cellSize) {
+          // Swap or place
+          var existing2 = inventory.backpack[idx];
+          if (dragState.sourceSlot.type === 'backpack') {
+            inventory.backpack[dragState.sourceSlot.index] = existing2;
+          } else if (dragState.sourceSlot.type === 'equipment') {
+            inventory.equipment[dragState.sourceSlot.slot] = existing2;
+          }
+          inventory.backpack[idx] = dragState.item;
+          dropped = true;
+          playItemPickup();
+          break;
+        }
+      }
+      if (dropped) break;
+    }
+  }
+
+  // If not dropped on valid target, return to source (no-op since we haven't removed yet)
+  // Actually we need to handle the case where it wasn't dropped - item stays where it was
+  if (!dropped) {
+    // Item returns to source - nothing to do since we only visually removed it
+  }
+
+  dragState.active = false;
+  dragState.item = null;
+  dragState.sourceSlot = null;
+}
+
+function handleInventoryRightClick(cx, cy) {
+  var gridX = 500, gridY = 60;
+  var cellSize = SLOT_SIZE + SLOT_PAD*2;
+
+  // Check backpack slots for right-click use
+  for (var row = 0; row < BACKPACK_ROWS; row++) {
+    for (var col = 0; col < BACKPACK_COLS; col++) {
+      var idx = row*BACKPACK_COLS+col;
+      var sx = gridX + col*cellSize;
+      var sy = gridY + 24 + row*cellSize;
+      if (cx >= sx && cx <= sx+cellSize && cy >= sy && cy <= sy+cellSize) {
+        var item = inventory.backpack[idx];
+        if (item && item.type === 'consumable') {
+          if (useConsumable(item)) {
+            if (item.count > 1) { item.count--; }
+            else { inventory.backpack[idx] = null; }
+            playItemPickup();
+          }
+          return;
+        }
+        // Try equipping on right-click
+        if (item && item.slot) {
+          var existing = inventory.equipment[item.slot];
+          inventory.equipment[item.slot] = item;
+          inventory.backpack[idx] = existing;
+          playItemPickup();
+          showNotification('Equipped '+item.name, '#c8a840');
+          return;
+        }
+      }
+    }
+  }
+}
+
+function handleChestClick(facing) {
+  var key = facing.x+','+facing.y;
+  if (chestOpened[key]) return;
+  chestOpened[key] = true;
+  playChestOpen();
+
+  // Give treasure
+  if (!player.hasAncientScroll) {
+    player.hasAncientScroll = true;
+    player.gold += 50;
+    player.secretsFound++;
+  }
+
+  // Add fire scroll to backpack
+  var scroll = createItem('fire_scroll');
+  if (scroll) {
+    if (addToBackpack(scroll)) {
+      showNotification('Chest opened! Found Fire Scroll + 50 gold!', '#c8a840', 180);
+    } else {
+      showNotification('Chest opened! +50 gold. Pack full - Fire Scroll lost!', '#c85050', 180);
+    }
+  }
+  dungeonMap[facing.y][facing.x] = 0;
+}
+
+// ============================================================
+// KEYBOARD INPUT
+// ============================================================
+function handleTavernClick(cx, cy) {
+  if (tavern.dialogueActive) {
+    var npc = tavernNpcs.find(function(n) { return n.name === tavern.dialogueSpeaker; });
+    if (npc) {
+      var lines = (tavern._useVeteran && npc.veteranDialogue) ? npc.veteranDialogue : npc.dialogue;
+      npc.dialogueIndex++;
+      if (npc.dialogueIndex >= lines.length) { npc.dialogueIndex = 0; tavern.dialogueActive = false; }
+      else {
+        var text = lines[npc.dialogueIndex];
+        text = text.replace('{title}', getReputationTitle(loadReputation()));
+        tavern.dialogueText = text;
+      }
+    } else { tavern.dialogueActive = false; }
+    return;
+  }
+  if (tavern.noticeBoard) {
+    if (tavern.hoveredDungeon === 0) {
+      tavern.noticeBoard = false; state = GameState.JOURNEY;
+      journey.timer = 0; journey.ready = false;
+      setTimeout(function() { journey.ready = true; }, 1500);
+      return;
+    }
+    if (cx < 150 || cx > W-150 || cy < 60 || cy > H-60) { tavern.noticeBoard = false; return; }
+    return;
+  }
+  if (tavern.hoveredNpc >= 0) {
+    var npc = tavernNpcs[tavern.hoveredNpc];
+    npc.dialogueIndex = 0; tavern.dialogueActive = true; tavern.dialogueSpeaker = npc.name;
+    var npcRep = loadReputation();
+    var useVeteran = npcRep.totalRuns >= 3 && npc.veteranDialogue;
+    var lines = useVeteran ? npc.veteranDialogue : npc.dialogue;
+    var text = lines[0];
+    if (useVeteran) text = text.replace('{title}', getReputationTitle(npcRep));
+    tavern.dialogueText = text; tavern._useVeteran = useVeteran;
+    return;
+  }
+  if (cx >= 770 && cx <= 890 && cy >= 60 && cy <= 200) {
+    tavern.noticeBoard = true; tavern.hoveredDungeon = -1; return;
+  }
+}
+
+function handleCombatClick(cx, cy) {
+  if (!combat.playerTurn || combat.animTimer > 0) return;
+  var actions = ['attack', 'fire', 'ice', 'stone', 'flee'];
+  for (var i = 0; i < 5; i++) {
+    var bx = 15+i*188, by = 540;
+    if (cx >= bx && cx <= bx+178 && cy >= by && cy <= by+60) { executeCombatAction(actions[i]); return; }
+  }
+}
+
+function handlePuzzleClick(cx, cy) {
+  var spellNames = ['fire', 'ice', 'stone'];
+  for (var i = 0; i < 3; i++) {
+    var bx = W/2-270+i*190, by = 170;
+    if (cx >= bx && cx <= bx+160 && cy >= by && cy <= by+120) { togglePuzzleSpell(spellNames[i]); return; }
+  }
+  if (puzzleState.selectedSpells.length === 2) {
+    var cbx = W/2-80, cby = 320;
+    if (cx >= cbx && cx <= cbx+160 && cy >= cby && cy <= cby+45) { attemptPuzzleCast(); return; }
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  initAudio();
+  keysDown[e.key] = true;
+
+  if (e.key === 'm' || e.key === 'M') { toggleMute(); return; }
+  if (state === GameState.TITLE) { enterTavern(); return; }
+  if (state === GameState.GAMEOVER || state === GameState.VICTORY) { resetGame(); enterTavern(); return; }
+
+  if (state === GameState.FRAGMENT) {
+    if (fragmentDiscover.timer > 120) {
+      state = GameState.DUNGEON; startDungeonAmbient();
+      showNotification('The Fragment of Dawn pulses with ancient warmth...', '#c8a840', 180);
+    }
+    return;
+  }
+
+  if (state === GameState.JOURNEY) {
+    if (e.key === 'Escape') { enterTavern(); return; }
+    if (journey.ready && (e.key === 'Enter' || e.key === ' ')) { startDungeon(); return; }
+    return;
+  }
+
+  if (state === GameState.INVENTORY) {
+    if (e.key === 'i' || e.key === 'I' || e.key === 'Escape') {
+      state = GameState.DUNGEON;
+      dragState.active = false;
+    }
+    return;
+  }
+
+  if (state === GameState.TAVERN) {
+    if (tavern.dialogueActive && (e.key === 'Enter' || e.key === ' ')) {
+      var npc = tavernNpcs.find(function(n) { return n.name === tavern.dialogueSpeaker; });
+      if (npc) {
+        var lines = (tavern._useVeteran && npc.veteranDialogue) ? npc.veteranDialogue : npc.dialogue;
+        npc.dialogueIndex++;
+        if (npc.dialogueIndex >= lines.length) { npc.dialogueIndex = 0; tavern.dialogueActive = false; }
+        else {
+          var text = lines[npc.dialogueIndex];
+          text = text.replace('{title}', getReputationTitle(loadReputation()));
+          tavern.dialogueText = text;
+        }
+      } else { tavern.dialogueActive = false; }
+      return;
+    }
+    if (tavern.noticeBoard && e.key === 'Escape') { tavern.noticeBoard = false; return; }
+    return;
+  }
+
+  if (state === GameState.DUNGEON) {
+    handleDungeonInput(e.key);
+    return;
+  }
+
+  if (state === GameState.COMBAT) {
+    if (e.key === '1') executeCombatAction('attack');
+    if (e.key === '2') executeCombatAction('fire');
+    if (e.key === '3') executeCombatAction('ice');
+    if (e.key === '4') executeCombatAction('stone');
+    if (e.key === '5') executeCombatAction('flee');
+    return;
+  }
+
+  if (state === GameState.PUZZLE) {
+    if (e.key === '1') togglePuzzleSpell('fire');
+    if (e.key === '2') togglePuzzleSpell('ice');
+    if (e.key === '3') togglePuzzleSpell('stone');
+    if (e.key === 'Enter' || e.key === ' ') attemptPuzzleCast();
+    if (e.key === 'Escape') { state = GameState.DUNGEON; }
+    return;
+  }
+});
+
+document.addEventListener('keyup', function(e) { keysDown[e.key] = false; });
+
+function handleDungeonInput(key) {
+  // Close legend on Escape or any movement key
+  if (showLegend && key !== 'h' && key !== 'H' && key !== '?') {
+    showLegend = false;
+    if (key === 'Escape') return;
+  }
+  if (key === 'ArrowUp' || key === 'w' || key === 'W') { moveForward(); }
+  else if (key === 'ArrowDown' || key === 's' || key === 'S') { moveBackward(); }
+  else if (key === 'ArrowLeft' || key === 'a' || key === 'A') { player.dir = (player.dir+3)%4; playFootstep(); }
+  else if (key === 'ArrowRight' || key === 'd' || key === 'D') { player.dir = (player.dir+1)%4; playFootstep(); }
+  else if (key === 'i' || key === 'I') {
+    state = GameState.INVENTORY;
+  }
+  else if (key === 'u' || key === 'U') {
+    // Use key on facing door
+    handleUseKey();
+  }
+  else if (key === 'h' || key === 'H' || key === '?') {
+    showLegend = !showLegend;
+    return;
+  }
+  else if (key === 'p' || key === 'P') {
+    var tile = getTile(player.x, player.y);
+    if (tile === 7 || isAdjacentToLockedDoor()) {
+      if (doorStates['6,3'] === false) { showNotification('The sealed door is already open.', '#6a6a7a'); }
+      else { state = GameState.PUZZLE; puzzleState.selectedSpells = []; puzzleState.message = ''; puzzleState.msgTimer = 0; }
+    } else { showNotification('There is nothing to cast upon here.', '#6a6a7a'); }
+  }
+}
+
+function handleUseKey() {
+  var facing = getFacingTile();
+  // Regular door - needs iron key
+  if (facing.tile === 2 && doorStates['4,2'] === false) {
+    if (hasItemInInventory('iron_key')) {
+      removeItemById('iron_key');
+      doorStates['4,2'] = true;
+      playDoorOpen();
+      showNotification('Used Iron Key. The door creaks open...', '#c8a840');
+    } else {
+      showNotification('This door is locked. You need a key.', '#c85050');
+    }
+    return;
+  }
+  // Locked door - needs gold key
+  if (facing.tile === 3 && doorStates['6,3'] === true) {
+    if (hasItemInInventory('gold_key')) {
+      removeItemById('gold_key');
+      doorStates['6,3'] = false;
+      playDoorOpen();
+      player.secretsFound++;
+      showNotification('Used Gold Key! The sealed door opens!', '#c8a840', 180);
+    } else {
+      showNotification('A magically sealed door. You need a special key, or try the spell combo.', '#8a5050');
+    }
+    return;
+  }
+  // Quick-use first consumable
+  for (var i = 0; i < BACKPACK_SIZE; i++) {
+    var item = inventory.backpack[i];
+    if (item && item.type === 'consumable') {
+      if (useConsumable(item)) {
+        if (item.count > 1) item.count--;
+        else inventory.backpack[i] = null;
+        playItemPickup();
+      }
+      return;
+    }
+  }
+  showNotification('Nothing to use here.', '#6a6a7a');
+}
+
+function isAdjacentToLockedDoor() {
+  for (var d = 0; d < 4; d++) {
+    if (getTile(player.x+DIR_DX[d], player.y+DIR_DY[d]) === 3) return true;
+  }
+  return false;
+}
+
+function moveForward() {
+  var nx = player.x + DIR_DX[player.dir];
+  var ny = player.y + DIR_DY[player.dir];
+  var tile = getTile(nx, ny);
+
+  if (tile === 2 && doorStates['4,2'] === false) {
+    if (hasItemInInventory('iron_key')) {
+      showNotification('Press [U] to use your Iron Key on this door.', '#c8a840');
+    } else {
+      showNotification('A locked door. You need a key.', '#8a5050');
+    }
+    return;
+  }
+  if (tile === 3 && doorStates['6,3'] === true) {
+    if (hasItemInInventory('gold_key')) {
+      showNotification('Press [U] to use your Gold Key, or [P] for spell combo.', '#c8a840');
+    } else {
+      showNotification('A magically sealed door. Look for clues or a special key.', '#8a5050');
+    }
+    return;
+  }
+  if (isWall(nx, ny)) { showNotification('A solid wall blocks your path.', '#5a5a6a'); return; }
+
+  player.x = nx; player.y = ny;
+  explored[ny][nx] = true;
+  playFootstep();
+  player.torch = Math.max(0, player.torch - 0.4);
+
+  // Food & water depletion per step
+  player.stepCount++;
+  player.food = Math.max(0, player.food - 0.3);
+  player.water = Math.max(0, player.water - 0.4);
+
+  // Starvation damage
+  if (player.food <= 0 && player.stepCount % 3 === 0) {
+    player.hp = Math.max(1, player.hp - 1);
+    if (player.stepCount % 9 === 0) showNotification('Starving! Eat something!', '#c86030');
+  }
+  // Dehydration warning
+  if (player.water <= 0 && player.stepCount % 12 === 0) {
+    showNotification('Dehydrated! Mana will not regenerate!', '#4090c8');
+  }
+
+  checkTileEvent();
+}
+
+function moveBackward() {
+  var backDir = (player.dir+2)%4;
+  var nx = player.x+DIR_DX[backDir], ny = player.y+DIR_DY[backDir];
+  if (isWall(nx, ny)) return;
+  player.x = nx; player.y = ny;
+  explored[ny][nx] = true; playFootstep();
+  player.torch = Math.max(0, player.torch - 0.4);
+  player.stepCount++;
+  player.food = Math.max(0, player.food - 0.3);
+  player.water = Math.max(0, player.water - 0.4);
+}
+
+function checkTileEvent() {
+  var key = player.x+','+player.y;
+  var tile = getTile(player.x, player.y);
+  if (tile === 4 && enemies[key]) { startCombat(enemies[key], key); return; }
+  if (tile === 5) {
+    // Chest tile - show prompt, don't auto-open
+    // Auto-open is handled by click
+  }
+  if (tile === 6) {
+    if (!player.hasHeartOfDungeon) {
+      player.hasHeartOfDungeon = true; player.gold += 100;
+      playTreasure(); playVictory();
+      dungeonMap[player.y][player.x] = 0;
+      setTimeout(function() { state = GameState.VICTORY; stopAmbient(); }, 1000);
+    }
+  }
+  if (tile === 9) {
+    if (!player.hasFragment) {
+      player.hasFragment = true; player.secretsFound++;
+      dungeonMap[player.y][player.x] = 0;
+      playFragmentFanfare();
+      state = GameState.FRAGMENT; fragmentDiscover.timer = 0; fragmentDiscover.glowPulse = 0;
+      stopAmbient();
+    }
+  }
+  if (tile === 7) { showNotification('You see markings on the wall...', '#c8a840'); }
+  // Hidden alcove loot
+  if (hiddenAlcoveOpen && !hiddenAlcoveLooted && player.x === 4 && player.y === 3) {
+    hiddenAlcoveLooted = true;
+    var bread = createItem('bread', 1);
+    var water = createItem('water_flask', 1);
+    addToBackpack(bread); addToBackpack(water);
+    showNotification('Found hidden supplies! +1 Bread, +1 Water Flask', '#c8a840', 180);
+    playTreasure();
+  }
+}
+
+function startCombat(enemy, pos) {
+  state = GameState.COMBAT;
+  combat.enemy = {};
+  for (var k in enemy) combat.enemy[k] = enemy[k];
+  if (enemy.drops) combat.enemy.drops = enemy.drops.slice();
+  combat.enemyPos = pos;
+  combat.log = [{ text: 'A '+enemy.name+' emerges from the shadows!', color: '#c85050' }];
+  combat.playerTurn = true; combat.animTimer = 0; combat.shakeTimer = 0;
+  startCombatMusic(); playEnemySound(enemy.type);
+}
+
+// ============================================================
+// GAME FLOW
+// ============================================================
+function enterTavern() {
+  state = GameState.TAVERN;
+  tavern.dialogueActive = false; tavern.noticeBoard = false; tavern.hoveredNpc = -1;
+  startTavernMusic();
+}
+
+function startDungeon() {
+  state = GameState.DUNGEON;
+  tavern.noticeBoard = false;
+  resetExplored(); resetDoors(); resetEnemies();
+
+  // Reset dungeon map from original
+  for (var y = 0; y < 8; y++) {
+    for (var x = 0; x < 8; x++) dungeonMap[y][x] = dungeonMapOriginal[y][x];
+  }
+  // Place fragment
+  dungeonMap[6][5] = 9;
+
+  // Reset interactive states
+  leverState = { pulled: false };
+  pushStoneState = { pushed: false, holdStart: 0, holding: false };
+  secretPassageOpen = false;
+  hiddenAlcoveOpen = false;
+  hiddenAlcoveLooted = false;
+  chestOpened = {};
+  sconces = {};
+  leverDragState = { active: false, startY: 0, currentY: 0 };
+
+  player.x = 1; player.y = 1; player.dir = 2;
+  player.torch = 100;
+  player.food = 100; player.water = 100;
+  player.hasFragment = false;
+  player.stepCount = 0;
+  explored[1][1] = true;
+
+  // Initialize starting inventory
+  initStartingInventory();
+
+  startDungeonAmbient();
+  showNotification('You descend into The Whispering Crypts...', '#8a8aaa', 180);
+}
+
+function resetGame() {
+  player.hp = player.maxHp; player.mana = player.maxMana;
+  player.torch = player.maxTorch;
+  player.food = player.maxFood; player.water = player.maxWater;
+  player.gold = 0; player.xp = 0;
+  player.hasAncientScroll = false; player.hasHeartOfDungeon = false;
+  player.hasFragment = false;
+  player.enemiesSlain = 0; player.secretsFound = 0;
+  player.slainTypes = {}; player._runCompleted = false;
+  player.stepCount = 0;
+  tavernNpcs.forEach(function(n) { n.dialogueIndex = 0; });
+  dragState = { active: false, item: null, sourceSlot: null, mouseX: 0, mouseY: 0 };
+}
+
+// ============================================================
+// INTERACTION PROMPT SYSTEM
+// ============================================================
+function updateInteractionPrompt() {
+  interactionPrompt = '';
+  if (state !== GameState.DUNGEON) return;
+
+  var facing = getFacingTile();
+  var dist = Math.abs(facing.x - player.x) + Math.abs(facing.y - player.y);
+  if (dist !== 1) return;
+
+  switch(facing.tile) {
+    case 2:
+      if (doorStates['4,2'] === false) {
+        if (hasItemInInventory('iron_key')) interactionPrompt = 'Press [U] to use Iron Key, or [I] for inventory';
+        else interactionPrompt = 'This door is locked. You need a key.';
+      }
+      break;
+    case 3:
+      if (doorStates['6,3'] === true) {
+        if (hasItemInInventory('gold_key')) interactionPrompt = 'Press [U] to use Gold Key, or [P] for spell combo';
+        else interactionPrompt = 'Sealed door. Find a key or use spell combo [P].';
+      }
+      break;
+    case 10:
+      if (!leverState.pulled) interactionPrompt = 'Click and drag lever down to pull';
+      else interactionPrompt = 'Lever has been pulled.';
+      break;
+    case 11:
+      if (!pushStoneState.pushed) interactionPrompt = 'Click and hold to push stone (1.5s)';
+      else interactionPrompt = 'The stone has been pushed inward.';
+      break;
+    case 5:
+      var key = facing.x+','+facing.y;
+      if (!chestOpened[key]) interactionPrompt = 'Click to open chest';
+      break;
+  }
+}
+
+// ============================================================
+// HEARTBEAT PROXIMITY
+// ============================================================
+var heartbeatTimer = 0;
+function checkDangerProximity() {
+  if (state !== GameState.DUNGEON) return;
+  for (var pos in enemies) {
+    var parts = pos.split(',');
+    var ex = parseInt(parts[0]), ey = parseInt(parts[1]);
+    var dist = Math.abs(ex-player.x)+Math.abs(ey-player.y);
+    if (dist <= 2) {
+      heartbeatTimer++;
+      if (heartbeatTimer % (dist === 1 ? 20 : 35) === 0) {
+        if (audioCtx) { playNote(55, 0.15, 'sine', 0.06, 0); playNote(55, 0.1, 'sine', 0.04, 0.2); }
+      }
+      return;
+    }
+  }
+  heartbeatTimer = 0;
+}
+
+// ============================================================
+// PUSH STONE UPDATE (called in game loop)
+// ============================================================
+function updatePushStone() {
+  if (!pushStoneState.holding || pushStoneState.pushed) return;
+  var elapsed = (Date.now() - pushStoneState.holdStart) / 1000;
+  if (elapsed >= 1.5) {
+    pushStoneState.pushed = true;
+    pushStoneState.holding = false;
+    hiddenAlcoveOpen = true;
+    // Change tile to open
+    if (dungeonMap[3][4] === 11) dungeonMap[3][4] = 0;
+    playStoneGrind();
+    showNotification('The stone grinds inward revealing a hidden alcove!', '#c8a840', 180);
+  }
+}
+
+// ============================================================
+// PUSH STONE PROGRESS BAR (drawn in dungeon view)
+// ============================================================
+function drawPushStoneProgress() {
+  if (!pushStoneState.holding || pushStoneState.pushed) return;
+  var elapsed = (Date.now() - pushStoneState.holdStart) / 1000;
+  var pct = Math.min(1, elapsed / 1.5);
+  var viewX = 10, viewY = 10, viewW = 640;
+  var barX = viewX + viewW/2 - 80, barY = viewY + 20;
+  drawPixelRect(barX, barY, 160, 20, '#0a0a14');
+  drawPixelRect(barX, barY, 160*pct, 20, '#c88020');
+  drawPixelBorder(barX, barY, 160, 20, '#c8a840', 2);
+  drawPixelText('PUSHING...', barX+80, barY+3, '#fff', 14, 'center');
+}
+
+// ============================================================
+// LEVER DRAG VISUAL (drawn in dungeon view)
+// ============================================================
+function drawLeverDragProgress() {
+  if (!leverDragState.active) return;
+  var dragDist = leverDragState.currentY - leverDragState.startY;
+  var pct = Math.min(1, Math.max(0, dragDist / 60));
+  var viewX = 10, viewY = 10, viewW = 640;
+  var barX = viewX + viewW/2 - 60, barY = viewY + 20;
+  drawPixelRect(barX, barY, 120, 20, '#0a0a14');
+  drawPixelRect(barX, barY, 120*pct, 20, pct >= 1 ? '#40c840' : '#c88020');
+  drawPixelBorder(barX, barY, 120, 20, '#c8a840', 2);
+  drawPixelText(pct >= 1 ? 'RELEASE!' : 'PULL DOWN...', barX+60, barY+3, '#fff', 12, 'center');
+}
+
+// ============================================================
+// KEYBOARD LEGEND OVERLAY
+// ============================================================
+function drawKeyboardLegend() {
+  if (!showLegend) return;
+  // Darken background
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.fillRect(0, 0, W, H);
+
+  var lx = 80, ly = 30, colW = 400;
+
+  drawPixelText('KEYBOARD CONTROLS', W/2, ly, '#c8a840', 22, 'center');
+  drawPixelText('Press [H] or [?] to close', W/2, ly+26, '#6a6a7a', 12, 'center');
+
+  var y = ly + 60;
+  var lineH = 22;
+
+  // Column 1 — Movement & Dungeon
+  drawPixelText('-- DUNGEON --', lx+100, y, '#c8a840', 14, 'center');
+  y += lineH + 4;
+  var dungeonKeys = [
+    ['W / Arrow Up', 'Move forward'],
+    ['S / Arrow Down', 'Move backward'],
+    ['A / Arrow Left', 'Turn left'],
+    ['D / Arrow Right', 'Turn right'],
+    ['U', 'Use key on door / Use item'],
+    ['P', 'Cast spell combo (near sealed door)'],
+    ['I', 'Open inventory'],
+    ['H / ?', 'Toggle this legend'],
+    ['M', 'Toggle sound on/off']
+  ];
+  for (var i = 0; i < dungeonKeys.length; i++) {
+    drawPixelText('['+dungeonKeys[i][0]+']', lx, y, '#e0d090', 12, 'left');
+    drawPixelText(dungeonKeys[i][1], lx+160, y, '#aaaacc', 12, 'left');
+    y += lineH;
+  }
+
+  y += 10;
+  drawPixelText('-- MOUSE (DUNGEON) --', lx+100, y, '#c8a840', 14, 'center');
+  y += lineH + 4;
+  var mouseKeys = [
+    ['Click door', 'Use key on facing door'],
+    ['Click+drag lever', 'Pull lever down'],
+    ['Click+hold stone', 'Push stone (hold 1.5s)'],
+    ['Click chest', 'Open chest']
+  ];
+  for (var i = 0; i < mouseKeys.length; i++) {
+    drawPixelText(mouseKeys[i][0], lx, y, '#e0d090', 12, 'left');
+    drawPixelText(mouseKeys[i][1], lx+160, y, '#aaaacc', 12, 'left');
+    y += lineH;
+  }
+
+  // Column 2 — Combat, Puzzle, Inventory, Tavern
+  var y2 = ly + 60;
+  var rx = lx + colW + 40;
+
+  drawPixelText('-- COMBAT --', rx+100, y2, '#c85050', 14, 'center');
+  y2 += lineH + 4;
+  var combatKeys = [
+    ['1', 'Melee attack'],
+    ['2', 'Fire spell'],
+    ['3', 'Ice spell'],
+    ['4', 'Stone spell'],
+    ['5', 'Flee']
+  ];
+  for (var i = 0; i < combatKeys.length; i++) {
+    drawPixelText('['+combatKeys[i][0]+']', rx, y2, '#e0d090', 12, 'left');
+    drawPixelText(combatKeys[i][1], rx+160, y2, '#aaaacc', 12, 'left');
+    y2 += lineH;
+  }
+
+  y2 += 10;
+  drawPixelText('-- SPELL PUZZLE --', rx+100, y2, '#5090c8', 14, 'center');
+  y2 += lineH + 4;
+  var puzzleKeys = [
+    ['1 / 2 / 3', 'Toggle Fire / Ice / Stone'],
+    ['Enter / Space', 'Cast selected combo'],
+    ['Escape', 'Back to dungeon']
+  ];
+  for (var i = 0; i < puzzleKeys.length; i++) {
+    drawPixelText('['+puzzleKeys[i][0]+']', rx, y2, '#e0d090', 12, 'left');
+    drawPixelText(puzzleKeys[i][1], rx+160, y2, '#aaaacc', 12, 'left');
+    y2 += lineH;
+  }
+
+  y2 += 10;
+  drawPixelText('-- INVENTORY --', rx+100, y2, '#50c850', 14, 'center');
+  y2 += lineH + 4;
+  var invKeys = [
+    ['Left-drag', 'Move items between slots'],
+    ['Right-click', 'Use consumable item'],
+    ['I / Escape', 'Close inventory']
+  ];
+  for (var i = 0; i < invKeys.length; i++) {
+    drawPixelText(invKeys[i][0], rx, y2, '#e0d090', 12, 'left');
+    drawPixelText(invKeys[i][1], rx+160, y2, '#aaaacc', 12, 'left');
+    y2 += lineH;
+  }
+
+  y2 += 10;
+  drawPixelText('-- TAVERN --', rx+100, y2, '#c8a840', 14, 'center');
+  y2 += lineH + 4;
+  var tavernKeys = [
+    ['Click NPC', 'Talk to character'],
+    ['Enter / Space', 'Advance dialogue'],
+    ['Click Notice Board', 'Choose dungeon'],
+    ['Escape', 'Close notice board']
+  ];
+  for (var i = 0; i < tavernKeys.length; i++) {
+    drawPixelText(tavernKeys[i][0], rx, y2, '#e0d090', 12, 'left');
+    drawPixelText(tavernKeys[i][1], rx+160, y2, '#aaaacc', 12, 'left');
+    y2 += lineH;
+  }
+
+  // Border around the whole thing
+  drawPixelBorder(40, 15, W-80, H-30, '#c8a840', 2);
+}
+
+// ============================================================
+// MAIN GAME LOOP
+// ============================================================
+function gameLoop(timestamp) {
+  var dt = timestamp - lastTime;
+  lastTime = timestamp;
+  frameCount++;
+
+  if (state === GameState.DUNGEON) {
+    player.torch = Math.max(0, player.torch - 0.003);
+    checkDangerProximity();
+    updateInteractionPrompt();
+    updatePushStone();
+  }
+
+  if (combat.animTimer > 0) combat.animTimer--;
+
+  switch (state) {
+    case GameState.TITLE: drawTitleScreen(); break;
+    case GameState.TAVERN: drawTavern(); break;
+    case GameState.DUNGEON:
+      drawDungeon();
+      drawPushStoneProgress();
+      drawLeverDragProgress();
+      drawKeyboardLegend();
+      break;
+    case GameState.COMBAT: drawCombat(); break;
+    case GameState.PUZZLE: drawPuzzleScreen(); break;
+    case GameState.GAMEOVER: drawGameOver(); break;
+    case GameState.VICTORY: drawVictoryScreen(); break;
+    case GameState.FRAGMENT: drawFragmentScreen(); break;
+    case GameState.JOURNEY: drawJourneyScreen(); break;
+    case GameState.INVENTORY: drawInventoryScreen(); break;
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
