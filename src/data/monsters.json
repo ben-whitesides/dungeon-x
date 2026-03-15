@@ -1,0 +1,35 @@
+{
+  "shadow_lurker": {
+    "name": "Shadow Lurker",
+    "ac": 12,
+    "hp": "4d8+4",
+    "attack": "1d6+2",
+    "damageType": "slashing",
+    "xp": 100,
+    "sprite": "dcss-shadow-lurker",
+    "vulnerabilities": ["fire"],
+    "resistances": ["ice"]
+  },
+  "bone_revenant": {
+    "name": "Bone Revenant",
+    "ac": 16,
+    "hp": "6d10+12",
+    "attack": "1d10+4",
+    "damageType": "slashing",
+    "xp": 250,
+    "sprite": "dcss-bone-revenant",
+    "vulnerabilities": ["stone", "light"],
+    "resistances": ["fire"]
+  },
+  "frost_wraith": {
+    "name": "Frost Wraith",
+    "ac": 13,
+    "hp": "3d8+3",
+    "attack": "1d8+3",
+    "damageType": "cold",
+    "xp": 150,
+    "sprite": "dcss-frost-wraith",
+    "vulnerabilities": ["fire"],
+    "resistances": ["stone"]
+  }
+}
