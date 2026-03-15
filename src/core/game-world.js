@@ -1,4 +1,5 @@
 import { DIR, FOV_RADIUS } from './constants.js';
+import { EnergyScheduler } from './energy-scheduler.js';
 import { PartyManager } from '../party/party.js';
 import { CharacterRoster } from '../party/roster.js';
 import { EventBus } from './event-bus.js';
@@ -8,6 +9,7 @@ import { computeFOV } from '../fov/shadowcast.js';
 
 export class GameWorld {
   constructor(seed) {
+    this.scheduler = new EnergyScheduler();
     this.party = new PartyManager();
     this.roster = new CharacterRoster();
     this.rng = typeof seed === 'number' ? createPRNG(seed) : createDailyPRNG();
