@@ -9,6 +9,7 @@ export function createMonster(type) {
   if (!data) throw new Error(`Unknown monster type: ${type}`);
   
   const monster = {
+    type: 'monster',
     ...data,
     currentHP: calculateDamage(data.hp), // Roll HP
     energy: 0,

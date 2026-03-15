@@ -1,11 +1,9 @@
+import { AIDirector } from '../ai/ai-director.js';
+
 export class EnergyScheduler {
   constructor() {
     this.actors = new Map(); // id -> { actor, callback, threshold }
     this.aiDirector = new AIDirector();
-  }
-import { AIDirector } from '../ai/ai-director.js';
-  constructor() {
-    this.actors = new Map(); // id -> { actor, callback, threshold }
   }
   
   addActor(actor, onAct = null, threshold = 10) {
@@ -36,9 +34,6 @@ import { AIDirector } from '../ai/ai-director.js';
           const action = this.aiDirector.decideAction(actor, world.player, world);
           this.aiDirector.executeAction(action, actor, world);
         }
-        actor.energy -= threshold; // Reset energy after acting
-      }
-        if (onAct) onAct(actor);
         actor.energy -= threshold; // Reset energy after acting
       }
     }
