@@ -31,6 +31,64 @@ export class Character {
     this.currentMP = this.mp;
   }
   
+  equipItem(item) {
+    const slot = item.getSlot();
+    if (slot && this.equipment[slot] === null) {
+      this.equipment[slot] = item;
+      this.applyEquipmentStats();
+      return true;
+    }
+    return false;
+  }
+  
+  unequipItem(slot) {
+    if (this.equipment[slot]) {
+      const item = this.equipment[slot];
+      this.equipment[slot] = null;
+      this.applyEquipmentStats();
+      return item;
+    }
+    return null;
+  }
+  
+  getEquippedItem(slot) {
+    return this.equipment[slot];
+  }
+  
+  applyEquipmentStats() {
+    // Reset to base stats
+    const baseStats = CLASS_DATA[this.class];
+    this.stats = {
+      str: baseStats.str,
+      dex: baseStats.dex,
+      con: baseStats.con,
+      int: baseStats.int,
+      wis: baseStats.wis,
+      cha: baseStats.cha
+    };
+    
+    // Apply level-up bonuses
+    const levelUps = Math.floor(this.level / 4); // Every 4 levels
+    for (let i = 0; i < levelUps; i++) {
+      // Simple stat distribution - could be made configurable
+      this.stats.str += 1;
+    }
+    
+    // Apply equipment bonuses
+    Object.values(this.equipment).forEach(item => {
+      if (item && item.stats) {
+        Object.entries(item.stats).forEach(([stat, bonus]) => {
+          if (this.stats[stat] !== undefined) {
+            this.stats[stat] += bonus;
+          }
+        });
+      }
+    });
+    
+    // Recalculate derived stats
+    this.hp = this.calculateMaxHP();
+  }
+  
   getModifier(stat) {
     return Math.floor((this.stats[stat] - 10) / 2);
   }
@@ -42,7 +100,7 @@ export class Character {
   
   checkLevelUp() {
     const nextLevel = LEVEL_DATA[this.level];
-    if (this.xp >= nextLevel.xp) {
+    if (nextLevel && this.xp >= nextLevel.xp) {
       this.level++;
       this.applyLevelFeatures(nextLevel.features);
       this.hp = this.calculateMaxHP();

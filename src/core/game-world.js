@@ -1,4 +1,5 @@
 import { DIR, FOV_RADIUS } from './constants.js';
+import { Inventory } from '../items/inventory.js';
 import { SaveManager } from './save-manager.js';
 import { createMonster, getMonsterPool } from '../dungeon/monsters.js';
 import { StateStack } from '../ui/state-stack.js';
@@ -12,6 +13,7 @@ import { computeFOV } from '../fov/shadowcast.js';
 
 export class GameWorld {
   constructor(seed) {
+    this.inventory = new Inventory();
     this.saveManager = new SaveManager();
     this.stateStack = new StateStack();
     this.scheduler = new EnergyScheduler();

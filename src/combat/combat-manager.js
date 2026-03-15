@@ -1,4 +1,5 @@
 import { attackRoll, calculateDamage } from './damage-calc.js';
+import { getRandomLoot, createItem } from '../items/item-data.js';
 
 export class CombatManager {
   constructor() {
@@ -30,6 +31,41 @@ export class CombatManager {
     return { success: true, attack, damage };
   }
   
+  awardLootAndXP(world, floor) {
+    let totalXP = 0;
+    const loot = [];
+    
+    this.enemies.forEach(enemy => {
+      if (enemy.currentHP <= 0) {
+        totalXP += enemy.xp;
+        
+        // Chance to drop loot based on floor
+        const dropChance = Math.min(0.3 + (floor * 0.1), 0.8); // 30% + 10% per floor, max 80%
+        if (Math.random() < dropChance) {
+          const itemId = getRandomLoot(floor);
+          const item = createItem(itemId);
+          loot.push(item);
+        }
+      }
+    });
+    
+    // Distribute XP to party
+    const partySize = world.party.getMembers().length;
+    const xpPerMember = Math.floor(totalXP / partySize);
+    
+    world.party.getMembers().forEach(member => {
+      member.xp += xpPerMember;
+      member.checkLevelUp();
+    });
+    
+    // Add loot to inventory
+    loot.forEach(item => {
+      world.inventory.addItem(item);
+    });
+    
+    return { xp: totalXP, loot: loot.length };
+  }
+
   isCombatOver() {
     const enemiesAlive = this.enemies.some(e => e.currentHP > 0);
     return !enemiesAlive;
