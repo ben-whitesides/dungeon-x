@@ -1,4 +1,5 @@
 import { DIR, FOV_RADIUS } from './constants.js';
+import { CharacterRoster } from '../party/roster.js';
 import { EventBus } from './event-bus.js';
 import { createPRNG, createDailyPRNG } from './prng.js';
 import { generateDungeon } from '../dungeon/bsp-generator.js';
@@ -6,6 +7,7 @@ import { computeFOV } from '../fov/shadowcast.js';
 
 export class GameWorld {
   constructor(seed) {
+    this.roster = new CharacterRoster();
     this.rng = typeof seed === 'number' ? createPRNG(seed) : createDailyPRNG();
     this.events = new EventBus();
     this.tileMap = null;
@@ -23,9 +25,11 @@ export class GameWorld {
     this.player.facing = DIR.NORTH;
 
     this.recomputeFOV();
+    this.roster.load(); // Load saved characters
 
     this.events.on('playerMoved', () => {
       this.recomputeFOV();
+    this.roster.load(); // Load saved characters
       this.needsRender = true;
     });
     this.events.on('playerTurned', () => {
