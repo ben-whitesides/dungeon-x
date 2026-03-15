@@ -1,4 +1,6 @@
 import { DIR, FOV_RADIUS } from './constants.js';
+import { createMonster, getMonsterPool } from '../dungeon/monsters.js';
+import { StateStack } from '../ui/state-stack.js';
 import { EnergyScheduler } from './energy-scheduler.js';
 import { PartyManager } from '../party/party.js';
 import { CharacterRoster } from '../party/roster.js';
@@ -9,6 +11,7 @@ import { computeFOV } from '../fov/shadowcast.js';
 
 export class GameWorld {
   constructor(seed) {
+    this.stateStack = new StateStack();
     this.scheduler = new EnergyScheduler();
     this.party = new PartyManager();
     this.roster = new CharacterRoster();
@@ -29,10 +32,12 @@ export class GameWorld {
     this.player.facing = DIR.NORTH;
 
     this.recomputeFOV();
+    this.spawnMonsters();
     this.roster.load(); // Load saved characters
 
     this.events.on('playerMoved', () => {
       this.recomputeFOV();
+    this.spawnMonsters();
     this.roster.load(); // Load saved characters
       this.needsRender = true;
     });
@@ -45,6 +50,34 @@ export class GameWorld {
   }
 
   recomputeFOV() {
+    this.tileMap.fadeVisibility();
+    computeFOV(
+      this.player.x, this.player.y, FOV_RADIUS,
+      (x, y) => this.tileMap.isOpaque(x, y),
+      (x, y) => this.tileMap.setVisible(x, y)
+    );
+  }
+
+  spawnMonsters() {
+    const monsterTypes = getMonsterPool(this.floor);
+    const numMonsters = Math.min(monsterTypes.length, 3 + this.floor); // More monsters on deeper floors
+    
+    for (let i = 0; i < numMonsters; i++) {
+      const monsterType = monsterTypes[i % monsterTypes.length];
+      const monster = createMonster(monsterType);
+      
+      // Place in random room (not the starting room)
+      let room;
+      do {
+        room = this.tileMap.rooms[Math.floor(this.rng() * this.tileMap.rooms.length)];
+      } while (room === this.tileMap.rooms[0]); // Avoid starting room
+      
+      monster.x = room.cx;
+      monster.y = room.cy;
+      this.tileMap.addEntity(monster);
+    }
+  }
+}
     this.tileMap.fadeVisibility();
     computeFOV(
       this.player.x, this.player.y, FOV_RADIUS,

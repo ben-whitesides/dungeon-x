@@ -7,6 +7,7 @@ export class TileMap {
     this.tiles = new Uint8Array(width * height);
     this.tiles.fill(TILE.WALL);
     this.visibility = new Uint8Array(width * height);
+    this.entities = new Map(); // x,y -> entity
     this.rooms = [];
   }
 
@@ -44,5 +45,21 @@ export class TileMap {
     for (let i = 0; i < this.visibility.length; i++) {
       if (this.visibility[i] === 2) this.visibility[i] = 1;
     }
+  }
+
+  addEntity(entity) {
+    const key = `${entity.x},${entity.y}`;
+    this.entities.set(key, entity);
+  }
+
+  removeEntity(entity) {
+    const key = `${entity.x},${entity.y}`;
+    this.entities.delete(key);
+  }
+
+  getEntitiesAt(x, y) {
+    const key = `${x},${y}`;
+    const entity = this.entities.get(key);
+    return entity ? [entity] : [];
   }
 }
