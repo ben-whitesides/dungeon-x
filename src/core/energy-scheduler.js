@@ -1,6 +1,11 @@
 export class EnergyScheduler {
   constructor() {
     this.actors = new Map(); // id -> { actor, callback, threshold }
+    this.aiDirector = new AIDirector();
+  }
+import { AIDirector } from '../ai/ai-director.js';
+  constructor() {
+    this.actors = new Map(); // id -> { actor, callback, threshold }
   }
   
   addActor(actor, onAct = null, threshold = 10) {
@@ -19,11 +24,20 @@ export class EnergyScheduler {
     this.actors.delete(actorId);
   }
   
-  tick() {
+  tick(world) {
     for (const [id, { actor, onAct, threshold }] of this.actors) {
       actor.energy = (actor.energy || 0) + actor.speed;
       
       if (actor.energy >= threshold) {
+        if (onAct) {
+          onAct(actor);
+        } else if (actor.type === 'monster') {
+          // AI-controlled monster action
+          const action = this.aiDirector.decideAction(actor, world.player, world);
+          this.aiDirector.executeAction(action, actor, world);
+        }
+        actor.energy -= threshold; // Reset energy after acting
+      }
         if (onAct) onAct(actor);
         actor.energy -= threshold; // Reset energy after acting
       }
