@@ -34,13 +34,11 @@ export class GameWorld {
     this.player.facing = DIR.NORTH;
 
     this.recomputeFOV();
-    this.spawnMonsters();
-    this.roster.load(); // Load saved characters
+    // this.spawnMonsters();
+    // this.roster.load(); // Load saved characters
 
     this.events.on('playerMoved', () => {
       this.recomputeFOV();
-    this.spawnMonsters();
-    this.roster.load(); // Load saved characters
       this.needsRender = true;
     });
     this.events.on('playerTurned', () => {
@@ -80,6 +78,42 @@ export class GameWorld {
     }
   }
 
+  goToNextFloor() {
+    this.floor++;
+    console.log(`Descending to floor ${this.floor}`);
+    
+    // Generate new dungeon for this floor
+    this.tileMap = generateDungeon(this.rng);
+    
+    // Place player at stairs up
+    const startRoom = this.tileMap.rooms[0];
+    this.player.x = startRoom.cx;
+    this.player.y = startRoom.cy;
+    
+    this.recomputeFOV();
+    // this.spawnMonsters();
+    this.needsRender = true;
+  }
+
+  goToPreviousFloor() {
+    if (this.floor > 1) {
+      this.floor--;
+      console.log(`Ascending to floor ${this.floor}`);
+      
+      // Generate new dungeon for this floor (should be deterministic)
+      this.tileMap = generateDungeon(this.rng);
+      
+      // Place player at stairs down (last room)
+      const lastRoom = this.tileMap.rooms[this.tileMap.rooms.length - 1];
+      this.player.x = lastRoom.cx;
+      this.player.y = lastRoom.cy;
+      
+      this.recomputeFOV();
+      // this.spawnMonsters();
+      this.needsRender = true;
+    }
+  }
+
   enterDungeon() {
     // Create snapshot before entering
     this.saveManager.createSnapshot(this.party.getMembers());
@@ -96,32 +130,5 @@ export class GameWorld {
       this.saveManager.clearSnapshot();
       console.log('Dungeon completed - snapshot cleared');
     }
-  }
-}
-    const monsterTypes = getMonsterPool(this.floor);
-    const numMonsters = Math.min(monsterTypes.length, 3 + this.floor); // More monsters on deeper floors
-    
-    for (let i = 0; i < numMonsters; i++) {
-      const monsterType = monsterTypes[i % monsterTypes.length];
-      const monster = createMonster(monsterType);
-      
-      // Place in random room (not the starting room)
-      let room;
-      do {
-        room = this.tileMap.rooms[Math.floor(this.rng() * this.tileMap.rooms.length)];
-      } while (room === this.tileMap.rooms[0]); // Avoid starting room
-      
-      monster.x = room.cx;
-      monster.y = room.cy;
-      this.tileMap.addEntity(monster);
-    }
-  }
-}
-    this.tileMap.fadeVisibility();
-    computeFOV(
-      this.player.x, this.player.y, FOV_RADIUS,
-      (x, y) => this.tileMap.isOpaque(x, y),
-      (x, y) => this.tileMap.setVisible(x, y)
-    );
   }
 }

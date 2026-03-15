@@ -1,4 +1,5 @@
 import {
+import { InteractCommand } from './interact-command.js';
   MoveForwardCommand, MoveBackwardCommand,
   StrafeLeftCommand, StrafeRightCommand,
   TurnLeftCommand, TurnRightCommand
@@ -21,6 +22,7 @@ export class InputMapper {
       'KeyD':       () => new StrafeRightCommand(),
       'KeyQ':       () => new TurnLeftCommand(),
       'KeyE':       () => new TurnRightCommand(),
+      'Space':     () => new InteractCommand(),
     };
 
     this._onKeyDown = this._onKeyDown.bind(this);
