@@ -1,4 +1,5 @@
 import { CANVAS_WIDTH, CANVAS_HEIGHT, LAYERS } from './core/constants.js';
+import { UIRenderer } from './render/ui-renderer.js';
 import { GameWorld } from './core/game-world.js';
 import { loadAssets } from './render/asset-loader.js';
 import { SpriteAtlas } from './render/sprite-atlas.js';
@@ -34,6 +35,7 @@ async function boot() {
   const world = new GameWorld(42).init();
 
   const fpRenderer = new FirstPersonRenderer(atlas);
+  const uiRenderer = new UIRenderer();
   const minimapRenderer = new MinimapRenderer();
 
   const input = new InputMapper();
@@ -60,6 +62,8 @@ async function boot() {
       uiCtx.fillStyle = '#0f0';
       uiCtx.font = '14px monospace';
       const dirs = ['N', 'E', 'S', 'W'];
+      uiRenderer.renderPartyHUD(layers.ui, world.party.getMembers());
+
       uiCtx.fillText(
         `Floor ${world.floor} | (${world.player.x}, ${world.player.y}) Facing ${dirs[world.player.facing]}`,
         10, CANVAS_HEIGHT - 10
