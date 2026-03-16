@@ -8,6 +8,7 @@ export class TileMap {
     this.tiles.fill(TILE.WALL);
     this.visibility = new Uint8Array(width * height);
     this.entities = new Map(); // x,y -> entity
+    this.goblinDens = new Set(); // For goblin warrens boss mechanic
     this.rooms = [];
   }
 

@@ -1,6 +1,7 @@
 export class TavernState {
   constructor() {
-    this.mode = 'roster'; // roster, party_select, shop
+    this.mode = 'roster'; // roster, party_select, shop, dungeon_select
+    this.selectedDungeon = 0;
     this.selectedMerchantItem = 0;
     this.selectedPlayerItem = 0;
     this.selectedCharacter = 0;
@@ -104,6 +105,25 @@ export class TavernState {
       });
       
       ctx.fillText('B: Buy selected  V: Sell selected  ESC: Back', 20, ctx.canvas.height - 20);
+    }
+    
+    if (this.mode === 'dungeon_select') {
+      ctx.fillText('SELECT DUNGEON', 20, 50);
+      
+      const dungeons = [
+        { name: 'Whispering Crypts', desc: 'Ancient burial grounds haunted by undead', floors: 5 },
+        { name: 'Goblin Warrens', desc: 'Twisted tunnels ruled by goblin clans', floors: 3 }
+      ];
+      
+      dungeons.forEach((dungeon, i) => {
+        const y = 80 + i * 60;
+        const prefix = i === this.selectedDungeon ? '> ' : '  ';
+        ctx.fillText(prefix + dungeon.name, 20, y);
+        ctx.fillText('  ' + dungeon.desc, 20, y + 20);
+        ctx.fillText('  ' + dungeon.floors + ' floors', 20, y + 35);
+      });
+      
+      ctx.fillText('ENTER: Select Dungeon  ESC: Back', 20, ctx.canvas.height - 20);
     }
   }
 }

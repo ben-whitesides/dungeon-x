@@ -31,5 +31,61 @@
     "sprite": "dcss-frost-wraith",
     "vulnerabilities": ["fire"],
     "resistances": ["stone"]
+  },
+  "goblin_scrapper": {
+    "name": "Goblin Scrapper",
+    "ac": 13,
+    "hp": "2d6+2",
+    "attack": "1d6+1",
+    "damageType": "slashing",
+    "xp": 50,
+    "sprite": "dcss-goblin-scrapper",
+    "vulnerabilities": ["fire"],
+    "resistances": []
+  },
+  "goblin_archer": {
+    "name": "Goblin Archer",
+    "ac": 12,
+    "hp": "2d6+1",
+    "attack": "1d6+2",
+    "damageType": "piercing",
+    "xp": 65,
+    "sprite": "dcss-goblin-archer",
+    "vulnerabilities": ["fire"],
+    "resistances": []
+  },
+  "goblin_shaman": {
+    "name": "Goblin Shaman",
+    "ac": 11,
+    "hp": "2d6+0",
+    "attack": "1d4+0",
+    "damageType": "necrotic",
+    "xp": 100,
+    "sprite": "dcss-goblin-shaman",
+    "vulnerabilities": ["fire"],
+    "resistances": ["necrotic"]
+  },
+  "hobgoblin": {
+    "name": "Hobgoblin",
+    "ac": 15,
+    "hp": "3d8+6",
+    "attack": "1d8+2",
+    "damageType": "slashing",
+    "xp": 200,
+    "sprite": "dcss-hobgoblin",
+    "vulnerabilities": ["fire"],
+    "resistances": []
+  },
+  "gretchka_elder": {
+    "name": "Gretchka the Elder",
+    "ac": 16,
+    "hp": "12d10+36",
+    "attack": "2d6+4",
+    "damageType": "slashing",
+    "xp": 1500,
+    "sprite": "dcss-gretchka-elder",
+    "vulnerabilities": ["fire", "light"],
+    "resistances": ["necrotic"],
+    "special": "summons_goblins"
   }
 }

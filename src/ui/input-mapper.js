@@ -26,6 +26,7 @@ export class InputMapper {
       'KeyS':      () => ({ type: 'shop' }), // Enter shop from party select
       'KeyB':      () => ({ type: 'buy' }), // Buy item
       'KeyV':      () => ({ type: 'sell' }), // Sell item
+      'Enter':     () => ({ type: 'select_dungeon' }), // Select dungeon in dungeon_select mode
     };
 
     this._onKeyDown = this._onKeyDown.bind(this);

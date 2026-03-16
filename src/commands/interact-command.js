@@ -2,7 +2,13 @@ import { Command } from './command.js';
 import { TILE } from '../core/constants.js';
 
 export class InteractCommand extends Command {
+  constructor() {
+    super();
+    this.destroyedDen = null;
+  }
+}
   execute(world) {
+    this.destroyedDen = null;
     const [dx, dy] = [
       [0, -1], [1, 0], [0, 1], [-1, 0]
     ][world.player.facing];

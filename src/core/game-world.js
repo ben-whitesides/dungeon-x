@@ -26,6 +26,7 @@ export class GameWorld {
     this.tileMap = null;
     this.player = { x: 0, y: 0, facing: DIR.NORTH };
     this.floor = 1;
+    this.dungeonType = 'crypts'; // crypts, goblin_warrens
     this.gold = 50; // Starting gold
     this.needsRender = true;
   }
@@ -63,8 +64,11 @@ export class GameWorld {
     );
   }
 
-  spawnMonsters() {
-    const monsterTypes = getMonsterPool(this.floor);
+  spawnMonsters(dungeonType = this.dungeonType) {
+    // Clear previous entities and dens
+    this.tileMap.entities.clear();
+    this.tileMap.goblinDens.clear();
+    const monsterTypes = getMonsterPool(this.floor, dungeonType);
     const numMonsters = Math.min(monsterTypes.length, 3 + this.floor); // More monsters on deeper floors
     
     for (let i = 0; i < numMonsters; i++) {
