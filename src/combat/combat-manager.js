@@ -1,4 +1,5 @@
 import { attackRoll, calculateDamage } from './damage-calc.js';
+import { AnimationQueue } from '../render/animation-queue.js';
 import { getRandomLoot, createItem } from '../items/item-data.js';
 
 export class CombatManager {
@@ -14,7 +15,7 @@ export class CombatManager {
     this.currentTurn = 0;
   }
   
-  processAttack(attacker, target, weaponDice = '1d6', attackMod = 0, damageMod = 0, soundManager = null) {
+  processAttack(attacker, target, weaponDice = '1d6', attackMod = 0, damageMod = 0, soundManager = null, animationQueue = null) {
     const attack = attackRoll({ attackMod }, target);
     
     if (!attack.hit) {

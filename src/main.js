@@ -1,4 +1,5 @@
 import { CANVAS_WIDTH, CANVAS_HEIGHT, LAYERS } from './core/constants.js';
+import { AnimationQueue } from './render/animation-queue.js';
 import { SoundManager } from './audio/sound-manager.js';
 import { UIRenderer } from './render/ui-renderer.js';
 import { GameWorld } from './core/game-world.js';
@@ -38,6 +39,7 @@ async function boot() {
   const fpRenderer = new FirstPersonRenderer(atlas);
   const uiRenderer = new UIRenderer();
   const soundManager = new SoundManager();
+  const animationQueue = new AnimationQueue();
   const minimapRenderer = new MinimapRenderer();
 
   const input = new InputMapper(soundManager);
