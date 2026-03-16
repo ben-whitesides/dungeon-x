@@ -14,10 +14,13 @@ export class CombatManager {
     this.currentTurn = 0;
   }
   
-  processAttack(attacker, target, weaponDice = '1d6', attackMod = 0, damageMod = 0) {
+  processAttack(attacker, target, weaponDice = '1d6', attackMod = 0, damageMod = 0, soundManager = null) {
     const attack = attackRoll({ attackMod }, target);
     
     if (!attack.hit) {
+      // Play miss sound
+      if (soundManager) soundManager.playCombatSound('miss');
+    } else {
       return { success: false, attack, damage: 0 };
     }
     

@@ -7,7 +7,7 @@ export class MoveForwardCommand extends Command {
     this.triggeredCombat = false;
   }
 
-  execute(world) {
+  execute(world, soundManager) {
     this.triggeredCombat = false;
     const [dx, dy] = DIR_VECTOR[world.player.facing];
     const nx = world.player.x + dx;
@@ -38,7 +38,7 @@ export class MoveForwardCommand extends Command {
 }
 
 export class MoveBackwardCommand extends Command {
-  execute(world) {
+  execute(world, soundManager) {
     const [dx, dy] = DIR_VECTOR[world.player.facing];
     const nx = world.player.x - dx;
     const ny = world.player.y - dy;
@@ -74,7 +74,7 @@ export class MoveBackwardCommand extends Command {
 }
 
 export class StrafeLeftCommand extends Command {
-  execute(world) {
+  execute(world, soundManager) {
     const [fdx, fdy] = DIR_VECTOR[world.player.facing];
     const nx = world.player.x + fdy;
     const ny = world.player.y - fdx;
@@ -110,7 +110,7 @@ export class StrafeLeftCommand extends Command {
 }
 
 export class StrafeRightCommand extends Command {
-  execute(world) {
+  execute(world, soundManager) {
     const [fdx, fdy] = DIR_VECTOR[world.player.facing];
     const nx = world.player.x - fdy;
     const ny = world.player.y + fdx;
@@ -146,7 +146,7 @@ export class StrafeRightCommand extends Command {
 }
 
 export class TurnLeftCommand extends Command {
-  execute(world) {
+  execute(world, soundManager) {
     this._prevFacing = world.player.facing;
     world.player.facing = (world.player.facing + 3) % 4;
     world.events.emit('playerTurned', { facing: world.player.facing });
@@ -159,7 +159,7 @@ export class TurnLeftCommand extends Command {
 }
 
 export class TurnRightCommand extends Command {
-  execute(world) {
+  execute(world, soundManager) {
     this._prevFacing = world.player.facing;
     world.player.facing = (world.player.facing + 1) % 4;
     world.events.emit('playerTurned', { facing: world.player.facing });

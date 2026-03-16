@@ -9,6 +9,8 @@ import { InteractCommand } from './interact-command.js';
  * Maps keyboard input to Command objects.
  */
 export class InputMapper {
+  constructor(soundManager) {
+    this.soundManager = soundManager;
   constructor() {
     this._pendingCommand = null;
     this._keyMap = {
