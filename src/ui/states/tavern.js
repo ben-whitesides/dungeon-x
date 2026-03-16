@@ -1,8 +1,13 @@
 export class TavernState {
   constructor() {
-    this.mode = 'roster'; // roster, party_select, shop, dungeon_select, leaderboard
+    this.mode = 'roster'; // roster, party_select, shop, dungeon_select, leaderboard, strider
     this.selectedDungeon = 0;
     this.selectedLeaderboardDungeon = 0;
+    this.striderAvailable = false; // Strider appears after collecting fragments or many runs
+    this.striderDialogueIndex = 0;
+    this.selectedDungeon = 0;
+    this.selectedLeaderboardDungeon = 0;
+    this.striderAvailable = false; // Strider appears after collecting fragments or many runs
     this.selectedDungeon = 0;
     this.selectedMerchantItem = 0;
     this.selectedPlayerItem = 0;
@@ -131,5 +136,6 @@ export class TavernState {
     // Trophy Wall - always visible in tavern
     this.renderTrophyWall(ctx, world);
     }
+  }nn  isStriderAvailable(world) {n    // Strider appears after collecting 2+ fragments or completing 5+ dungeonsn    const fragmentsCollected = world.collectedFragments.size;n    const dungeonsCompleted = world.completedDungeons.size;n    return fragmentsCollected >= 2 || dungeonsCompleted >= 5;n  }nn  renderStrider(ctx, world) {n    const centerX = ctx.canvas.width / 2;n    const startY = 50;n    n    ctx.fillText('STRIDER - The Wanderer', centerX - 80, startY);n    n    // Simple lore messagen    ctx.fillText('Ah, seeker of the lost light. The Sunstone calls to you...', centerX - 180, startY + 40);n    ctx.fillText('Three thousand years ago, a mage shattered the source of all light.', centerX - 180, startY + 60);n    ctx.fillText('Now its fragments whisper from the shadows of these ancient dungeons.', centerX - 180, startY + 80);n    ctx.fillText('You have found ' + world.collectedFragments.size + ' fragments. Each one carries a piece', centerX - 180, startY + 100);n    ctx.fillText('of the consciousness of Dorevus the Unmoored.', centerX - 180, startY + 120);n    n    ctx.fillText('SPACE: Continue lore  ESC: Back', 20, ctx.canvas.height - 20);n  }n}
   }
 }
