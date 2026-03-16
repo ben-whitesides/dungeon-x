@@ -1,4 +1,5 @@
 import { DIR, FOV_RADIUS } from './constants.js';
+import { createItem } from '../items/item-data.js';
 import { Merchant } from '../items/merchant.js';
 import { Inventory } from '../items/inventory.js';
 import { SaveManager } from './save-manager.js';
@@ -26,6 +27,8 @@ export class GameWorld {
     this.tileMap = null;
     this.player = { x: 0, y: 0, facing: DIR.NORTH };
     this.floor = 1;
+    this.completedDungeons = new Set(); // Track cleared dungeons
+    this.collectedFragments = new Set(); // Track collected Sunstone Fragments
     this.dungeonType = 'crypts'; // crypts, goblin_warrens
     this.gold = 50; // Starting gold
     this.needsRender = true;
@@ -130,6 +133,34 @@ export class GameWorld {
   }
 
   exitDungeon(victory) {
+    if (victory) {
+      // Mark dungeon as completed and award fragment
+      this.completedDungeons.add(this.dungeonType);
+      
+      // Award appropriate fragment
+      if (this.dungeonType === 'crypts') {
+        this.collectedFragments.add('dawn');
+        this.inventory.addItem(createItem('sunstone_fragment'));
+      } else if (this.dungeonType === 'goblin_warrens') {
+        this.collectedFragments.add('dusk');
+        this.inventory.addItem(createItem('sunstone_fragment'));
+      }
+      
+      console.log(`Dungeon ${this.dungeonType} completed! Fragment of ${this.dungeonType === 'crypts' ? 'Dawn' : 'Dusk'} collected.`);
+    }
+    
+    if (!victory) {
+      // Restore from snapshot on defeat
+      this.saveManager.restoreSnapshot(this.party.getMembers());
+      console.log('Party restored from snapshot after defeat');
+    } else {
+      // Clear snapshot on victory
+      this.saveManager.clearSnapshot();
+      console.log('Dungeon completed - snapshot cleared');
+    }
+  }
+
+  old_exitDungeon(victory) {
     if (!victory) {
       // Restore from snapshot on defeat
       this.saveManager.restoreSnapshot(this.party.getMembers());

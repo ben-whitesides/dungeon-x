@@ -125,5 +125,9 @@ export class TavernState {
       
       ctx.fillText('ENTER: Select Dungeon  ESC: Back', 20, ctx.canvas.height - 20);
     }
+    
+    // Trophy Wall - always visible in tavern
+    this.renderTrophyWall(ctx, world);
+    }
   }
 }
