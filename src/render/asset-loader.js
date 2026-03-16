@@ -55,3 +55,38 @@ export async function loadAssets() {
   console.log(`Loaded ${assets.size}/${entries.length} assets`);
   return assets;
 }
+
+export const ITEM_ICON_MAP = {
+  'sword-rusty': 'icon_sword_rusty',
+  'sword-iron': 'icon_sword_iron',
+  'sword-steel': 'icon_sword_steel',
+  'sword-magic': 'icon_sword_magic',
+  'armor-cloth': 'icon_armor_cloth',
+  'armor-leather': 'icon_armor_leather',
+  'armor-chain': 'icon_armor_chain',
+  'armor-plate': 'icon_armor_plate',
+  'shield-wood': 'icon_shield_wood',
+  'shield-iron': 'icon_shield_iron',
+  'potion-health': 'icon_potion_health',
+  'potion-mana': 'icon_potion_mana',
+  'potion-strength': 'icon_potion_strength',
+  'key-dungeon': 'icon_key',
+  'ring-strength': 'icon_ring',
+  'amulet-health': 'icon_amulet',
+  'fragment-sunstone': 'icon_sunstone',
+};
+
+export const MONSTER_SPRITE_MAP = {
+  'shadow_lurker': 'enemy_shadow',
+  'frost_wraith': 'enemy_death_speaker',
+  'bone_revenant': 'enemy_bone_shield',
+  'goblin_scrapper': 'enemy_goblin',
+  'goblin_archer': 'enemy_goblin',
+  'goblin_shaman': 'enemy_druid',
+  'hobgoblin': 'enemy_goblin',
+  'gretchka_elder': 'enemy_skull_pile',
+  'skeleton': 'enemy_skeleton',
+  'zombie': 'enemy_zombie',
+  'imp': 'enemy_imp',
+  'mimic': 'enemy_mimic',
+};

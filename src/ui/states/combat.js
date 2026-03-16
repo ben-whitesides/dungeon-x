@@ -1,6 +1,15 @@
 import { CombatManager } from '../../combat/combat-manager.js';
+import { MONSTER_SPRITE_MAP } from '../../render/asset-loader.js';
 
 export class CombatState {
+  constructor(enemies, assets) {
+    this.enemies = enemies;
+    this.assets = assets;
+    this.combat = new CombatManager();
+    this.combat.startCombat(enemies);
+    this.selectedAction = null;
+    this.currentActor = null;
+  }
   constructor(enemies) {
     this.enemies = enemies;
     this.combat = new CombatManager();
