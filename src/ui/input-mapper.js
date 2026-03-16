@@ -23,6 +23,9 @@ export class InputMapper {
       'KeyQ':       () => new TurnLeftCommand(),
       'KeyE':       () => new TurnRightCommand(),
       'Space':     () => new InteractCommand(),
+      'KeyS':      () => ({ type: 'shop' }), // Enter shop from party select
+      'KeyB':      () => ({ type: 'buy' }), // Buy item
+      'KeyV':      () => ({ type: 'sell' }), // Sell item
     };
 
     this._onKeyDown = this._onKeyDown.bind(this);

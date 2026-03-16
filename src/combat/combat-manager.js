@@ -59,6 +59,9 @@ export class CombatManager {
     });
     
     // Add loot to inventory
+    // Award gold for the kill
+    world.gold += totalXP // 1 gold per XP as simple conversion
+    
     loot.forEach(item => {
       world.inventory.addItem(item);
     });

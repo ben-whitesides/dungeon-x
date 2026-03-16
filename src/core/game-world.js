@@ -1,4 +1,5 @@
 import { DIR, FOV_RADIUS } from './constants.js';
+import { Merchant } from '../items/merchant.js';
 import { Inventory } from '../items/inventory.js';
 import { SaveManager } from './save-manager.js';
 import { createMonster, getMonsterPool } from '../dungeon/monsters.js';
@@ -14,6 +15,7 @@ import { computeFOV } from '../fov/shadowcast.js';
 export class GameWorld {
   constructor(seed) {
     this.inventory = new Inventory();
+    this.merchant = new Merchant();
     this.saveManager = new SaveManager();
     this.stateStack = new StateStack();
     this.scheduler = new EnergyScheduler();
@@ -24,6 +26,7 @@ export class GameWorld {
     this.tileMap = null;
     this.player = { x: 0, y: 0, facing: DIR.NORTH };
     this.floor = 1;
+    this.gold = 50; // Starting gold
     this.needsRender = true;
   }
 

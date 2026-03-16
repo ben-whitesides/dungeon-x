@@ -1,6 +1,8 @@
 export class TavernState {
   constructor() {
     this.mode = 'roster'; // roster, party_select, shop
+    this.selectedMerchantItem = 0;
+    this.selectedPlayerItem = 0;
     this.selectedCharacter = 0;
     this.selectedPartySlot = 0;
   }
@@ -28,7 +30,14 @@ export class TavernState {
       }
     }
     
-    if (this.mode === 'party_select' && input.type === 'enter_dungeon') {
+    } else if (input.type === 'shop') {
+      this.mode = 'shop';
+      this.selectedMerchantItem = 0;
+      this.selectedPlayerItem = 0;
+      return true;
+    }
+    
+    if (this.mode === 'party_select'     if (this.mode === 'party_select' && input.type === 'enter_dungeon') {    if (this.mode === 'party_select' && input.type === 'enter_dungeon') { input.type === 'enter_dungeon') {
       // Start dungeon run with current party
       world.enterDungeon();
       return true;
@@ -67,7 +76,34 @@ export class TavernState {
         ctx.fillText(`${i + 1}. ${char.name} (${char.class})`, 20, y);
       });
       
-      ctx.fillText('ENTER: Enter Dungeon', 20, ctx.canvas.height - 20);
+      ctx.fillText('ENTER: Enter Dungeon  S: Shop', 20, ctx.canvas.height - 20);
+    }
+    
+    if (this.mode === 'shop') {
+      ctx.fillText('MERCHANT SHOP - Gold: ' + world.gold, 20, 50);
+      
+      // Merchant inventory (left side)
+      ctx.fillText('Merchant Inventory:', 20, 70);
+      const merchantInventory = world.merchant.getInventory();
+      merchantInventory.forEach((item, i) => {
+        const y = 90 + i * 20;
+        const prefix = i === this.selectedMerchantItem ? '> ' : '  ';
+        const price = world.merchant.getBuyPrice(item);
+        ctx.fillText(prefix + item.name + ' (Cost: ' + price + '), 20, y);
+      });
+      
+      // Player inventory (right side)
+      const rightX = ctx.canvas.width / 2 + 20;
+      ctx.fillText('Your Items:', rightX, 70);
+      const playerItems = world.inventory.getAllItems();
+      playerItems.forEach((item, i) => {
+        const y = 90 + i * 20;
+        const prefix = i === this.selectedPlayerItem ? '> ' : '  ';
+        const price = world.merchant.getSellPrice(item);
+        ctx.fillText(prefix + item.name + ' (Sell: ' + price + '), rightX, y);
+      });
+      
+      ctx.fillText('B: Buy selected  V: Sell selected  ESC: Back', 20, ctx.canvas.height - 20);
     }
   }
 }
