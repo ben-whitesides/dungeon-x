@@ -1,4 +1,5 @@
 import { DIR, FOV_RADIUS } from './constants.js';
+import { Leaderboard } from '../systems/leaderboard.js';
 import { createItem } from '../items/item-data.js';
 import { Merchant } from '../items/merchant.js';
 import { Inventory } from '../items/inventory.js';
@@ -22,7 +23,8 @@ export class GameWorld {
     this.scheduler = new EnergyScheduler();
     this.party = new PartyManager();
     this.roster = new CharacterRoster();
-    this.rng = typeof seed === 'number' ? createPRNG(seed) : createDailyPRNG();
+    this.useDailySeed = seed === undefined; // Use daily seed if no seed provided
+    this.rng = this.useDailySeed ? createDailyPRNG() : createPRNG(seed);
     this.events = new EventBus();
     this.tileMap = null;
     this.player = { x: 0, y: 0, facing: DIR.NORTH };
@@ -30,6 +32,8 @@ export class GameWorld {
     this.completedDungeons = new Set(); // Track cleared dungeons
     this.collectedFragments = new Set(); // Track collected Sunstone Fragments
     this.dungeonType = 'crypts'; // crypts, goblin_warrens
+    this.leaderboard = new Leaderboard();
+    this.dungeonStartTime = null;
     this.gold = 50; // Starting gold
     this.needsRender = true;
   }
@@ -129,10 +133,41 @@ export class GameWorld {
   enterDungeon() {
     // Create snapshot before entering
     this.saveManager.createSnapshot(this.party.getMembers());
+    
+    // Start timing
+    this.dungeonStartTime = Date.now();
+    
     console.log('Dungeon entered - party snapshot created');
   }
 
+  old_enterDungeon() {
+    // Create snapshot before entering
+    this.saveManager.createSnapshot(this.party.getMembers());
+    console.log('Dungeon entered - party snapshot created');
+  }
+
+  getCurrentDailySeed() {
+    if (this.useDailySeed) {
+      const today = new Date();
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+    return null;
+  }
+
   exitDungeon(victory) {
+    if (victory   exitDungeon(victory) {  exitDungeon(victory) { this.dungeonStartTime) {
+      // Record completion time
+      const completionTime = Date.now() - this.dungeonStartTime;
+      const dailySeed = this.getCurrentDailySeed();
+      
+      if (dailySeed) {
+        this.leaderboard.recordCompletion(dailySeed, this.dungeonType, completionTime);
+        console.log(`Daily dungeon completed in ${this.leaderboard.formatTime(completionTime)}!`);
+      }
+    }
+    
+    // Reset timing
+    this.dungeonStartTime = null;
     if (victory) {
       // Mark dungeon as completed and award fragment
       this.completedDungeons.add(this.dungeonType);

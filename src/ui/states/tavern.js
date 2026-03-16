@@ -1,6 +1,8 @@
 export class TavernState {
   constructor() {
-    this.mode = 'roster'; // roster, party_select, shop, dungeon_select
+    this.mode = 'roster'; // roster, party_select, shop, dungeon_select, leaderboard
+    this.selectedDungeon = 0;
+    this.selectedLeaderboardDungeon = 0;
     this.selectedDungeon = 0;
     this.selectedMerchantItem = 0;
     this.selectedPlayerItem = 0;
