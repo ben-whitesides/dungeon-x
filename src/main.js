@@ -1,4 +1,5 @@
 import { CANVAS_WIDTH, CANVAS_HEIGHT, LAYERS } from './core/constants.js';
+import { PerformanceMonitor } from './utils/performance-monitor.js';
 import { AnimationQueue } from './render/animation-queue.js';
 import { SoundManager } from './audio/sound-manager.js';
 import { UIRenderer } from './render/ui-renderer.js';
@@ -40,6 +41,7 @@ async function boot() {
   const uiRenderer = new UIRenderer();
   const soundManager = new SoundManager();
   const animationQueue = new AnimationQueue();
+  const performanceMonitor = new PerformanceMonitor();
   const minimapRenderer = new MinimapRenderer();
 
   const input = new InputMapper(soundManager);
@@ -48,6 +50,7 @@ async function boot() {
   ui.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   function gameLoop() {
+    performanceMonitor.beginFrame();
     const command = input.consume();
     if (command) {
       command.execute(world);

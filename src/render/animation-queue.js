@@ -6,6 +6,7 @@ export class AnimationQueue {
   
   // Add an animation to the queue
   addAnimation(animation) {
+    this.needsRedraw = true;
     this.animations.push({
       ...animation,
       startTime: Date.now(),
@@ -15,6 +16,7 @@ export class AnimationQueue {
   
   // Add particle effect
   addParticles(x, y, count = 5, color = '#ffffff', lifetime = 1000, speed = 50) {
+    this.needsRedraw = true;
     for (let i = 0; i < count; i++) {
       this.particles.push({
         x,
