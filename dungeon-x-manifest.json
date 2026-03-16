@@ -1,0 +1,66 @@
+{
+  "name": "Dungeon X",
+  "short_name": "Dungeon X",
+  "description": "A first-person dungeon crawler roguelike with turn-based combat and procedural generation",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#2a2a2a",
+  "orientation": "landscape-primary",
+  "categories": ["games", "entertainment"],
+  "lang": "en-US",
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/screenshots/gameplay-1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Exploring the dungeon"
+    },
+    {
+      "src": "assets/screenshots/combat-1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Turn-based combat"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Game",
+      "short_name": "New Game",
+      "description": "Start a new dungeon adventure",
+      "url": "./index.html?action=new",
+      "icons": [
+        {
+          "src": "assets/icons/new-game-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Daily Challenge",
+      "short_name": "Daily",
+      "description": "Play today's daily seeded dungeon",
+      "url": "./index.html?action=daily",
+      "icons": [
+        {
+          "src": "assets/icons/daily-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}
