@@ -67,6 +67,7 @@ async function boot() {
       uiCtx.font = '14px monospace';
       const dirs = ['N', 'E', 'S', 'W'];
       uiRenderer.renderPartyHUD(layers.ui, world.party.getMembers());
+      uiRenderer.renderVirtualGamepad(layers.ui);
 
       uiCtx.fillText(
         `Floor ${world.floor} | (${world.player.x}, ${world.player.y}) Facing ${dirs[world.player.facing]}`,

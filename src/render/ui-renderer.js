@@ -38,3 +38,43 @@ export class UIRenderer {
     ctx.fillText('COMBAT: A=Attack D=Defend S=Spell I=Item F=Flee', 10, ctx.canvas.height - 30);
   }
 }
+
+  renderVirtualGamepad(ctx) {
+    // Only show on touch devices
+    if (!('ontouchstart' in window)) return;
+    
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+    
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = '#333333';
+    ctx.strokeStyle = '#666666';
+    ctx.lineWidth = 2;
+    ctx.font = '20px monospace';
+    ctx.textAlign = 'center';
+    
+    // Movement pad (bottom left)
+    ctx.fillRect(20, height - 140, 100, 120);
+    ctx.strokeRect(20, height - 140, 100, 120);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('MOVE', 70, height - 110);
+    
+    // Turn pad (bottom right)
+    ctx.fillStyle = '#333333';
+    ctx.fillRect(width - 120, height - 140, 100, 120);
+    ctx.strokeRect(width - 120, height - 140, 100, 120);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('TURN', width - 70, height - 110);
+    
+    // Action button (center bottom)
+    ctx.fillStyle = '#555555';
+    ctx.fillRect(width/2 - 40, height - 80, 80, 60);
+    ctx.strokeRect(width/2 - 40, height - 80, 80, 60);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '16px monospace';
+    ctx.fillText('ACTION', width/2, height - 45);
+    
+    ctx.restore();
+  }
+}

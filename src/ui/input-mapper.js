@@ -1,4 +1,5 @@
 import {
+import { InteractCommand } from '../commands/interact-command.js';
 import { InteractCommand } from './interact-command.js';
   MoveForwardCommand, MoveBackwardCommand,
   StrafeLeftCommand, StrafeRightCommand,
@@ -43,6 +44,13 @@ export class InputMapper {
   }
 
   _onKeyDown(e) {
+    // Handle touch events
+    if (e.type === 'touchstart') {
+      this._handleTouch(e);
+      return;
+    }
+    
+    // Handle keyboard events
     const factory = this._keyMap[e.code];
     if (factory) {
       e.preventDefault();
