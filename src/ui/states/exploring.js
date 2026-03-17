@@ -76,8 +76,11 @@ export class ExploringState {
       // Party HUD
       this.uiRenderer.renderPartyHUD(uiCtx, world.party.getMembers());
       
-      // Virtual Gamepad
-      this.uiRenderer.renderVirtualGamepad(uiCtx);
+      // Clear + render virtual gamepad with touch zones
+      if (world.input && world.input.touch) {
+        world.input.touch.clearHitZones();
+      }
+      this.uiRenderer.renderVirtualGamepad(uiCtx, world.input && world.input.touch);
 
       // Status text
       uiCtx.fillStyle = '#0f0';

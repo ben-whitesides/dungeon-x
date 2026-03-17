@@ -1,12 +1,22 @@
+import { TouchHandler } from './touch-handler.js';
+
 export class InputMapper {
   constructor(soundManager) {
     this.soundManager = soundManager;
     this._pendingEvent = null;
     this._onKeyDown = this._onKeyDown.bind(this);
+    this.touch = new TouchHandler();
   }
 
   attach() {
     document.addEventListener('keydown', this._onKeyDown);
+
+    // Attach touch to the top-most canvas (ui layer)
+    const canvases = document.querySelectorAll('canvas[data-layer]');
+    const uiCanvas = Array.from(canvases).find(c => c.dataset.layer === 'ui') || canvases[canvases.length - 1];
+    if (uiCanvas) {
+      this.touch.attach(uiCanvas);
+    }
   }
 
   detach() {
@@ -16,8 +26,6 @@ export class InputMapper {
   _onKeyDown(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-    // We capture all keys and let states decide what to do
-    // Preventing default for most keys to avoid scrolling/etc
     const capturedKeys = [
       'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
       'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE',
@@ -33,8 +41,11 @@ export class InputMapper {
   }
 
   consume() {
+    // Keyboard takes priority, then touch
     const ev = this._pendingEvent;
     this._pendingEvent = null;
-    return ev;
+    if (ev) return ev;
+
+    return this.touch.consume();
   }
 }

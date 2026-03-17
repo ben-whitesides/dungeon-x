@@ -38,10 +38,15 @@
       image-rendering: pixelated;
       image-rendering: crisp-edges;
     }
-    /* Responsive scaling */
+    /* Responsive scaling — fill screen on mobile */
     @media (max-width: 800px) {
-      #game-viewport { width: 100vw; height: 75vw; }
+      #game-viewport { width: 100vw; height: 75vw; max-height: 100vh; }
     }
+    @media (max-width: 800px) and (orientation: portrait) {
+      #game-viewport { width: 100vw; height: 56.25vw; } /* 16:9 */
+    }
+    /* Prevent text selection on touch */
+    canvas { touch-action: none; -webkit-touch-callout: none; user-select: none; }
   </style>
 </head>
 <body>

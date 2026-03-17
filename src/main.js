@@ -52,6 +52,7 @@ async function boot() {
 
   const input = new InputMapper(soundManager);
   input.attach();
+  world.input = input; // Expose for touch hit zone registration
 
   // Seed the roster with starter characters (load saved if available)
   world.roster.load();

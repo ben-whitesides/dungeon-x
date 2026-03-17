@@ -30,6 +30,15 @@ export class TavernState {
   handleInput(input, world) {
     const code = input.code;
 
+    // Touch: direct card selection
+    if (code && code.startsWith('_selectCard_')) {
+      const idx = parseInt(code.split('_')[2], 10);
+      if (!isNaN(idx)) {
+        this.selectedCharacter = idx;
+        return true;
+      }
+    }
+
     if (this.mode === 'roster') {
       if (code === 'ArrowLeft' || code === 'KeyA') {
         this.selectedCharacter = Math.max(0, this.selectedCharacter - 1);
@@ -140,6 +149,12 @@ export class TavernState {
   render(layers, world) {
     const ctx = layers.ui || layers;
     this.flickerPhase += 0.05;
+
+    // Clear touch hit zones each frame
+    if (world.input && world.input.touch) {
+      world.input.touch.clearHitZones();
+    }
+
     this._drawWoodBackground(ctx);
     this._drawTavernTitle(ctx);
 
@@ -558,7 +573,7 @@ export class TavernState {
       ctx.textAlign = 'left';
     }
 
-    // Draw visible cards
+    // Draw visible cards + register touch hit zones
     for (let vi = 0; vi < visibleCount; vi++) {
       const ci = scrollStart + vi;
       const x = startX + vi * (cardW + gap);
@@ -568,6 +583,18 @@ export class TavernState {
         this._drawCharacterCard(ctx, roster[ci], x, startY, cardW, cardH, selected);
       } else {
         this._drawCustomCard(ctx, x, startY, cardW, cardH, selected);
+      }
+
+      // Register touch zone for this card
+      if (world.input && world.input.touch) {
+        if (ci === this.selectedCharacter) {
+          // Tapping selected card = recruit (Space)
+          world.input.touch.registerHitZone(x, startY, cardW, cardH, 'Space');
+        } else {
+          // Tapping unselected card = select it (arrow key to that index)
+          // Use a special code we handle below
+          world.input.touch.registerHitZone(x, startY, cardW, cardH, `_selectCard_${ci}`);
+        }
       }
     }
 
@@ -580,12 +607,13 @@ export class TavernState {
       ctx.textAlign = 'left';
     }
 
-    // Bottom bar controls
-    ctx.textAlign = 'center';
-    ctx.font = '13px monospace';
-    ctx.fillStyle = '#C4A265';
-    ctx.fillText('◄ ► Select Hero    SPACE: Recruit    P: Shop', w / 2, h - 20);
-    ctx.textAlign = 'left';
+    // Bottom bar — touch-friendly buttons
+    this._drawTouchBar(ctx, w, h, world, [
+      { label: '◄', code: 'ArrowLeft', width: 60 },
+      { label: 'RECRUIT', code: 'Space', width: 140 },
+      { label: '►', code: 'ArrowRight', width: 60 },
+      { label: 'SHOP', code: 'KeyP', width: 80 },
+    ]);
   }
 
   _drawCharacterCard(ctx, char, x, y, w, h, selected) {
@@ -815,6 +843,48 @@ export class TavernState {
     ctx.textAlign = 'left';
   }
 
+  // --- Touch Button Bar ---
+
+  _drawTouchBar(ctx, canvasW, canvasH, world, buttons) {
+    const barH = 50;
+    const barY = canvasH - barH;
+    const gap = 8;
+    const totalW = buttons.reduce((sum, b) => sum + b.width, 0) + (buttons.length - 1) * gap;
+    let x = (canvasW - totalW) / 2;
+
+    // Bar background
+    ctx.fillStyle = 'rgba(10, 6, 3, 0.85)';
+    ctx.fillRect(0, barY, canvasW, barH);
+    ctx.fillStyle = '#3d2814';
+    ctx.fillRect(0, barY, canvasW, 2);
+
+    for (const btn of buttons) {
+      const btnH = 36;
+      const btnY = barY + (barH - btnH) / 2;
+
+      // Button background
+      ctx.fillStyle = '#2a1a0e';
+      ctx.fillRect(x, btnY, btn.width, btnH);
+      ctx.strokeStyle = '#5a3d20';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, btnY, btn.width, btnH);
+
+      // Button text
+      ctx.fillStyle = '#C4A265';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(btn.label, x + btn.width / 2, btnY + btnH / 2 + 4);
+      ctx.textAlign = 'left';
+
+      // Register touch hit zone
+      if (world.input && world.input.touch) {
+        world.input.touch.registerHitZone(x, btnY, btn.width, btnH, btn.code);
+      }
+
+      x += btn.width + gap;
+    }
+  }
+
   // --- Party Select ---
 
   _renderPartySelect(ctx, world) {
@@ -845,12 +915,12 @@ export class TavernState {
       this._drawCharacterCard(ctx, char, startX + i * (cardW + gap), startY, cardW, cardH, false);
     });
 
-    // Bottom controls
-    ctx.textAlign = 'center';
-    ctx.font = '13px monospace';
-    ctx.fillStyle = '#C4A265';
-    ctx.fillText('ENTER: Enter Dungeon    P: Shop    ESC: Back', w / 2, h - 20);
-    ctx.textAlign = 'left';
+    // Bottom bar — touch-friendly buttons
+    this._drawTouchBar(ctx, w, h, world, [
+      { label: 'BACK', code: 'Escape', width: 80 },
+      { label: 'ENTER DUNGEON', code: 'Enter', width: 180 },
+      { label: 'SHOP', code: 'KeyP', width: 80 },
+    ]);
   }
 
   // --- Shop ---
@@ -905,11 +975,14 @@ export class TavernState {
       ctx.textAlign = 'left';
     });
 
-    ctx.textAlign = 'center';
-    ctx.font = '13px monospace';
-    ctx.fillStyle = '#C4A265';
-    ctx.fillText('B: Buy    V: Sell    ESC: Back', w / 2, ctx.canvas.height - 20);
-    ctx.textAlign = 'left';
+    // Bottom bar — touch-friendly buttons
+    this._drawTouchBar(ctx, w, ctx.canvas.height, world, [
+      { label: 'BACK', code: 'Escape', width: 80 },
+      { label: '▲', code: 'ArrowUp', width: 50 },
+      { label: '▼', code: 'ArrowDown', width: 50 },
+      { label: 'BUY', code: 'KeyB', width: 80 },
+      { label: 'SELL', code: 'KeyV', width: 80 },
+    ]);
   }
 
   _drawPanel(ctx, x, y, w, h, title) {
@@ -968,11 +1041,19 @@ export class TavernState {
       ctx.fillText(`Floors: ${dungeon.floors}  |  Danger: ${dungeon.danger}`, 100, y + 62);
     });
 
-    ctx.textAlign = 'center';
-    ctx.font = '13px monospace';
-    ctx.fillStyle = '#C4A265';
-    ctx.fillText('ENTER: Select Dungeon    ESC: Back', w / 2, ctx.canvas.height - 20);
-    ctx.textAlign = 'left';
+    // Register touch zones for dungeon entries
+    if (world.input && world.input.touch) {
+      dungeons.forEach((dungeon, i) => {
+        const y = 100 + i * 100;
+        world.input.touch.registerHitZone(80, y, w - 160, 80, i === this.selectedDungeon ? 'Enter' : (i < this.selectedDungeon ? 'ArrowUp' : 'ArrowDown'));
+      });
+    }
+
+    // Bottom bar — touch-friendly buttons
+    this._drawTouchBar(ctx, w, ctx.canvas.height, world, [
+      { label: 'BACK', code: 'Escape', width: 100 },
+      { label: 'SELECT DUNGEON', code: 'Enter', width: 200 },
+    ]);
   }
 
   isStriderAvailable(world) {
