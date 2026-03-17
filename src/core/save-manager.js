@@ -8,7 +8,7 @@ export class SaveManager {
       name: member.name,
       level: member.level,
       xp: member.xp,
-      hp: member.hp,
+      maxHP: member.maxHP,
       currentHP: member.currentHP,
       equipment: { ...member.equipment },
       stats: { ...member.stats }
@@ -24,7 +24,8 @@ export class SaveManager {
         const snap = this.snapshot[i];
         member.equipment = { ...snap.equipment };
         member.currentHP = snap.currentHP;
-        member.hp = snap.hp;
+        member.maxHP = snap.maxHP;
+        member.calculateFinalStats();
       }
     });
   }

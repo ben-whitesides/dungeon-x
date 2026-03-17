@@ -36,6 +36,24 @@ export async function loadAssets() {
     'portrait_female_1': 'assets/portraits/flare/FlareFemaleHero1.png',
     'portrait_female_2': 'assets/portraits/flare/FlareFemaleHero2.png',
     'portrait_female_3': 'assets/portraits/flare/FlareFemaleHero3.png',
+
+    'icon_sword_rusty':    "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/sword_01a.png",
+    'icon_sword_iron':     "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/sword_01b.png",
+    'icon_sword_steel':    "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/sword_01c.png",
+    'icon_sword_magic':    "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/sword_01e.png",
+    'icon_armor_cloth':    "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/helmet_01a.png",
+    'icon_armor_leather':  "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/helmet_01b.png",
+    'icon_armor_chain':    "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/helmet_01c.png",
+    'icon_armor_plate':    "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/helmet_01d.png",
+    'icon_shield_wood':    "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/shield_01a.png",
+    'icon_shield_iron':    "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/shield_01c.png",
+    'icon_potion_health':  "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/potion_01a.png",
+    'icon_potion_mana':    "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/potion_01c.png",
+    'icon_potion_strength':"assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/potion_01e.png",
+    'icon_key':            "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/key_01a.png",
+    'icon_ring':           "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/ring_01a.png",
+    'icon_amulet':         "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/necklace_01a.png",
+    'icon_sunstone':       "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/crystal_01g.png",
   };
 
   const entries = Object.entries(manifest);

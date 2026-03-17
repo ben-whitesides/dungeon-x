@@ -6,7 +6,7 @@ export class InteractCommand extends Command {
     super();
     this.destroyedDen = null;
   }
-}
+
   execute(world) {
     this.destroyedDen = null;
     const [dx, dy] = [

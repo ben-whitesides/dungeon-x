@@ -5,16 +5,17 @@ export class Inventory {
   }
   
   addItem(item) {
-    // Try to stack with existing items first
-    if (item.quantity > 1) {
+    // Try to stack consumables with existing matching items (potions, scrolls)
+    const stackable = item.isConsumable ? item.isConsumable() : (item.type === 'potion' || item.type === 'scroll');
+    if (stackable) {
       for (let i = 0; i < this.slots.length; i++) {
         const existing = this.slots[i];
         if (existing && existing.id === item.id && existing.quantity < 99) {
           const space = 99 - existing.quantity;
-          const addAmount = Math.min(space, item.quantity);
+          const addAmount = Math.min(space, item.quantity || 1);
           existing.quantity += addAmount;
-          item.quantity -= addAmount;
-          if (item.quantity <= 0) return true;
+          if (item.quantity) item.quantity -= addAmount;
+          if (!item.quantity || item.quantity <= 0) return true;
         }
       }
     }
@@ -68,8 +69,11 @@ export class Inventory {
     return this.slots.some(slot => slot === null);
   }
   
-  getGold() {
-    // Gold could be a special item or separate currency
-    return 0; // Placeholder
+  getItemCount(itemId) {
+    let count = 0;
+    for (const slot of this.slots) {
+      if (slot && slot.id === itemId) count += slot.quantity || 1;
+    }
+    return count;
   }
 }

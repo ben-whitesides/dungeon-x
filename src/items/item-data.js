@@ -79,6 +79,8 @@ export function getRandomLoot(floor) {
   };
   
   const table = lootTables[Math.min(floor, 5)] || lootTables[5];
-  const randomIndex = Math.floor(Math.random() * table.length);
+  // Accept optional seeded PRNG for deterministic loot
+  const rand = arguments[1] || Math.random;
+  const randomIndex = Math.floor(rand() * table.length);
   return table[randomIndex];
 }

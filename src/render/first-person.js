@@ -1,17 +1,47 @@
 import { TILE, DIR_VECTOR, FP_VIEW } from '../core/constants.js';
 
 /**
- * First-Person Dungeon Renderer — Dungeon Master-style perspective.
- * Heroine Dusk tiles: verified 640x240, 5 frames of 128x240 each.
+ * First-Person Dungeon Renderer — Heroine Dusk / Clint Bellanger style.
+ * Each 640x240 tile image has 13 sub-sprites across 2 rows of 120px.
+ * 3 depth layers, painter's algorithm back-to-front.
  */
-const FRAME_W = 128;
-const FRAME_H = 240;
 
-const DEPTH_LAYERS = [
-  { scale: 1.0,  yOff: 0,   opacity: 1.0  },
-  { scale: 0.65, yOff: 40,  opacity: 0.85 },
-  { scale: 0.4,  yOff: 65,  opacity: 0.7  },
-  { scale: 0.25, yOff: 78,  opacity: 0.55 },
+// Native Heroine Dusk viewport: 160x120. Ours: 600x450. Scale: 3.75x
+const SX = FP_VIEW.width / 160;   // 3.75
+const SY = FP_VIEW.height / 120;  // 3.75
+
+// 13 sub-sprite source rectangles from the 640x240 tile sheet
+// [src_x, src_y, src_w, src_h, dest_x, dest_y] — dest in native 160x120 coords
+const SPRITE_MAP = [
+  // Back row (positions 0-4) — 2 cells ahead, drawn first
+  [  0,   0,  80, 120,   0,  0],  // 0: far-left edge
+  [ 80,   0,  80, 120,  80,  0],  // 1: far-right edge
+  [160,   0,  80, 120,   0,  0],  // 2: inner-left
+  [240,   0,  80, 120,  80,  0],  // 3: inner-right
+  [320,   0, 160, 120,   0,  0],  // 4: center
+
+  // Middle row (positions 5-9) — 1 cell ahead
+  [480,   0,  80, 120,   0,  0],  // 5: far-left edge
+  [560,   0,  80, 120,  80,  0],  // 6: far-right edge
+  [  0, 120,  80, 120,   0,  0],  // 7: inner-left
+  [ 80, 120,  80, 120,  80,  0],  // 8: inner-right
+  [160, 120, 160, 120,   0,  0],  // 9: center
+
+  // Front row (positions 10-12) — player's row, drawn last
+  [320, 120,  80, 120,   0,  0],  // 10: left wall
+  [400, 120,  80, 120,  80,  0],  // 11: right wall
+  [480, 120, 160, 120,   0,  0],  // 12: center
+];
+
+// Map coordinate offsets: [forward_mult, right_mult]
+// Applied as: map_x = px + fdx*fwd + rdx*right, map_y = py + fdy*fwd + rdy*right
+const MAP_OFFSETS = [
+  // Back row
+  [2, -2], [2,  2], [2, -1], [2,  1], [2,  0],
+  // Middle row
+  [1, -2], [1,  2], [1, -1], [1,  1], [1,  0],
+  // Front row
+  [0, -1], [0,  1], [0,  0],
 ];
 
 export class FirstPersonRenderer {
@@ -25,69 +55,76 @@ export class FirstPersonRenderer {
 
     ctx.clearRect(FP_VIEW.x, FP_VIEW.y, vw, vh);
 
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(FP_VIEW.x, FP_VIEW.y, vw, vh / 2);
+    // Void background
+    ctx.fillStyle = '#0a0a0f';
+    ctx.fillRect(FP_VIEW.x, FP_VIEW.y, vw, vh);
 
-    ctx.fillStyle = '#2d2d1a';
-    ctx.fillRect(FP_VIEW.x, FP_VIEW.y + vh / 2, vw, vh / 2);
-
+    // Direction vectors
     const [fdx, fdy] = DIR_VECTOR[facing];
     const rdx = -fdy;
     const rdy = fdx;
 
-    for (let depth = DEPTH_LAYERS.length - 1; depth >= 0; depth--) {
-      const layer = DEPTH_LAYERS[depth];
+    // Draw all 13 positions back-to-front (painter's algorithm)
+    for (let i = 0; i < 13; i++) {
+      const [fwd, right] = MAP_OFFSETS[i];
+      const tx = px + fdx * fwd + rdx * right;
+      const ty = py + fdy * fwd + rdy * right;
 
-      for (let side = -1; side <= 1; side++) {
-        const tx = px + fdx * (depth + 1) + rdx * side;
-        const ty = py + fdy * (depth + 1) + rdy * side;
+      // Skip out-of-bounds or non-visible tiles
+      const tile = tileMap.get(tx, ty);
+      if (tile === TILE.VOID) continue;
 
-        const tile = tileMap.get(tx, ty);
-        const visible = tileMap.getVisibility(tx, ty) >= 1;
+      // Only render tiles currently in FOV (visibility 2)
+      const vis = tileMap.getVisibility(tx, ty);
+      if (vis !== 2) continue;
 
-        if (!visible) continue;
-
-        this._drawTileAtDepth(ctx, tile, depth, side, layer);
-      }
+      this._drawPosition(ctx, tile, i);
     }
   }
 
-  _drawTileAtDepth(ctx, tile, depth, side, layer) {
-    const vw = FP_VIEW.width;
-    const vh = FP_VIEW.height;
-    const centerX = FP_VIEW.x + vw / 2;
-    const centerY = FP_VIEW.y + vh / 2;
+  _drawPosition(ctx, tile, pos) {
+    const [srcX, srcY, srcW, srcH, natDX, natDY] = SPRITE_MAP[pos];
 
-    const scale = layer.scale;
-    const tileW = vw * 0.4 * scale;
-    const tileH = vh * 0.8 * scale;
+    // Scale native dest coords to our viewport
+    const dx = FP_VIEW.x + Math.floor(natDX * SX);
+    const dy = FP_VIEW.y + Math.floor(natDY * SY);
+    const dw = Math.floor(srcW * SX);
+    const dh = Math.floor(srcH * SY);
 
-    const xOffset = side * tileW * 0.9;
-    const x = centerX + xOffset - tileW / 2;
-    const y = centerY - tileH / 2;
+    // For walkable tiles: draw ceiling, then floor, then any object on top
+    if (tile !== TILE.WALL) {
+      // Ceiling
+      if (!this.atlas.drawSlice(ctx, 'fp_ceiling', srcX, srcY, srcW, srcH, dx, dy, dw, dh)) {
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(dx, dy, dw, dh);
+      }
+      // Floor
+      if (!this.atlas.drawSlice(ctx, 'fp_floor', srcX, srcY, srcW, srcH, dx, dy, dw, dh)) {
+        ctx.fillStyle = '#2d2d1a';
+        ctx.fillRect(dx, dy, dw, dh);
+      }
+    }
 
-    let assetName = null;
-    if (tile === TILE.WALL) assetName = 'fp_wall';
-    else if (tile === TILE.DOOR) assetName = 'fp_door';
-    else if (tile === TILE.FLOOR) assetName = 'fp_floor';
-    else if (tile === TILE.STAIRS_DOWN || tile === TILE.STAIRS_UP) assetName = 'fp_stairs';
-    else if (tile === TILE.CHEST) assetName = 'fp_chest_int';
-
-    if (!assetName || !this.atlas.has(assetName)) {
-      if (tile === TILE.WALL) {
-        ctx.fillStyle = `rgba(80, 80, 100, ${layer.opacity})`;
-        ctx.fillRect(x, y, tileW, tileH);
+    // Wall or object layer
+    let asset = null;
+    if (tile === TILE.WALL) asset = 'fp_wall';
+    else if (tile === TILE.DOOR) asset = 'fp_door';
+    else if (tile === TILE.CHEST) asset = 'fp_chest_int';
+    else if (tile === TILE.STAIRS_DOWN || tile === TILE.STAIRS_UP) {
+      // fp_stairs is 160x120 (single image, not 640x240 sprite sheet)
+      if (this.atlas.has('fp_stairs')) {
+        this.atlas.draw(ctx, 'fp_stairs',
+          FP_VIEW.x, FP_VIEW.y, FP_VIEW.width, FP_VIEW.height);
       }
       return;
     }
 
-    const frameIdx = side === -1 ? 1 : side === 1 ? 3 : 2;
-    ctx.globalAlpha = layer.opacity;
-    this.atlas.drawSlice(
-      ctx, assetName,
-      frameIdx * FRAME_W, 0, FRAME_W, FRAME_H,
-      Math.floor(x), Math.floor(y), Math.floor(tileW), Math.floor(tileH)
-    );
-    ctx.globalAlpha = 1.0;
+    if (asset && this.atlas.has(asset)) {
+      this.atlas.drawSlice(ctx, asset, srcX, srcY, srcW, srcH, dx, dy, dw, dh);
+    } else if (tile === TILE.WALL) {
+      // Fallback solid wall
+      ctx.fillStyle = '#505064';
+      ctx.fillRect(dx, dy, dw, dh);
+    }
   }
 }

@@ -1,37 +1,54 @@
+import { TavernState } from './states/tavern.js';
+import { CombatState } from './states/combat.js';
+import { CharacterCreateState } from './states/character-create.js';
+import { ExploringState } from './states/exploring.js';
+
 export class StateStack {
-  constructor() {
+  constructor(assets) {
     this.stack = [];
+    this.assets = assets;
   }
-  
+
   push(state) {
     this.stack.push(state);
   }
-  
+
   pop() {
     return this.stack.pop();
   }
-  
+
+  clear() {
+    this.stack = [];
+  }
+
   peek() {
     return this.stack[this.stack.length - 1];
   }
-  
+
   isEmpty() {
     return this.stack.length === 0;
   }
-  
-  // State management methods will be added when states are imported
-  // in the main game loop
-}
 
-  pushCombat(enemies) {
-    // For now, just log that combat should start
-    // In a full implementation, this would push a CombatState
-    console.log('Combat triggered with enemies:', enemies);
+  pushTavern(renderers) {
+    this.push(new TavernState(this.assets, renderers));
   }
 
-  updateAndRender(ctx, world, assets) {
-    // Check if there are active states to render
-    // This would be called from the main loop when states are active
-    return false;
+  pushCombat(enemies) {
+    this.push(new CombatState(enemies, this.assets));
+  }
+
+  pushCharacterCreate() {
+    this.push(new CharacterCreateState(this.assets));
+  }
+
+  pushExploring(fpRenderer, minimapRenderer, uiRenderer) {
+    this.push(new ExploringState(fpRenderer, minimapRenderer, uiRenderer));
+  }
+
+  updateAndRender(layers, world) {
+    const current = this.peek();
+    if (!current) return false;
+    current.render(layers, world);
+    return true;
   }
 }

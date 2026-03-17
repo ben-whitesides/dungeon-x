@@ -1,9 +1,9 @@
 // D&D 5e XP thresholds for medium-fast progression
 export const LEVEL_DATA = [
-  { xp: 0, proficiencyBonus: 2, features: [] },
-  { xp: 300, proficiencyBonus: 2, features: ['abilityScoreIncrease'] },
-  { xp: 900, proficiencyBonus: 2, features: ['classFeature'] },
-  { xp: 2700, proficiencyBonus: 2, features: ['abilityScoreIncrease'] },
+  { xp: 0, proficiencyBonus: 2, features: [] },                           // Level 1
+  { xp: 300, proficiencyBonus: 2, features: ['classFeature'] },            // Level 2: subclass feature
+  { xp: 900, proficiencyBonus: 2, features: ['classFeature'] },            // Level 3: archetype feature
+  { xp: 2700, proficiencyBonus: 2, features: ['abilityScoreIncrease'] },   // Level 4: first ASI (D&D 5e RAW)
   { xp: 6500, proficiencyBonus: 3, features: ['extraAttack', 'classFeature'] },
   { xp: 14000, proficiencyBonus: 3, features: ['abilityScoreIncrease'] },
   { xp: 23000, proficiencyBonus: 3, features: ['classFeature'] },

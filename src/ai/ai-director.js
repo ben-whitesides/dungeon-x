@@ -68,11 +68,15 @@ export class AIDirector {
     }
     
     if (action.type === 'move') {
-      // Update monster position
-      world.tileMap.removeEntity(monster);
-      monster.x += action.dx;
-      monster.y += action.dy;
-      world.tileMap.addEntity(monster);
+      // Check walkability before moving (Bob Nystrom: never trust movement without validation)
+      const newX = monster.x + action.dx;
+      const newY = monster.y + action.dy;
+      if (world.tileMap.isWalkable(newX, newY)) {
+        world.tileMap.removeEntity(monster);
+        monster.x = newX;
+        monster.y = newY;
+        world.tileMap.addEntity(monster);
+      }
     } else if (action.type === 'attack') {
       // Trigger attack through combat system
       if (world.combat) {
@@ -85,13 +89,15 @@ export class AIDirector {
   
   executeGretchkaAction(action, monster, world) {
     if (action.type === 'move') {
-      // Update monster position
-      world.tileMap.removeEntity(monster);
-      monster.x += action.dx;
-      monster.y += action.dy;
-      world.tileMap.addEntity(monster);
+      const newX = monster.x + action.dx;
+      const newY = monster.y + action.dy;
+      if (world.tileMap.isWalkable(newX, newY)) {
+        world.tileMap.removeEntity(monster);
+        monster.x = newX;
+        monster.y = newY;
+        world.tileMap.addEntity(monster);
+      }
     } else if (action.type === 'attack') {
-      // Trigger attack through combat system
       if (world.combat) {
         world.combat.processAttack(monster, action.target);
       }
@@ -113,11 +119,21 @@ export class AIDirector {
       const goblinType = goblinTypes[Math.floor(Math.random() * goblinTypes.length)];
       const goblin = createMonster(goblinType);
       
-      // Place near Gretchka
-      goblin.x = gretchka.x + (Math.random() > 0.5 ? 1 : -1);
-      goblin.y = gretchka.y + (Math.random() > 0.5 ? 1 : -1);
-      
-      world.tileMap.addEntity(goblin);
+      // Place near Gretchka — validate walkability
+      const offsets = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]];
+      let placed = false;
+      for (const [ox, oy] of offsets) {
+        const gx = gretchka.x + ox;
+        const gy = gretchka.y + oy;
+        if (world.tileMap.isWalkable(gx, gy)) {
+          goblin.x = gx;
+          goblin.y = gy;
+          world.tileMap.addEntity(goblin);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) break; // No valid tiles — stop summoning
     }
   }
 }

@@ -15,11 +15,11 @@ import { generateDungeon } from '../dungeon/bsp-generator.js';
 import { computeFOV } from '../fov/shadowcast.js';
 
 export class GameWorld {
-  constructor(seed) {
+  constructor(seed, assets) {
     this.inventory = new Inventory();
     this.merchant = new Merchant();
     this.saveManager = new SaveManager();
-    this.stateStack = new StateStack();
+    this.stateStack = new StateStack(assets);
     this.scheduler = new EnergyScheduler();
     this.party = new PartyManager();
     this.roster = new CharacterRoster();
@@ -27,6 +27,7 @@ export class GameWorld {
     this.rng = this.useDailySeed ? createDailyPRNG() : createPRNG(seed);
     this.events = new EventBus();
     this.tileMap = null;
+    this.floorCache = new Map(); // Cache generated floors so backtracking preserves state
     this.player = { x: 0, y: 0, facing: DIR.NORTH };
     this.floor = 1;
     this.completedDungeons = new Set(); // Track cleared dungeons
@@ -95,39 +96,53 @@ export class GameWorld {
   }
 
   goToNextFloor() {
+    // Cache current floor state before leaving
+    this.floorCache.set(this.floor, this.tileMap);
+
     this.floor++;
-    console.log(`Descending to floor ${this.floor}`);
-    
-    // Generate new dungeon for this floor
-    this.tileMap = generateDungeon(this.rng);
-    
-    // Place player at stairs up
-    const startRoom = this.tileMap.rooms[0];
-    this.player.x = startRoom.cx;
-    this.player.y = startRoom.cy;
-    
+
+    if (this.floorCache.has(this.floor)) {
+      // Restore cached floor — monsters, items, explored tiles all preserved
+      this.tileMap = this.floorCache.get(this.floor);
+      const startRoom = this.tileMap.rooms[0];
+      this.player.x = startRoom.cx;
+      this.player.y = startRoom.cy;
+    } else {
+      // Generate new floor on first visit only
+      this.tileMap = generateDungeon(this.rng);
+      const startRoom = this.tileMap.rooms[0];
+      this.player.x = startRoom.cx;
+      this.player.y = startRoom.cy;
+    }
+
     this.recomputeFOV();
-    // this.spawnMonsters();
     this.needsRender = true;
   }
 
   goToPreviousFloor() {
-    if (this.floor > 1) {
-      this.floor--;
-      console.log(`Ascending to floor ${this.floor}`);
-      
-      // Generate new dungeon for this floor (should be deterministic)
-      this.tileMap = generateDungeon(this.rng);
-      
-      // Place player at stairs down (last room)
+    if (this.floor <= 1) return;
+
+    // Cache current floor state
+    this.floorCache.set(this.floor, this.tileMap);
+
+    this.floor--;
+
+    if (this.floorCache.has(this.floor)) {
+      // Restore cached floor
+      this.tileMap = this.floorCache.get(this.floor);
       const lastRoom = this.tileMap.rooms[this.tileMap.rooms.length - 1];
       this.player.x = lastRoom.cx;
       this.player.y = lastRoom.cy;
-      
-      this.recomputeFOV();
-      // this.spawnMonsters();
-      this.needsRender = true;
+    } else {
+      // Should always be cached since we came from here, but safety fallback
+      this.tileMap = generateDungeon(this.rng);
+      const lastRoom = this.tileMap.rooms[this.tileMap.rooms.length - 1];
+      this.player.x = lastRoom.cx;
+      this.player.y = lastRoom.cy;
     }
+
+    this.recomputeFOV();
+    this.needsRender = true;
   }
 
   enterDungeon() {
@@ -140,11 +155,7 @@ export class GameWorld {
     console.log('Dungeon entered - party snapshot created');
   }
 
-  old_enterDungeon() {
-    // Create snapshot before entering
-    this.saveManager.createSnapshot(this.party.getMembers());
-    console.log('Dungeon entered - party snapshot created');
-  }
+
 
   getCurrentDailySeed() {
     if (this.useDailySeed) {
@@ -155,7 +166,7 @@ export class GameWorld {
   }
 
   exitDungeon(victory) {
-    if (victory   exitDungeon(victory) {  exitDungeon(victory) { this.dungeonStartTime) {
+    if (victory && this.dungeonStartTime) {
       // Record completion time
       const completionTime = Date.now() - this.dungeonStartTime;
       const dailySeed = this.getCurrentDailySeed();
@@ -195,15 +206,5 @@ export class GameWorld {
     }
   }
 
-  old_exitDungeon(victory) {
-    if (!victory) {
-      // Restore from snapshot on defeat
-      this.saveManager.restoreSnapshot(this.party.getMembers());
-      console.log('Party restored from snapshot after defeat');
-    } else {
-      // Clear snapshot on victory
-      this.saveManager.clearSnapshot();
-      console.log('Dungeon completed - snapshot cleared');
-    }
-  }
+
 }

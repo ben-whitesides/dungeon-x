@@ -5,8 +5,16 @@ export class SoundManager {
     this.isInitialized = false;
     this.volume = 0.3; // Default volume
     
-    // Initialize on first user interaction
-    this.init();
+    // Defer AudioContext creation to first user gesture (browser requirement)
+    this._initOnGesture = () => {
+      if (!this.isInitialized) this.init();
+      document.removeEventListener('keydown', this._initOnGesture);
+      document.removeEventListener('click', this._initOnGesture);
+      document.removeEventListener('touchstart', this._initOnGesture);
+    };
+    document.addEventListener('keydown', this._initOnGesture);
+    document.addEventListener('click', this._initOnGesture);
+    document.addEventListener('touchstart', this._initOnGesture);
   }
   
   async init() {
@@ -81,7 +89,7 @@ export class SoundManager {
     // Random footstep sound
     const frequencies = [150, 180, 200, 220];
     const freq = frequencies[Math.floor(Math.random() * frequencies.length)];
-    this.playTone(freq, 0.03, 'noise', 0.1);
+    this.playTone(freq, 0.03, 'square', 0.1); // 'noise' is not a valid OscillatorNode type
   }
   
   // Combat sounds
