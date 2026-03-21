@@ -87,6 +87,7 @@ export class CharacterCreateState {
         this.name = '';
         this.cursorBlink = 0;
         this.cursorVisible = true;
+        if (world.input) world.input.captureAll = true;
         return true;
       }
       if (code === 'Escape' || code === 'Backspace') {
@@ -102,11 +103,13 @@ export class CharacterCreateState {
         if (this.name.trim().length > 0) {
           this.step = 3;
           this._confirmSelected = 0;
+          if (world.input) world.input.captureAll = false;
         }
         return true;
       }
       if (code === 'Escape') {
         this.step = 1;
+        if (world.input) world.input.captureAll = false;
         return true;
       }
       if (code === 'Backspace') {
@@ -149,6 +152,7 @@ export class CharacterCreateState {
       }
       if (code === 'Escape' || code === 'Backspace') {
         this.step = 2;
+        if (world.input) world.input.captureAll = true;
         return true;
       }
       return false;

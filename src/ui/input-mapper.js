@@ -6,6 +6,7 @@ export class InputMapper {
     this._pendingEvent = null;
     this._onKeyDown = this._onKeyDown.bind(this);
     this.touch = new TouchHandler();
+    this.captureAll = false; // Set true during name entry to capture all keys
   }
 
   attach() {
@@ -34,7 +35,7 @@ export class InputMapper {
       'Digit1', 'Digit2', 'Digit3', 'Digit4'
     ];
 
-    if (capturedKeys.includes(e.code)) {
+    if (capturedKeys.includes(e.code) || this.captureAll) {
       e.preventDefault();
       this._pendingEvent = { code: e.code, key: e.key };
     }
