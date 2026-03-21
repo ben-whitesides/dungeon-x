@@ -4,6 +4,7 @@ import { createItem } from '../items/item-data.js';
 import { Merchant } from '../items/merchant.js';
 import { Inventory } from '../items/inventory.js';
 import { SaveManager } from './save-manager.js';
+import { GameSave } from './game-save.js';
 import { createMonster, getMonsterPool } from '../dungeon/monsters.js';
 import { StateStack } from '../ui/state-stack.js';
 import { EnergyScheduler } from './energy-scheduler.js';
@@ -36,6 +37,7 @@ export class GameWorld {
     this.leaderboard = new Leaderboard();
     this.dungeonStartTime = null;
     this.gold = 50; // Starting gold
+    this.heroCharacter = null; // Player's custom hero (party slot 1, can't be removed)
     this.needsRender = true;
   }
 
@@ -48,8 +50,7 @@ export class GameWorld {
     this.player.facing = DIR.NORTH;
 
     this.recomputeFOV();
-    // this.spawnMonsters();
-    // this.roster.load(); // Load saved characters
+    this.spawnMonsters();
 
     this.events.on('playerMoved', () => {
       this.recomputeFOV();
@@ -86,7 +87,7 @@ export class GameWorld {
       // Place in random room (not the starting room)
       let room;
       do {
-        room = this.tileMap.rooms[Math.floor(this.rng() * this.tileMap.rooms.length)];
+        room = this.tileMap.rooms[Math.floor(this.rng.next() * this.tileMap.rooms.length)];
       } while (room === this.tileMap.rooms[0]); // Avoid starting room
       
       monster.x = room.cx;
@@ -204,6 +205,24 @@ export class GameWorld {
       this.saveManager.clearSnapshot();
       console.log('Dungeon completed - snapshot cleared');
     }
+
+    // Full rest at tavern — restore all HP/MP for surviving party
+    this.party.getMembers().forEach(member => {
+      if (member.isAlive()) {
+        member.currentHP = member.maxHP;
+        member.currentMana = member.maxMana;
+        member.isDefending = false;
+        member.activeBuffs = [];
+      }
+    });
+    console.log('Party rested at tavern - HP/MP restored');
+
+    // Clear floor cache for fresh dungeon on next entry
+    this.floorCache.clear();
+    this.floor = 1;
+
+    // Auto-save after dungeon exit
+    GameSave.save(this);
   }
 
 

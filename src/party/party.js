@@ -4,7 +4,10 @@ export class PartyManager {
   }
   
   addMember(character) {
-    if (this.members.length < 4) {
+    // L-1 fix: check by object identity AND name+class to survive serialization
+    const isDuplicate = this.members.includes(character) ||
+      this.members.some(m => m.name === character.name && m.class === character.class);
+    if (this.members.length < 4 && !isDuplicate) {
       this.members.push(character);
       return true;
     }

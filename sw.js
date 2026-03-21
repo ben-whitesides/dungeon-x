@@ -1,6 +1,6 @@
 // Dungeon X Service Worker for PWA offline functionality
-const CACHE_NAME = 'dungeon-x-v1.0.0';
-const STATIC_CACHE_NAME = 'dungeon-x-static-v1.0.0';
+const CACHE_NAME = 'dungeon-x-v2.0.0';
+const STATIC_CACHE_NAME = 'dungeon-x-static-v2.0.0';
 
 // Files to cache for offline play
 const STATIC_FILES = [
@@ -33,8 +33,16 @@ const STATIC_FILES = [
   './src/ui/input-mapper.js',
   './src/ui/state-stack.js',
   './src/ui/states/tavern.js',
+  './src/ui/states/tavern-exterior.js',
+  './src/ui/npc-dialogue.js',
+  './config/npc-dialogue.json',
+  './config/notice-board.json',
   './src/ui/states/combat.js',
   './src/ui/states/character-create.js',
+  './src/ui/states/dungeon-transition.js',
+  './src/ui/states/level-up.js',
+  './src/ui/states/exploring.js',
+  './src/core/game-save.js',
   './src/render/ui-renderer.js',
   './src/render/asset-loader.js',
   './src/render/sprite-atlas.js',

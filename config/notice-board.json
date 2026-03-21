@@ -1,0 +1,140 @@
+{
+  "dungeons": [
+    {
+      "id": "crypts",
+      "name": "The Whispering Crypts",
+      "skulls": 1,
+      "fragment": "Fragment of Dawn",
+      "treasure": "Iron Key, basic armor, health potions",
+      "lore": "The first light that ever fell on this world. It warms even now, faintly, behind ancient stone.",
+      "floors": 2,
+      "tier": 1,
+      "requiredFragments": 0,
+      "theme": "Undead burial grounds — dusty crypts, crumbling sarcophagi"
+    },
+    {
+      "id": "goblin_warrens",
+      "name": "The Goblin Warrens",
+      "skulls": 1,
+      "fragment": "Fragment of Dusk",
+      "treasure": "Shaman's Amulet, stolen gear, goblin-crafted helm",
+      "lore": "The last light before night. Patient. It has waited here for centuries without complaint.",
+      "floors": 2,
+      "tier": 1,
+      "requiredFragments": 0,
+      "theme": "Chaotic goblin civilization — low ceilings, rope bridges, cooking fires"
+    },
+    {
+      "id": "flooded_vaults",
+      "name": "The Flooded Vaults",
+      "skulls": 2,
+      "fragment": "Fragment of Storm",
+      "treasure": "Vault Master's Ring, underwater breathing amulet",
+      "lore": "The breath of the sky, compressed into stone. It has not forgotten where it came from.",
+      "floors": 2,
+      "tier": 1,
+      "requiredFragments": 1,
+      "theme": "Ancient treasure vault — half-submerged, mineral-streaked walls, bubbles rising"
+    },
+    {
+      "id": "ember_depths",
+      "name": "Ember Depths",
+      "skulls": 3,
+      "fragment": "Fragment of Flame",
+      "treasure": "Dragon Scale, Fire Resistance Cloak",
+      "lore": "The first fire was not made by humans. This piece remembers that.",
+      "floors": 3,
+      "tier": 2,
+      "requiredFragments": 2,
+      "theme": "Volcanic caverns — active lava flows, steam vents, cracked rock"
+    },
+    {
+      "id": "frozen_abyss",
+      "name": "The Frozen Abyss",
+      "skulls": 3,
+      "fragment": "Fragment of Frost",
+      "treasure": "Warden's Staff, cold resistance gear",
+      "lore": "The cold does not hate. It simply does not care. This is the piece that was there when the world first exhaled.",
+      "floors": 3,
+      "tier": 2,
+      "requiredFragments": 3,
+      "theme": "Glacial cavern — ice walls, frozen breath, slippery floors, things frozen inside walls"
+    },
+    {
+      "id": "shattered_halls",
+      "name": "The Shattered Halls",
+      "skulls": 3,
+      "fragment": "Fragment of Stone",
+      "treasure": "Forgemaster's Gauntlets, dwarven craft weapons",
+      "lore": "The earth does not break easily. This piece is all that broke.",
+      "floors": 3,
+      "tier": 2,
+      "requiredFragments": 4,
+      "theme": "Ancient dwarven complex — gears, pulleys, counterweights, rubble"
+    },
+    {
+      "id": "howling_spire",
+      "name": "The Howling Spire",
+      "skulls": 4,
+      "fragment": "Fragment of Wind",
+      "treasure": "Gale Mantle, storm arrows",
+      "lore": "Wind does not follow the same rules. It was the first to leave the Sunstone and the last to slow down.",
+      "floors": 4,
+      "tier": 3,
+      "requiredFragments": 5,
+      "theme": "Collapsed wizard's tower — vertical dungeon, wind currents, open sky"
+    },
+    {
+      "id": "void_chambers",
+      "name": "The Void Chambers",
+      "skulls": 4,
+      "fragment": "Fragment of Shadow",
+      "treasure": "Void Mantle, null arrows",
+      "lore": "Shadow is not the absence of light. The Sunstone knew this. This piece is the proof.",
+      "floors": 4,
+      "tier": 3,
+      "requiredFragments": 6,
+      "theme": "Sub-dimensional space — reality unstable, walls shift, gravity anomalies"
+    },
+    {
+      "id": "crystal_sanctum",
+      "name": "The Crystal Sanctum",
+      "skulls": 5,
+      "fragment": "Fragment of Light",
+      "treasure": "Scholar's Codex, Scholar's Ring, aureate gear",
+      "lore": "The Circle put this one here on purpose. This is where they thought the world would be safest.",
+      "floors": 4,
+      "tier": 3,
+      "requiredFragments": 7,
+      "theme": "Aureate Circle HQ — white and gold stone, light crystals, automata guardians"
+    },
+    {
+      "id": "final_descent",
+      "name": "The Final Descent",
+      "skulls": 5,
+      "fragment": "Fragment of Life",
+      "treasure": "The Sunstone itself",
+      "lore": "Life did not need a name until the Sunstone broke. Now it does.",
+      "floors": 5,
+      "tier": 4,
+      "requiredFragments": 9,
+      "theme": "The ruins of Aldenmere — all environments collide, Dorevus awaits"
+    }
+  ],
+  "fragmentNames": [
+    "Fragment of Dawn",
+    "Fragment of Dusk",
+    "Fragment of Storm",
+    "Fragment of Flame",
+    "Fragment of Frost",
+    "Fragment of Stone",
+    "Fragment of Wind",
+    "Fragment of Shadow",
+    "Fragment of Light",
+    "Fragment of Life"
+  ],
+  "fragmentIds": [
+    "dawn", "dusk", "storm", "flame", "frost",
+    "stone", "wind", "shadow", "light", "life"
+  ]
+}

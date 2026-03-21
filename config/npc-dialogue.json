@@ -1,0 +1,260 @@
+{
+  "npcs": {
+    "aldric": {
+      "name": "Aldric",
+      "title": "The Barkeep",
+      "color": "#C08040",
+      "portrait": "🍺",
+      "available": { "min": 0, "max": 10 }
+    },
+    "mira": {
+      "name": "Mira",
+      "title": "The Cartographer",
+      "color": "#6A9EC0",
+      "portrait": "🗺",
+      "available": { "min": 0, "max": 10 }
+    },
+    "elden": {
+      "name": "Elden",
+      "title": "The Ghost at Table Seven",
+      "color": "#8888CC",
+      "portrait": "👻",
+      "available": { "min": 2, "max": 7, "final": 10 }
+    },
+    "orin": {
+      "name": "Orin Vane",
+      "title": "The Wounded Sellsword",
+      "color": "#B07040",
+      "portrait": "⚔",
+      "available": { "min": 0, "max": 10 }
+    },
+    "bessa": {
+      "name": "Bessa",
+      "title": "The Merchant",
+      "color": "#8A6A40",
+      "portrait": "🛒",
+      "available": { "min": 0, "max": 10 }
+    }
+  },
+  "dialogue": {
+    "aldric": {
+      "0": [
+        "Another one. They all come in looking like you — hungry, broke, full of rumors.",
+        "Drink's on the table. Don't break anything."
+      ],
+      "1": [
+        "You're still alive. Most stop here.",
+        "The ones who found a fragment... they either quit or go deeper. Nobody stays the same."
+      ],
+      "2": [
+        "There's talk of you. Not the good kind — the dangerous kind.",
+        "People don't whisper about adventurers they expect to see again."
+      ],
+      "3": [
+        "Three fragments. I've poured drinks for twenty years and never seen three.",
+        "You should know — the last one who got this far didn't come back for his tab."
+      ],
+      "4": [
+        "They say you're actually doing it. Finding the pieces.",
+        "I don't know what you're building, but this tavern's been quieter since you started."
+      ],
+      "5": [
+        "Five. Half the Sunstone. You know that, don't you?",
+        "Mira won't say it, but she's frightened. I can tell by the maps she draws now — smaller. Closer to home."
+      ],
+      "6": [
+        "I've stopped charging you for the first ale. Seems wrong, somehow.",
+        "The trophy wall draws visitors now. People come just to see the fragments. They glow, you know. At night."
+      ],
+      "7": [
+        "Seven. The room goes quiet when you walk in now.",
+        "I'm not a superstitious man. But something's changed in the walls. The wood creaks differently."
+      ],
+      "8": [
+        "I'm going to ask you one question. Do you know what you're doing?",
+        "Because I've heard things. From the dark. And they know your name."
+      ],
+      "9": [
+        "Nine fragments. One left. And you're sitting here drinking.",
+        "Whatever happens down there — I want you to know this tavern will remember you. That's not nothing."
+      ],
+      "10": [
+        "Don't come back here. I mean that as a kindness.",
+        "The final descent awaits. Every soul in this room has given what they can. The rest is yours."
+      ]
+    },
+    "mira": {
+      "0": [
+        "Maps. I sell maps. Don't ask me about the Sunstone — it's a useful fantasy for selling maps.",
+        "The dungeons are real enough. What's in them... that's your problem."
+      ],
+      "1": [
+        "You actually went in. And you found... wait. Let me see that.",
+        "A fragment. I've drawn these in margins for years. Never thought I'd hold one."
+      ],
+      "2": [
+        "Two fragments changes things. I can map the resonance patterns now.",
+        "Each fragment pulls toward the others. The deeper ones are louder. I can almost hear them in the ink."
+      ],
+      "3": [
+        "My maps are getting more accurate. The fragments — they want to be found.",
+        "The dungeons are reshaping around the shards. New passages where there were walls."
+      ],
+      "4": [
+        "Four fragments. The cartography guild would call me mad for what I'm drawing now.",
+        "There are geometries in the deep floors that shouldn't exist. Rooms that are bigger inside than out."
+      ],
+      "5": [
+        "I can feel the other five from here. They're deeper than anything I've mapped.",
+        "My hands shake when I draw the lower levels now. Not fear. Resonance."
+      ],
+      "6": [
+        "Six fragments and the map draws itself. I just hold the pen.",
+        "Something is guiding the ink. I don't know if that's beautiful or terrifying."
+      ],
+      "7": [
+        "Seven fragments. The final dungeons are... different. Older than the others.",
+        "I've run out of ink three times this week. The maps keep growing. There are rooms I didn't draw."
+      ],
+      "8": [
+        "I can't draw anymore. The maps are complete but I can't look at them.",
+        "There's something in the deepest chamber. It's been waiting. Longer than the dungeons. Longer than the stone."
+      ],
+      "9": [
+        "Take this map. It's the last one I'll ever make.",
+        "The final dungeon doesn't need a cartographer. It knows you're coming."
+      ],
+      "10": [
+        "I drew you something. Not a map — a memory. Of this tavern. Before everything changed.",
+        "In case you want to remember what it looked like. When we were all just... normal."
+      ]
+    },
+    "orin": {
+      "0": [
+        "New blood. You've got that look — like you think the dungeons owe you something.",
+        "They don't. I went in with twelve. Came out with this leg and nobody else.",
+        "Want some advice? Watch their left side on the swing. Every goblin telegraphs left."
+      ],
+      "1": [
+        "A fragment already? You're either lucky or good. Luck runs out down there.",
+        "My sister Joren went looking for fragments too. Dungeon two. Floor three.",
+        "She never came back. I stopped looking after this leg."
+      ],
+      "2": [
+        "Two fragments. The goblins in the Warrens start coordinating at that point. They can feel it on you.",
+        "Here's what I learned the hard way — when an enemy winds up for a big hit, their guard drops. Use it."
+      ],
+      "3": [
+        "Three fragments and you're still walking. Better than I ever did.",
+        "The deeper enemies hit different. Not harder — smarter. They learn your patterns."
+      ],
+      "4": [
+        "I hear things about you in the common room. Sellswords twice your level are nervous.",
+        "Watch for enemies that hold position. They're baiting you. Flank or skip them.",
+        "Joren would have liked you. She had that same stubborn look."
+      ],
+      "5": [
+        "Half the Sunstone. I won't lie — I didn't think you'd make it this far.",
+        "The enemies below floor three start using formation tactics. Break the formation first, then pick them apart."
+      ],
+      "6": [
+        "Six fragments. The sellsword guild is talking about putting a bounty on whatever's guarding the rest.",
+        "I'd volunteer, but... well. This leg isn't getting any better."
+      ],
+      "7": [
+        "Seven. The War Table intel is showing patterns I've never seen. The deep ones are adapting to YOU.",
+        "Vary your approach. If you always lead with the same attack, they'll be ready."
+      ],
+      "8": [
+        "I found Joren's journal entry in some old notes last night. She wrote about a hiding spot on the second floor of the Warrens.",
+        "Greater potion stashed behind a loose stone. North wall, third alcove. She always was the smart one."
+      ],
+      "9": [
+        "One fragment left. I can feel the pull from here. My bad leg aches when you walk in.",
+        "Whatever's guarding the last one — it's been waiting longer than any of us have been alive. Go in knowing that."
+      ],
+      "10": [
+        "You actually did it. All ten. I... I need a drink.",
+        "When you go down for the last time — and you will go down — remember what I taught you. Watch the left side. Always the left side."
+      ]
+    },
+    "bessa": {
+      "0": [
+        "Supplies. Potions. Torches. I don't do credit and I don't do refunds.",
+        "Check the arrows before you buy — I won't sell you bent ones, but some merchants would.",
+        "Everything on that shelf is tested. I use it myself when I have to make supply runs."
+      ],
+      "1": [
+        "Back already? And with a fragment, no less. Smart ones stock up after the first run.",
+        "I got a new shipment of fire resistance gear. You'll want it for the deeper floors."
+      ],
+      "2": [
+        "Two fragments. You're past the tourist phase. Let me show you the real inventory.",
+        "These potions aren't cheap, but they're brewed right. None of that watered-down tavern swill."
+      ],
+      "3": [
+        "Three fragments and your gear looks like it went through a forge backwards. Let me see what I can do.",
+        "The crafting station is open if you've got materials. Bring me dragon scales and I'll make something worth wearing."
+      ],
+      "4": [
+        "Word travels. Suppliers are giving me better stock now that they know who's buying.",
+        "I've got scrolls in from the eastern markets. Expensive, but they'll save your life once each.",
+        "That's the trade — gold now, or death later. I know which I'd pick."
+      ],
+      "5": [
+        "Half the Sunstone. My prices haven't changed — I'm honest, not stupid.",
+        "But I will say this: the rare stock rotates daily now. Check back every run."
+      ],
+      "6": [
+        "Six fragments. I'm stocking things I haven't seen in twenty years of trading.",
+        "Void crystals, rime shards, light crystals — the dungeons are coughing up their best for you."
+      ],
+      "7": [
+        "Seven fragments and I'm running low on excuses for where this stock comes from.",
+        "The suppliers think I'm outfitting an army. I tell them I'm outfitting something worse."
+      ],
+      "8": [
+        "I'm going to level with you — some of this gear, I don't know what it does. Not fully.",
+        "It came from deep. Deeper than my suppliers go. Test it carefully."
+      ],
+      "9": [
+        "Nine fragments. I've set aside my best stock for your final run. No charge on the healing potions.",
+        "Don't look at me like that. It's not charity. It's an investment in my continued existence."
+      ],
+      "10": [
+        "You've got all ten. I never thought I'd see the day.",
+        "Take what you need from the shop. Everything's on the house. You've earned it — and whatever's down there, you'll need every edge."
+      ]
+    },
+    "elden": {
+      "2": [
+        "You can see me. That means you've touched the Sunstone.",
+        "Sit. I knew someone who found two. She made it to four before the dark took her."
+      ],
+      "3": [
+        "Three. You're stronger than she was at three.",
+        "The fragments remember their whole. They'll guide you if you listen. And mislead you if you don't."
+      ],
+      "4": [
+        "I was alive once. Before the first shattering. I remember the light.",
+        "Four fragments and I can almost feel warmth again. Almost."
+      ],
+      "5": [
+        "Half the stone. The boundary between collector and champion.",
+        "From here, the dungeons don't just test you. They watch you. They learn."
+      ],
+      "6": [
+        "Something watches through the stones now. Not the dungeons. Something older.",
+        "His name was Dorevus. Once. Before he became what he is."
+      ],
+      "7": [
+        "I can't stay much longer. The fragments are pulling me apart.",
+        "Seven pieces of light in a world of dark. You're a beacon. And beacons attract."
+      ],
+      "10": [
+        "You came back. I wasn't sure you would.",
+        "The Sunstone remembers all of us. Even ghosts. Even you. Finish what was started."
+      ]
+    }
+  }
+}

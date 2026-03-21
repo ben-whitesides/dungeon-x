@@ -16,6 +16,11 @@ export const TILE = Object.freeze({
   STAIRS_DOWN: 4,
   STAIRS_UP:   5,
   CHEST:  6,
+  TORCH_UNLIT: 7,
+  TORCH_LIT:   8,
+  LEVER:       9,
+  GATE_OPEN:   10,
+  GATE_CLOSED: 11,
 });
 
 // Cardinal directions (for player facing)

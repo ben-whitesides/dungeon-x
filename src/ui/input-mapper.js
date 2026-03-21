@@ -30,7 +30,7 @@ export class InputMapper {
       'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
       'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE',
       'Space', 'Enter', 'Escape', 'Backspace',
-      'KeyP', 'KeyB', 'KeyV', 'KeyG', 'KeyF', 'KeyI', 'KeyC',
+      'KeyP', 'KeyB', 'KeyV', 'KeyG', 'KeyF', 'KeyI', 'KeyC', 'KeyN',
       'Digit1', 'Digit2', 'Digit3', 'Digit4'
     ];
 

@@ -211,6 +211,86 @@ export class AnimationQueue {
     };
   }
   
+  static createDamageNumber(x, y, damage, isCrit = false) {
+    return {
+      type: 'damageNumber',
+      x,
+      y,
+      damage,
+      isCrit,
+      duration: 800,
+      render: (ctx, anim) => {
+        const elapsed = Date.now() - anim.startTime;
+        const progress = elapsed / anim.duration;
+        const floatY = anim.y - progress * 40;
+
+        ctx.save();
+        ctx.globalAlpha = 1 - progress;
+        ctx.textAlign = 'center';
+        ctx.font = anim.isCrit ? 'bold 22px monospace' : 'bold 16px monospace';
+        // Outline
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.strokeText(`${anim.damage}`, anim.x, floatY);
+        // Fill
+        ctx.fillStyle = anim.isCrit ? '#FF4444' : '#FFFFFF';
+        ctx.fillText(`${anim.damage}`, anim.x, floatY);
+        if (anim.isCrit) {
+          ctx.font = '10px monospace';
+          ctx.fillStyle = '#FFD700';
+          ctx.fillText('CRIT!', anim.x, floatY - 16);
+        }
+        ctx.restore();
+      }
+    };
+  }
+
+  static createMissText(x, y) {
+    return {
+      type: 'missText',
+      x,
+      y,
+      duration: 600,
+      render: (ctx, anim) => {
+        const elapsed = Date.now() - anim.startTime;
+        const progress = elapsed / anim.duration;
+        const floatY = anim.y - progress * 25;
+
+        ctx.save();
+        ctx.globalAlpha = 1 - progress;
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 14px monospace';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.strokeText('MISS', anim.x, floatY);
+        ctx.fillStyle = '#888';
+        ctx.fillText('MISS', anim.x, floatY);
+        ctx.restore();
+      }
+    };
+  }
+
+  static createDeathEffect(x, y) {
+    return {
+      type: 'death',
+      x,
+      y,
+      duration: 600,
+      render: (ctx, anim) => {
+        const elapsed = Date.now() - anim.startTime;
+        const progress = elapsed / anim.duration;
+
+        ctx.save();
+        ctx.globalAlpha = 1 - progress;
+        ctx.fillStyle = '#FF0000';
+        ctx.font = 'bold 18px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('☠', anim.x, anim.y - progress * 30);
+        ctx.restore();
+      }
+    };
+  }
+
   // Clear all animations and particles
   clear() {
     this.animations = [];

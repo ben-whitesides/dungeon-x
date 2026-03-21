@@ -21,10 +21,51 @@ export class TouchHandler {
     canvas.addEventListener('touchend', (e) => this._onTouchEnd(e), { passive: false });
     canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
+    // Mouse click support for desktop
+    canvas.addEventListener('mousedown', (e) => {
+      const pos = this._getMousePos(e);
+      this._touchStart = { x: e.clientX, y: e.clientY, time: Date.now(), canvasPos: pos };
+    });
+    canvas.addEventListener('mouseup', (e) => {
+      if (!this._touchStart) return;
+      const pos = this._touchStart.canvasPos;
+
+      // Check hit zones (registered by render pass)
+      for (const zone of this._hitZones) {
+        if (pos.x >= zone.x && pos.x <= zone.x + zone.w &&
+            pos.y >= zone.y && pos.y <= zone.y + zone.h) {
+          this._pendingCode = zone.code;
+          this._touchStart = null;
+          return;
+        }
+      }
+      // Check on-screen buttons
+      for (const btn of this._onScreenButtons) {
+        if (pos.x >= btn.x && pos.x <= btn.x + btn.w &&
+            pos.y >= btn.y && pos.y <= btn.y + btn.h) {
+          this._pendingCode = btn.code;
+          this._touchStart = null;
+          return;
+        }
+      }
+      this._touchStart = null;
+      // No fallback for mouse — only registered zones respond
+    });
+
     // Recalc rect on resize/scroll
     window.addEventListener('resize', () => {
       this._rect = canvas.getBoundingClientRect();
     });
+  }
+
+  _getMousePos(e) {
+    const rect = this._rect;
+    const scaleX = this._canvas.width / rect.width;
+    const scaleY = this._canvas.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
   }
 
   /** Called each frame before render to clear old hit zones */
@@ -137,8 +178,7 @@ export class TouchHandler {
       return;
     }
 
-    // Center tap = Space (recruit/interact)
-    this._pendingCode = 'Space';
+    // No fallback — if no zone matched, ignore the tap
     this._touchStart = null;
   }
 }

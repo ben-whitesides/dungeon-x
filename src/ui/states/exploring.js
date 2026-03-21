@@ -1,4 +1,4 @@
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../../core/constants.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, TILE, DIR_VECTOR } from '../../core/constants.js';
 import {
   MoveForwardCommand, MoveBackwardCommand,
   StrafeLeftCommand, StrafeRightCommand,
@@ -11,6 +11,8 @@ export class ExploringState {
     this.fpRenderer = fpRenderer;
     this.minimapRenderer = minimapRenderer;
     this.uiRenderer = uiRenderer;
+    this._interactMessage = null;
+    this._interactMessageTimer = 0;
   }
 
   handleInput(input, world) {
@@ -34,6 +36,7 @@ export class ExploringState {
       'KeyQ':       () => new TurnLeftCommand(),
       'KeyE':       () => new TurnRightCommand(),
       'Space':      () => new InteractCommand(),
+      'Enter':      () => new InteractCommand(),
       'KeyI':       () => ({ type: 'inventory' }),
     };
 
@@ -41,19 +44,46 @@ export class ExploringState {
     if (factory) {
       const cmd = factory();
       if (cmd.execute) {
-        cmd.execute(world);
-        // If movement triggered combat, CombatState will be pushed. 
-        // Return true to signal we handled the input and need render.
+        const result = cmd.execute(world);
+        // Show interaction feedback
+        this._checkInteractFeedback(world);
         return true;
       } else {
-        // Handle non-command inputs if needed
         if (cmd.type === 'inventory') {
-          // world.stateStack.pushInventory(); // Placeholder for future
           return true;
         }
       }
     }
     return false;
+  }
+
+  /**
+   * Check the tile in front of the player and set interaction hint message.
+   */
+  _checkInteractFeedback(world) {
+    const [dx, dy] = DIR_VECTOR[world.player.facing];
+    const tx = world.player.x + dx;
+    const ty = world.player.y + dy;
+    const tile = world.tileMap.get(tx, ty);
+
+    if (tile === TILE.TORCH_LIT) {
+      this._showMessage('Torch (lit) - SPACE to extinguish');
+    } else if (tile === TILE.TORCH_UNLIT) {
+      this._showMessage('Torch (unlit) - SPACE to light');
+    } else if (tile === TILE.LEVER) {
+      this._showMessage('Lever - SPACE to pull');
+    } else if (tile === TILE.GATE_CLOSED) {
+      this._showMessage('Portcullis blocked. Find a lever.');
+    } else if (tile === TILE.STAIRS_DOWN) {
+      this._showMessage('Stairs down - SPACE to descend');
+    } else if (tile === TILE.STAIRS_UP) {
+      this._showMessage('Stairs up - SPACE to ascend');
+    }
+  }
+
+  _showMessage(msg) {
+    this._interactMessage = msg;
+    this._interactMessageTimer = 120; // ~2 seconds at 60fps
   }
 
   render(layers, world) {
@@ -69,18 +99,51 @@ export class ExploringState {
     const uiCtx = layers.ui;
     if (uiCtx) {
       uiCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      
+
       // Minimap
       this.minimapRenderer.render(uiCtx, world.tileMap, world.player.x, world.player.y);
 
       // Party HUD
       this.uiRenderer.renderPartyHUD(uiCtx, world.party.getMembers());
-      
+
       // Clear + render virtual gamepad with touch zones
       if (world.input && world.input.touch) {
         world.input.touch.clearHitZones();
       }
       this.uiRenderer.renderVirtualGamepad(uiCtx, world.input && world.input.touch);
+
+      // Interaction hint
+      if (this._interactMessageTimer > 0) {
+        this._interactMessageTimer--;
+        const alpha = Math.min(1, this._interactMessageTimer / 30);
+        uiCtx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+        uiCtx.font = '14px monospace';
+        uiCtx.textAlign = 'center';
+        uiCtx.fillText(this._interactMessage, CANVAS_WIDTH / 2, CANVAS_HEIGHT - 50);
+        uiCtx.textAlign = 'left';
+      }
+
+      // Check facing tile for interact prompt
+      const [dx, dy] = DIR_VECTOR[world.player.facing];
+      const fx = world.player.x + dx;
+      const fy = world.player.y + dy;
+      const facingTile = world.tileMap.get(fx, fy);
+      const interactTiles = [TILE.TORCH_LIT, TILE.TORCH_UNLIT, TILE.LEVER, TILE.GATE_CLOSED, TILE.STAIRS_DOWN, TILE.STAIRS_UP];
+      if (interactTiles.includes(facingTile)) {
+        // Show interact prompt
+        uiCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        uiCtx.fillRect(CANVAS_WIDTH / 2 - 100, CANVAS_HEIGHT - 72, 200, 24);
+        uiCtx.fillStyle = '#FFD700';
+        uiCtx.font = '12px monospace';
+        uiCtx.textAlign = 'center';
+        uiCtx.fillText('[SPACE/TAP] Interact', CANVAS_WIDTH / 2, CANVAS_HEIGHT - 55);
+        uiCtx.textAlign = 'left';
+
+        // Touch zone for interact prompt
+        if (world.input && world.input.touch) {
+          world.input.touch.registerHitZone(CANVAS_WIDTH / 2 - 100, CANVAS_HEIGHT - 72, 200, 24, 'Space');
+        }
+      }
 
       // Status text
       uiCtx.fillStyle = '#0f0';
@@ -90,6 +153,11 @@ export class ExploringState {
         `Floor ${world.floor} | (${world.player.x}, ${world.player.y}) Facing ${dirs[world.player.facing]}`,
         10, CANVAS_HEIGHT - 10
       );
+
+      // Gold display
+      uiCtx.fillStyle = '#FFD700';
+      uiCtx.font = '13px monospace';
+      uiCtx.fillText(`Gold: ${world.gold}`, 10, CANVAS_HEIGHT - 28);
     }
   }
 

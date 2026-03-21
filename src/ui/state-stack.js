@@ -1,7 +1,10 @@
 import { TavernState } from './states/tavern.js';
+import { TavernExteriorState } from './states/tavern-exterior.js';
 import { CombatState } from './states/combat.js';
 import { CharacterCreateState } from './states/character-create.js';
 import { ExploringState } from './states/exploring.js';
+import { DungeonTransitionState } from './states/dungeon-transition.js';
+import { LevelUpState } from './states/level-up.js';
 
 export class StateStack {
   constructor(assets) {
@@ -33,21 +36,34 @@ export class StateStack {
     this.push(new TavernState(this.assets, renderers));
   }
 
+  pushTavernExterior() {
+    this.push(new TavernExteriorState(this.assets));
+  }
+
   pushCombat(enemies) {
     this.push(new CombatState(enemies, this.assets));
   }
 
-  pushCharacterCreate() {
-    this.push(new CharacterCreateState(this.assets));
+  pushCharacterCreate(isFirstRun = false) {
+    this.push(new CharacterCreateState(this.assets, isFirstRun));
   }
 
   pushExploring(fpRenderer, minimapRenderer, uiRenderer) {
     this.push(new ExploringState(fpRenderer, minimapRenderer, uiRenderer));
   }
 
-  updateAndRender(layers, world) {
+  pushDungeonTransition(dungeonName, onComplete) {
+    this.push(new DungeonTransitionState(dungeonName, onComplete));
+  }
+
+  pushLevelUp(character, oldLevel, newLevel) {
+    this.push(new LevelUpState(character, oldLevel, newLevel, this.assets));
+  }
+
+  updateAndRender(layers, world, timestamp) {
     const current = this.peek();
     if (!current) return false;
+    if (current.update) current.update(timestamp);
     current.render(layers, world);
     return true;
   }

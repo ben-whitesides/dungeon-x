@@ -15,7 +15,13 @@ export class Character {
     };
 
     const classData = CLASS_DATA[classKey];
-    this.portrait = classData.portrait || 'portrait_male_1';
+    // Portrait: { m: 'fighter_m', f: 'fighter_f' } → randomly pick gender
+    const portraitData = classData.portrait;
+    if (portraitData && typeof portraitData === 'object') {
+      this.portrait = Math.random() < 0.5 ? portraitData.m : portraitData.f;
+    } else {
+      this.portrait = portraitData || 'fighter_m';
+    }
 
     // Base ability scores from class data (game bible canonical)
     this.baseStats = {

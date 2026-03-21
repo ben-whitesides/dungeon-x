@@ -2,12 +2,17 @@ import { TILE, MINIMAP } from '../core/constants.js';
 
 const TILE_COLORS = {
   [TILE.VOID]:        '#000000',
-  [TILE.WALL]:        '#333344',
-  [TILE.FLOOR]:       '#554433',
-  [TILE.DOOR]:        '#886622',
+  [TILE.WALL]:        '#3a3a42',
+  [TILE.FLOOR]:       '#2a2a2e',
+  [TILE.DOOR]:        '#5a5a4a',
   [TILE.STAIRS_DOWN]: '#44aa44',
   [TILE.STAIRS_UP]:   '#4444aa',
   [TILE.CHEST]:       '#aaaa22',
+  [TILE.TORCH_UNLIT]: '#5a4a2a',
+  [TILE.TORCH_LIT]:   '#ffaa22',
+  [TILE.LEVER]:       '#886b22',
+  [TILE.GATE_OPEN]:   '#2a2a2e',
+  [TILE.GATE_CLOSED]: '#8a2a2a',
 };
 
 export class MinimapRenderer {

@@ -34,9 +34,9 @@ export class CombatManager {
       }
     }
 
-    // Enemies — monsters use DEX-based init (derive from AC as proxy if no DEX)
+    // H-3 fix: Enemies use dexMod directly, default 0 (not derived from AC)
     for (const enemy of enemies) {
-      const dexMod = enemy.dexMod || Math.floor(((enemy.ac || 10) - 10) / 2);
+      const dexMod = enemy.dexMod || 0;
       this.turnOrder.push({
         entity: enemy,
         initiative: rollInitiative(dexMod),
@@ -168,11 +168,11 @@ export class CombatManager {
       }
     });
     
-    // Distribute XP to party
-    const partySize = world.party.getMembers().length;
-    const xpPerMember = Math.floor(totalXP / partySize);
-    
-    world.party.getMembers().forEach(member => {
+    // H-2 fix: Distribute XP only to alive party members (5e RAW)
+    const aliveMembers = world.party.getMembers().filter(m => m.isAlive());
+    const xpPerMember = aliveMembers.length > 0 ? Math.floor(totalXP / aliveMembers.length) : 0;
+
+    aliveMembers.forEach(member => {
       member.xp += xpPerMember;
       member.checkLevelUp();
     });

@@ -32,7 +32,7 @@ export const CLASS_DATA = {
       { id: 'bread', name: 'Bread', quantity: 5 },
       { id: 'water-flask', name: 'Water Flask', quantity: 2 },
     ],
-    portrait: 'portrait_male_1',
+    portrait: { m: 'fighter_m', f: 'fighter_f' },
   },
 
   ranger: {
@@ -66,7 +66,7 @@ export const CLASS_DATA = {
       { id: 'water-flask', name: 'Water Flask', quantity: 2 },
       { id: 'snare-trap', name: 'Snare Trap', quantity: 1 },
     ],
-    portrait: 'portrait_male_2',
+    portrait: { m: 'ranger_m', f: 'ranger_f' },
   },
 
   mage: {
@@ -102,7 +102,7 @@ export const CLASS_DATA = {
       { id: 'mana-potion', name: 'Mana Potion', quantity: 2 },
       { id: 'spell-scroll-fire', name: 'Fire Scroll', quantity: 1 },
     ],
-    portrait: 'portrait_male_3',
+    portrait: { m: 'mage_m', f: 'mage_f' },
   },
 
   cleric: {
@@ -138,7 +138,7 @@ export const CLASS_DATA = {
       { id: 'water-flask', name: 'Water Flask', quantity: 2 },
       { id: 'health-potion', name: 'Health Potion', quantity: 1 },
     ],
-    portrait: 'portrait_female_1',
+    portrait: { m: 'cleric_m', f: 'cleric_f' },
   },
 
   // Bonus classes beyond the core 4 bible classes
@@ -172,7 +172,7 @@ export const CLASS_DATA = {
       { id: 'water-flask', name: 'Water Flask', quantity: 2 },
       { id: 'lockpick', name: 'Lockpick', quantity: 3 },
     ],
-    portrait: 'portrait_male_2',
+    portrait: { m: 'rogue_m', f: 'rogue_f' },
   },
 
   paladin: {
@@ -204,6 +204,6 @@ export const CLASS_DATA = {
       { id: 'bread', name: 'Bread', quantity: 4 },
       { id: 'water-flask', name: 'Water Flask', quantity: 2 },
     ],
-    portrait: 'portrait_female_2',
+    portrait: { m: 'paladin_m', f: 'paladin_f' },
   },
 };

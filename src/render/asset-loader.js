@@ -30,12 +30,18 @@ export async function loadAssets() {
 
     'kenney_dungeon': 'assets/walls-floors/kenney/Spritesheet/roguelikeDungeon_transparent.png',
 
-    'portrait_male_1':   'assets/portraits/flare/FlareMaleHero1.png',
-    'portrait_male_2':   'assets/portraits/flare/FlareMaleHero2.png',
-    'portrait_male_3':   'assets/portraits/flare/FlareMaleHero3.png',
-    'portrait_female_1': 'assets/portraits/flare/FlareFemaleHero1.png',
-    'portrait_female_2': 'assets/portraits/flare/FlareFemaleHero2.png',
-    'portrait_female_3': 'assets/portraits/flare/FlareFemaleHero3.png',
+    'fighter_m':  'assets/portraits/classes/fighter_m.png',
+    'fighter_f':  'assets/portraits/classes/fighter_f.png',
+    'ranger_m':   'assets/portraits/classes/ranger_m.png',
+    'ranger_f':   'assets/portraits/classes/ranger_f.png',
+    'mage_m':     'assets/portraits/classes/mage_m.png',
+    'mage_f':     'assets/portraits/classes/mage_f.png',
+    'cleric_m':   'assets/portraits/classes/cleric_m.png',
+    'cleric_f':   'assets/portraits/classes/cleric_f.png',
+    'rogue_m':    'assets/portraits/classes/rogue_m.png',
+    'rogue_f':    'assets/portraits/classes/rogue_f.png',
+    'paladin_m':  'assets/portraits/classes/paladin_m.png',
+    'paladin_f':  'assets/portraits/classes/paladin_f.png',
 
     'icon_sword_rusty':    "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/sword_01a.png",
     'icon_sword_iron':     "assets/items/kyrise-icons/Kyrise's 16x16 RPG Icon Pack - V1.2/icons/32x32/sword_01b.png",
@@ -71,7 +77,71 @@ export async function loadAssets() {
 
   await Promise.all(promises);
   console.log(`Loaded ${assets.size}/${entries.length} assets`);
+
+  // Post-process: Recolor dungeon tiles from warm orange/brown to cold grey stone
+  // Per masters (Frank Force / Canvas optimization): offscreen canvas + pixel manipulation
+  const tileKeys = ['fp_wall', 'fp_floor', 'fp_ceiling', 'fp_door', 'fp_locked_door',
+                     'fp_pillar_int', 'fp_pillar_ext', 'fp_chest_int', 'fp_chest_ext', 'fp_stairs'];
+  for (const key of tileKeys) {
+    const img = assets.get(key);
+    if (!img) continue;
+    const recolored = recolorToGreyStone(img);
+    assets.set(key, recolored);
+  }
+  console.log('Dungeon tiles recolored to grey stone');
+
   return assets;
+}
+
+/**
+ * Recolor an image from warm orange/brown to cold grey ancient stone.
+ * Dungeon Master 1987 aesthetic — dark, weathered, cold.
+ * Uses offscreen canvas pixel manipulation (masters pattern).
+ */
+function recolorToGreyStone(img) {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const a = data[i + 3];
+
+    // Skip fully transparent pixels
+    if (a === 0) continue;
+
+    // Convert to luminance (perceived brightness)
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+    // Desaturate heavily and shift to cool grey-blue
+    // Mix: 85% luminance-based grey + 15% cool blue tint
+    const grey = lum * 0.7; // Darken overall for ancient/weathered look
+    const coolR = grey * 0.9;              // Slightly less red
+    const coolG = grey * 0.92;             // Slightly less green
+    const coolB = grey * 1.05;             // Slight blue push — cold stone
+
+    // Add subtle variation to prevent flat look
+    const variation = ((i / 4) % 7) * 0.5; // Tiny per-pixel noise
+
+    data[i]     = Math.min(255, Math.max(0, coolR + variation));
+    data[i + 1] = Math.min(255, Math.max(0, coolG));
+    data[i + 2] = Math.min(255, Math.max(0, coolB));
+    // Alpha stays unchanged
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  // Return as an Image element (same interface as original)
+  const result = new Image();
+  result.src = canvas.toDataURL();
+  return result;
 }
 
 export const ITEM_ICON_MAP = {

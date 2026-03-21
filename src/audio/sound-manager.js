@@ -4,7 +4,11 @@ export class SoundManager {
     this.masterGain = null;
     this.isInitialized = false;
     this.volume = 0.3; // Default volume
-    
+    this.muted = false;
+    this._ambientNodes = []; // Track ambient audio nodes for cleanup
+    this._tavernAmbientActive = false;
+    this._exteriorWindActive = false;
+
     // Defer AudioContext creation to first user gesture (browser requirement)
     this._initOnGesture = () => {
       if (!this.isInitialized) this.init();
@@ -15,6 +19,14 @@ export class SoundManager {
     document.addEventListener('keydown', this._initOnGesture);
     document.addEventListener('click', this._initOnGesture);
     document.addEventListener('touchstart', this._initOnGesture);
+
+    // Mute toggle (KeyM) — global listener
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyM') {
+        this.muted = !this.muted;
+        this.setMuted(this.muted);
+      }
+    });
   }
   
   async init() {
@@ -176,8 +188,187 @@ export class SoundManager {
   
   // Mute/unmute
   setMuted(muted) {
+    this.muted = muted;
     if (this.masterGain) {
       this.masterGain.gain.value = muted ? 0 : this.volume;
     }
+  }
+
+  // Toggle mute state
+  toggleMute() {
+    this.muted = !this.muted;
+    this.setMuted(this.muted);
+    return this.muted;
+  }
+
+  // Stop all ambient sounds
+  stopAllAmbient() {
+    for (const node of this._ambientNodes) {
+      try {
+        if (node.stop) node.stop();
+        if (node.disconnect) node.disconnect();
+      } catch (_) { /* already stopped */ }
+    }
+    this._ambientNodes = [];
+    this._tavernAmbientActive = false;
+    this._exteriorWindActive = false;
+  }
+
+  /**
+   * Tavern ambient — procedural crackling fire using filtered noise + oscillators.
+   * No audio files needed. Web Audio API only.
+   */
+  startTavernAmbient() {
+    if (!this.isInitialized || this._tavernAmbientActive) return;
+
+    this.ensureAudioContext().then(() => {
+      this._tavernAmbientActive = true;
+
+      // === Crackling fire: filtered noise ===
+      const bufferSize = this.audioContext.sampleRate * 2;
+      const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+      const noiseData = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        noiseData[i] = Math.random() * 2 - 1;
+      }
+
+      const noiseSource = this.audioContext.createBufferSource();
+      noiseSource.buffer = noiseBuffer;
+      noiseSource.loop = true;
+
+      // Bandpass filter — fire crackle range
+      const filter = this.audioContext.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 800;
+      filter.Q.value = 0.5;
+
+      // Modulate amplitude for crackling effect
+      const crackleGain = this.audioContext.createGain();
+      crackleGain.gain.value = 0.04;
+
+      // Low drone — warm fire base
+      const drone = this.audioContext.createOscillator();
+      drone.type = 'sine';
+      drone.frequency.value = 60;
+      const droneGain = this.audioContext.createGain();
+      droneGain.gain.value = 0.02;
+
+      // Second harmonic for warmth
+      const warmth = this.audioContext.createOscillator();
+      warmth.type = 'sine';
+      warmth.frequency.value = 120;
+      const warmthGain = this.audioContext.createGain();
+      warmthGain.gain.value = 0.008;
+
+      // Connect
+      noiseSource.connect(filter);
+      filter.connect(crackleGain);
+      crackleGain.connect(this.masterGain);
+
+      drone.connect(droneGain);
+      droneGain.connect(this.masterGain);
+
+      warmth.connect(warmthGain);
+      warmthGain.connect(this.masterGain);
+
+      // Start
+      noiseSource.start();
+      drone.start();
+      warmth.start();
+
+      // Fade in
+      crackleGain.gain.setValueAtTime(0, this.audioContext.currentTime);
+      crackleGain.gain.linearRampToValueAtTime(0.04, this.audioContext.currentTime + 1.5);
+      droneGain.gain.setValueAtTime(0, this.audioContext.currentTime);
+      droneGain.gain.linearRampToValueAtTime(0.02, this.audioContext.currentTime + 2);
+
+      this._ambientNodes.push(noiseSource, drone, warmth);
+    });
+  }
+
+  /**
+   * Door creak — short procedural sound for entering tavern.
+   */
+  playDoorCreak() {
+    if (!this.isInitialized) return;
+
+    this.ensureAudioContext().then(() => {
+      // Descending sweep with noise = creak
+      const osc = this.audioContext.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(300, this.audioContext.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, this.audioContext.currentTime + 0.4);
+
+      const gain = this.audioContext.createGain();
+      gain.gain.setValueAtTime(0.08, this.audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);
+
+      // Add some resonance
+      const filter = this.audioContext.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 200;
+      filter.Q.value = 3;
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start();
+      osc.stop(this.audioContext.currentTime + 0.5);
+    });
+  }
+
+  /**
+   * Exterior wind — subtle procedural wind ambience.
+   */
+  startExteriorWind() {
+    if (!this.isInitialized || this._exteriorWindActive) return;
+
+    this.ensureAudioContext().then(() => {
+      this._exteriorWindActive = true;
+
+      // Filtered noise for wind
+      const bufferSize = this.audioContext.sampleRate * 3;
+      const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+      const noiseData = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        noiseData[i] = Math.random() * 2 - 1;
+      }
+
+      const noiseSource = this.audioContext.createBufferSource();
+      noiseSource.buffer = noiseBuffer;
+      noiseSource.loop = true;
+
+      // Low-pass filter — wind is mostly low frequency
+      const filter = this.audioContext.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 400;
+      filter.Q.value = 0.7;
+
+      // LFO to modulate filter frequency (wind gusts)
+      const lfo = this.audioContext.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 0.15; // Very slow modulation
+      const lfoGain = this.audioContext.createGain();
+      lfoGain.gain.value = 200;
+
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+
+      const windGain = this.audioContext.createGain();
+      windGain.gain.value = 0;
+
+      noiseSource.connect(filter);
+      filter.connect(windGain);
+      windGain.connect(this.masterGain);
+
+      // Fade in
+      windGain.gain.linearRampToValueAtTime(0.035, this.audioContext.currentTime + 2);
+
+      noiseSource.start();
+      lfo.start();
+
+      this._ambientNodes.push(noiseSource, lfo);
+    });
   }
 }

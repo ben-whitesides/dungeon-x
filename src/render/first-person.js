@@ -95,12 +95,12 @@ export class FirstPersonRenderer {
     if (tile !== TILE.WALL) {
       // Ceiling
       if (!this.atlas.drawSlice(ctx, 'fp_ceiling', srcX, srcY, srcW, srcH, dx, dy, dw, dh)) {
-        ctx.fillStyle = '#1a1a2e';
+        ctx.fillStyle = '#1a1a22'; // Dark grey-blue ceiling
         ctx.fillRect(dx, dy, dw, dh);
       }
       // Floor
       if (!this.atlas.drawSlice(ctx, 'fp_floor', srcX, srcY, srcW, srcH, dx, dy, dw, dh)) {
-        ctx.fillStyle = '#2d2d1a';
+        ctx.fillStyle = '#2a2a2e'; // Grey stone floor
         ctx.fillRect(dx, dy, dw, dh);
       }
     }
@@ -110,6 +110,7 @@ export class FirstPersonRenderer {
     if (tile === TILE.WALL) asset = 'fp_wall';
     else if (tile === TILE.DOOR) asset = 'fp_door';
     else if (tile === TILE.CHEST) asset = 'fp_chest_int';
+    else if (tile === TILE.GATE_CLOSED) asset = 'fp_door'; // Reuse door sprite for gate
     else if (tile === TILE.STAIRS_DOWN || tile === TILE.STAIRS_UP) {
       // fp_stairs is 160x120 (single image, not 640x240 sprite sheet)
       if (this.atlas.has('fp_stairs')) {
@@ -122,9 +123,47 @@ export class FirstPersonRenderer {
     if (asset && this.atlas.has(asset)) {
       this.atlas.drawSlice(ctx, asset, srcX, srcY, srcW, srcH, dx, dy, dw, dh);
     } else if (tile === TILE.WALL) {
-      // Fallback solid wall
-      ctx.fillStyle = '#505064';
+      // Fallback solid wall — cold grey ancient stone
+      ctx.fillStyle = '#3a3a42';
       ctx.fillRect(dx, dy, dw, dh);
+    } else if (tile === TILE.GATE_CLOSED) {
+      // Fallback: metal bars
+      ctx.fillStyle = '#4a4a55';
+      ctx.fillRect(dx, dy, dw, dh);
+      ctx.fillStyle = '#222';
+      for (let bx = dx + 8; bx < dx + dw; bx += 16) {
+        ctx.fillRect(bx, dy, 4, dh);
+      }
+    }
+
+    // Overlay indicators for interactable tiles
+    if (tile === TILE.TORCH_LIT) {
+      // Warm orange glow overlay
+      const glowGrad = ctx.createRadialGradient(
+        dx + dw / 2, dy + dh * 0.3, 2,
+        dx + dw / 2, dy + dh * 0.3, dw * 0.6
+      );
+      glowGrad.addColorStop(0, 'rgba(255, 160, 40, 0.3)');
+      glowGrad.addColorStop(1, 'rgba(255, 100, 10, 0)');
+      ctx.fillStyle = glowGrad;
+      ctx.fillRect(dx, dy, dw, dh);
+      // Flame
+      ctx.fillStyle = 'rgba(255, 200, 50, 0.8)';
+      ctx.beginPath();
+      ctx.ellipse(dx + dw / 2, dy + dh * 0.3, 4 * SX / 3, 8 * SY / 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (tile === TILE.TORCH_UNLIT) {
+      // Dark bracket indicator
+      ctx.fillStyle = 'rgba(80, 60, 30, 0.5)';
+      ctx.fillRect(dx + dw / 2 - 3, dy + dh * 0.25, 6, dh * 0.2);
+    } else if (tile === TILE.LEVER) {
+      // Lever indicator on floor
+      ctx.fillStyle = '#8B7355';
+      ctx.fillRect(dx + dw / 2 - 3, dy + dh * 0.5, 6, dh * 0.3);
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(dx + dw / 2, dy + dh * 0.45, 4, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 }

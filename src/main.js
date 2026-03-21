@@ -10,6 +10,8 @@ import { FirstPersonRenderer } from './render/first-person.js';
 import { MinimapRenderer } from './render/minimap.js';
 import { InputMapper } from './ui/input-mapper.js';
 import { Character } from './character/character.js';
+import { GameSave } from './core/game-save.js';
+import { createItem } from './items/item-data.js';
 
 function createCanvasStack(container) {
   const canvases = {};
@@ -54,45 +56,28 @@ async function boot() {
   input.attach();
   world.input = input; // Expose for touch hit zone registration
 
-  // Seed the roster with starter characters (load saved if available)
-  world.roster.load();
-  if (world.roster.getAll().length === 0) {
-    world.roster.add(new Character('Roland', 'fighter', 1));
-    world.roster.add(new Character('Elara', 'cleric', 1));
-    world.roster.add(new Character('Thane', 'rogue', 1));
-    world.roster.add(new Character('Ashara', 'mage', 1));
-    world.roster.add(new Character('Kael', 'ranger', 1));
-    world.roster.add(new Character('Seraphina', 'paladin', 1));
-    world.roster.save();
+  // === Save/Load Flow ===
+  const saveData = GameSave.load();
+
+  if (saveData && saveData.heroCharacter) {
+    // --- Returning player: restore from save ---
+    _restoreFromSave(world, saveData);
+    // Go straight to tavern exterior
+    world.stateStack.pushTavernExterior();
   } else {
-    // Migrations for existing saves
-    const all = world.roster.getAll();
-    let dirty = false;
-
-    // Migration 1: rename Miriel -> Ashara (LOTR IP fix)
-    const miriel = all.find(c => c.name === 'Miriel');
-    if (miriel) { miriel.name = 'Ashara'; dirty = true; }
-
-    // Migration 2: add Ranger + Paladin if missing
-    if (!all.find(c => c.class === 'ranger')) {
-      world.roster.add(new Character('Kael', 'ranger', 1));
-      dirty = true;
-    }
-    if (!all.find(c => c.class === 'paladin')) {
-      world.roster.add(new Character('Seraphina', 'paladin', 1));
-      dirty = true;
-    }
-
-    if (dirty) world.roster.save();
+    // --- First launch: character creation ---
+    // Don't seed roster with default characters — creation wizard does it
+    world.stateStack.pushCharacterCreate(true);
   }
 
-  // Start in the tavern
-  world.stateStack.pushTavern(renderers);
   world.needsRender = true;
+
+  // Start exterior wind ambient (will play once AudioContext is initialized on first gesture)
+  setTimeout(() => soundManager.startExteriorWind(), 1000);
 
   ui.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  function gameLoop() {
+  function gameLoop(timestamp) {
     performanceMonitor.beginFrame();
     const commandEvent = input.consume();
     const currentState = world.stateStack.peek();
@@ -115,9 +100,28 @@ async function boot() {
           world.exitDungeon(false);
           world.stateStack.clear();
           world.stateStack.pushTavern(renderers);
+          GameSave.save(world);
+        } else if (activeState.combat.state === 'victory') {
+          // Show level-up notifications for any members who leveled
+          if (activeState._levelUpData) {
+            for (const lu of activeState._levelUpData) {
+              world.stateStack.pushLevelUp(lu.character, lu.oldLevel, lu.newLevel);
+            }
+          }
+          GameSave.save(world);
         }
         // Victory or Fled just resumes exploration which is already on the stack
       }
+    }
+
+    // Force render during active animations (typewriter, combat anims, splash screens)
+    const current = world.stateStack.peek();
+    if (current && current.npcDialogue && current.npcDialogue.active) {
+      world.needsRender = true;
+    }
+    // States with continuous animation (e.g. tavern exterior splash)
+    if (current && current.animates) {
+      world.needsRender = true;
     }
 
     if (world.needsRender) {
@@ -125,9 +129,9 @@ async function boot() {
       for (const name of Object.keys(layers)) {
         layers[name].clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       }
-      
+
       // Render the full stack (though current states usually clear their layers)
-      world.stateStack.updateAndRender(layers, world);
+      world.stateStack.updateAndRender(layers, world, timestamp);
       world.needsRender = false;
     }
 
@@ -137,6 +141,80 @@ async function boot() {
 
   requestAnimationFrame(gameLoop);
   console.log('Dungeon X — The Rusty Flagon awaits.');
+}
+
+/**
+ * Restore world state from a save data object.
+ */
+function _restoreFromSave(world, saveData) {
+  // Rebuild roster from save
+  world.roster.characters = [];
+  if (saveData.roster) {
+    for (const charData of saveData.roster) {
+      const char = new Character(charData.name, charData.class, charData.level);
+      // Restore full state
+      char.xp = charData.xp || 0;
+      char.portrait = charData.portrait || char.portrait;
+      char.isCustom = charData.isCustom || false;
+      if (charData.baseStats) char.baseStats = { ...charData.baseStats };
+      if (charData.levelBonuses) char.levelBonuses = { ...charData.levelBonuses };
+      char.calculateFinalStats();
+      char.maxHP = charData.maxHP || char.calculateMaxHP();
+      char.currentHP = charData.currentHP || char.maxHP;
+      char.maxMana = charData.maxMana || char.calculateMaxMana();
+      char.currentMana = charData.currentMana || char.maxMana;
+      if (charData.equipment) {
+        char.equipment = {
+          weapon: charData.equipment.weapon ? { ...charData.equipment.weapon } : null,
+          armor: charData.equipment.armor ? { ...charData.equipment.armor } : null,
+          shield: charData.equipment.shield ? { ...charData.equipment.shield } : null,
+          accessory: charData.equipment.accessory ? { ...charData.equipment.accessory } : null,
+        };
+        char.calculateFinalStats();
+      }
+      world.roster.add(char);
+    }
+  }
+  world.roster.save();
+
+  // Find and set hero character
+  if (saveData.heroCharacter) {
+    const heroData = saveData.heroCharacter;
+    world.heroCharacter = world.roster.getAll().find(
+      c => c.name === heroData.name && c.class === heroData.class
+    ) || null;
+  }
+
+  // Restore party composition
+  if (saveData.party) {
+    world.party.members = [];
+    for (const pm of saveData.party) {
+      const char = world.roster.getAll().find(
+        c => c.name === pm.name && c.class === pm.class
+      );
+      if (char) {
+        world.party.addMember(char);
+      }
+    }
+  }
+
+  // Restore world state
+  world.gold = saveData.gold || 50;
+  world.completedDungeons = new Set(saveData.completedDungeons || []);
+  world.collectedFragments = new Set(saveData.collectedFragments || []);
+
+  // Restore inventory items
+  if (saveData.inventory) {
+    for (const itemData of saveData.inventory) {
+      try {
+        world.inventory.addItem(createItem(itemData.id));
+      } catch (e) {
+        // Item may not exist in item-data, skip
+      }
+    }
+  }
+
+  console.log('Game restored from save. Hero:', world.heroCharacter?.name);
 }
 
 document.addEventListener('DOMContentLoaded', boot);
