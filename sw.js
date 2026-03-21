@@ -1,6 +1,6 @@
 // Dungeon X Service Worker for PWA offline functionality
-const CACHE_NAME = 'dungeon-x-v2.0.0';
-const STATIC_CACHE_NAME = 'dungeon-x-static-v2.0.0';
+const CACHE_NAME = 'dungeon-x-v2.1.0';
+const STATIC_CACHE_NAME = 'dungeon-x-static-v2.1.0';
 
 // Files to cache for offline play
 const STATIC_FILES = [
@@ -55,7 +55,9 @@ const STATIC_FILES = [
   './src/combat/combat-manager.js',
   './src/combat/damage-calc.js',
   './src/fov/shadowcast.js',
-  './data/monsters.json'
+  './data/monsters.json',
+  './src/ui/touch-handler.js',
+  './src/utils/performance-monitor.js'
 ];
 
 // Install event - cache static files

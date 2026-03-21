@@ -88,6 +88,7 @@ export class CharacterCreateState {
         this.cursorBlink = 0;
         this.cursorVisible = true;
         if (world.input) world.input.captureAll = true;
+        this._focusHiddenInput();
         return true;
       }
       if (code === 'Escape' || code === 'Backspace') {
@@ -104,12 +105,14 @@ export class CharacterCreateState {
           this.step = 3;
           this._confirmSelected = 0;
           if (world.input) world.input.captureAll = false;
+          this._blurHiddenInput();
         }
         return true;
       }
       if (code === 'Escape') {
         this.step = 1;
         if (world.input) world.input.captureAll = false;
+        this._blurHiddenInput();
         return true;
       }
       if (code === 'Backspace') {
@@ -153,6 +156,7 @@ export class CharacterCreateState {
       if (code === 'Escape' || code === 'Backspace') {
         this.step = 2;
         if (world.input) world.input.captureAll = true;
+        this._focusHiddenInput();
         return true;
       }
       return false;
@@ -689,10 +693,36 @@ export class CharacterCreateState {
     ctx.textAlign = 'left';
   }
 
+  _focusHiddenInput() {
+    const el = document.getElementById('name-input');
+    if (el) {
+      el.value = this.name;
+      el.focus();
+      if (!this._hiddenInputBound) {
+        this._hiddenInputBound = true;
+        el.addEventListener('input', () => {
+          if (this.step === 2) {
+            const val = el.value.slice(0, 16);
+            this.name = val;
+          }
+        });
+      }
+    }
+  }
+
+  _blurHiddenInput() {
+    const el = document.getElementById('name-input');
+    if (el) {
+      el.blur();
+      el.value = '';
+    }
+  }
+
   // Shared bottom bar renderer
   _renderBottomBar(ctx, world, W, H, buttons, helpText) {
-    const barY = H - 55;
-    const barH = 48;
+    const barY = H - 60;
+    const barH = 54;
+    const btnH = 46;
 
     ctx.fillStyle = '#111';
     ctx.fillRect(0, barY, W, barH + 7);
@@ -700,20 +730,21 @@ export class CharacterCreateState {
     // Render buttons
     let bx = (W - buttons.reduce((s, b) => s + b.width + 10, -10)) / 2;
     buttons.forEach(btn => {
+      const btnY = barY + (barH - btnH) / 2;
       ctx.fillStyle = '#2a2018';
-      ctx.fillRect(bx, barY + 4, btn.width, barH - 8);
+      ctx.fillRect(bx, btnY, btn.width, btnH);
       ctx.strokeStyle = '#FFD700';
       ctx.lineWidth = 1;
-      ctx.strokeRect(bx, barY + 4, btn.width, barH - 8);
+      ctx.strokeRect(bx, btnY, btn.width, btnH);
 
       ctx.fillStyle = '#FFD700';
       ctx.font = 'bold 13px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(btn.label, bx + btn.width / 2, barY + 28);
+      ctx.fillText(btn.label, bx + btn.width / 2, btnY + btnH / 2 + 5);
       ctx.textAlign = 'left';
 
       if (world.input && world.input.touch) {
-        world.input.touch.registerHitZone(bx, barY + 4, btn.width, barH - 8, btn.code);
+        world.input.touch.registerHitZone(bx, btnY, btn.width, btnH, btn.code);
       }
       bx += btn.width + 10;
     });

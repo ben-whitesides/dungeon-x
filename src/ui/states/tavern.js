@@ -2330,7 +2330,7 @@ export class TavernState {
     ctx.fillRect(0, barY, canvasW, 2);
 
     for (const btn of buttons) {
-      const btnH = 36;
+      const btnH = 46;
       const btnY = barY + (barH - btnH) / 2;
 
       // Button background — highlight if focused
@@ -2668,7 +2668,7 @@ export class TavernState {
       const noteW = boardW - 48;
       const noteGap = 12;
       const maxNoteH = Math.floor((boardH - 70 - (this.noticeBoardQuests.length - 1) * noteGap) / this.noticeBoardQuests.length);
-      const noteH = Math.min(maxNoteH, 120);
+      const noteH = Math.max(48, Math.min(maxNoteH, 120));
 
       for (let i = 0; i < this.noticeBoardQuests.length; i++) {
         const quest = this.noticeBoardQuests[i];
@@ -2780,11 +2780,11 @@ export class TavernState {
 
     // Register touch zones
     if (world.input && world.input.touch) {
+      const touchNoteH = Math.max(48, Math.min(Math.floor((boardH - 70 - (this.noticeBoardQuests.length - 1) * noteGap) / this.noticeBoardQuests.length), 120));
       for (let i = 0; i < this.noticeBoardQuests.length; i++) {
-        const noteH = 120;
-        const ny = boardY + 58 + i * (noteH + 12);
+        const ny = boardY + 58 + i * (touchNoteH + noteGap);
         const code = i === this.selectedQuest ? 'Enter' : (i < this.selectedQuest ? 'ArrowUp' : 'ArrowDown');
-        world.input.touch.registerHitZone(boardX + 24, ny, boardW - 48, noteH, code);
+        world.input.touch.registerHitZone(boardX + 24, ny, boardW - 48, touchNoteH, code);
       }
     }
 

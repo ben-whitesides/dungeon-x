@@ -65,9 +65,12 @@ async function boot() {
     // Go straight to tavern exterior
     world.stateStack.pushTavernExterior();
   } else {
-    // --- First launch: character creation ---
+    // --- First launch: exterior splash first, then character creation ---
     // Don't seed roster with default characters — creation wizard does it
+    // Push character create first (bottom of stack), then exterior on top
+    // When exterior is dismissed, character create is revealed underneath
     world.stateStack.pushCharacterCreate(true);
+    world.stateStack.pushTavernExterior();
   }
 
   world.needsRender = true;
