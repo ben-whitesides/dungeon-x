@@ -48,6 +48,7 @@ export class TavernState {
     this.selectedHotspot = 0;
     this.selectedCharacter = 0;
     this.selectedPartySlot = 0;
+    this.confirmSelected = 1; // Default to CANCEL (safe choice)
     this.selectedMerchantItem = 0;
     this.selectedPlayerItem = 0;
     this.selectedDungeon = 0;
@@ -481,6 +482,7 @@ export class TavernState {
     // Touch: New Game from hub
     if (code === '_hub_newgame' && this.mode === 'hub') {
       this.mode = 'new_game_confirm';
+      this.confirmSelected = 1; // Default to CANCEL
       return true;
     }
 
@@ -522,10 +524,24 @@ export class TavernState {
 
     // New Game confirmation mode
     if (this.mode === 'new_game_confirm') {
+      if (code === 'ArrowLeft' || code === 'KeyA') {
+        this.confirmSelected = 0; // ERASE
+        return true;
+      }
+      if (code === 'ArrowRight' || code === 'KeyD') {
+        this.confirmSelected = 1; // CANCEL
+        return true;
+      }
       if (code === 'Enter' || code === 'Space') {
-        // Confirmed — clear save and reload
-        GameSave.clearSave();
-        window.location.reload();
+        if (this.confirmSelected === 0) {
+          // Confirmed — clear save and reload
+          GameSave.clearSave();
+          window.location.reload();
+        } else {
+          // Cancel
+          this.mode = 'hub';
+          this.focusArea = 'cards';
+        }
         return true;
       }
       if (code === 'Escape' || code === 'Backspace') {
@@ -625,6 +641,7 @@ export class TavernState {
     }
     if (code === '_hub_newgame') {
       this.mode = 'new_game_confirm';
+      this.confirmSelected = 1; // Default to CANCEL
       return true;
     }
     return false;
@@ -905,24 +922,27 @@ export class TavernState {
     const btnW = 140;
     const btnH = 44;
     const btnY = boxY + 110;
+    const sel = this.confirmSelected || 1;
 
-    // Confirm button
-    ctx.fillStyle = '#6b2a2a';
+    // Confirm button (ERASE)
+    const eraseSelected = sel === 0;
+    ctx.fillStyle = eraseSelected ? '#8b3a3a' : '#6b2a2a';
     ctx.fillRect(W / 2 - btnW - 15, btnY, btnW, btnH);
-    ctx.strokeStyle = '#C0392B';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = eraseSelected ? '#FFD700' : '#C0392B';
+    ctx.lineWidth = eraseSelected ? 3 : 2;
     ctx.strokeRect(W / 2 - btnW - 15, btnY, btnW, btnH);
-    ctx.fillStyle = '#FFF';
+    ctx.fillStyle = eraseSelected ? '#FFD700' : '#FFF';
     ctx.font = 'bold 14px monospace';
     ctx.fillText('ERASE & RESTART', W / 2 - btnW / 2 - 15, btnY + 28);
 
     // Cancel button
-    ctx.fillStyle = '#2a2a2a';
+    const cancelSelected = sel === 1;
+    ctx.fillStyle = cancelSelected ? '#3a3a3a' : '#2a2a2a';
     ctx.fillRect(W / 2 + 15, btnY, btnW, btnH);
-    ctx.strokeStyle = '#FFD700';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = cancelSelected ? '#FFD700' : '#555';
+    ctx.lineWidth = cancelSelected ? 3 : 2;
     ctx.strokeRect(W / 2 + 15, btnY, btnW, btnH);
-    ctx.fillStyle = '#FFD700';
+    ctx.fillStyle = cancelSelected ? '#FFD700' : '#CCC';
     ctx.fillText('CANCEL', W / 2 + btnW / 2 + 15, btnY + 28);
 
     // Touch zones
