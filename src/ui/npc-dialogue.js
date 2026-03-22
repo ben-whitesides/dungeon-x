@@ -39,73 +39,119 @@ export class NPCDialogue {
     this.overlay.style.cssText = `
       display: none;
       position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      bottom: 8px;
+      left: 8px;
+      right: 8px;
       height: 180px;
-      background: linear-gradient(180deg, rgba(10,8,6,0.95) 0%, rgba(20,16,12,0.98) 100%);
-      border-top: 2px solid #5a3d20;
-      padding: 16px 20px;
+      background: linear-gradient(180deg, rgba(10,8,6,0.97) 0%, rgba(20,16,12,0.99) 100%);
+      border: 2px solid #FFD700;
+      border-radius: 4px;
+      padding: 0;
       z-index: 100;
       font-family: 'Georgia', serif;
       color: #d4c4a0;
       cursor: pointer;
       user-select: none;
       -webkit-user-select: none;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.15), inset 0 0 30px rgba(0, 0, 0, 0.5);
     `;
 
-    // Portrait
+    // Inner border accent
+    const innerBorder = document.createElement('div');
+    innerBorder.style.cssText = `
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      right: 3px;
+      bottom: 3px;
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      border-radius: 2px;
+      pointer-events: none;
+    `;
+    this.overlay.appendChild(innerBorder);
+
+    // Corner ornaments (CSS pseudo-element simulation with small divs)
+    const corners = [
+      { top: '-1px', left: '-1px', borderTop: '2px solid #C4A265', borderLeft: '2px solid #C4A265' },
+      { top: '-1px', right: '-1px', borderTop: '2px solid #C4A265', borderRight: '2px solid #C4A265' },
+      { bottom: '-1px', left: '-1px', borderBottom: '2px solid #C4A265', borderLeft: '2px solid #C4A265' },
+      { bottom: '-1px', right: '-1px', borderBottom: '2px solid #C4A265', borderRight: '2px solid #C4A265' },
+    ];
+    for (const c of corners) {
+      const corner = document.createElement('div');
+      corner.style.cssText = `position: absolute; width: 12px; height: 12px; pointer-events: none;`;
+      for (const [k, v] of Object.entries(c)) corner.style[k] = v;
+      this.overlay.appendChild(corner);
+    }
+
+    // --- Name plate bar (dark bar across top with gold text) ---
+    this.namePlate = document.createElement('div');
+    this.namePlate.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 32px;
+      background: linear-gradient(90deg, rgba(30,20,10,0.95) 0%, rgba(20,14,8,0.9) 50%, rgba(30,20,10,0.95) 100%);
+      border-bottom: 1px solid #5a3d20;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+    `;
+    this.overlay.appendChild(this.namePlate);
+
+    // Portrait (inside name plate, small 28x28)
     this.portraitEl = document.createElement('div');
     this.portraitEl.style.cssText = `
-      position: absolute;
-      left: 16px;
-      top: 16px;
-      width: 60px;
-      height: 60px;
-      background: #1a1408;
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      background: #1a0e06;
       border: 2px solid #5a3d20;
-      border-radius: 4px;
+      border-radius: 3px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 32px;
+      font-size: 24px;
+      position: absolute;
+      left: 12px;
+      top: 38px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
     `;
     this.overlay.appendChild(this.portraitEl);
 
-    // Name
+    // Name (gold text on dark bar)
     this.nameEl = document.createElement('div');
     this.nameEl.style.cssText = `
-      position: absolute;
-      left: 88px;
-      top: 14px;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: bold;
       color: #FFD700;
-      letter-spacing: 1px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
     `;
-    this.overlay.appendChild(this.nameEl);
+    this.namePlate.appendChild(this.nameEl);
 
-    // Title
+    // Title (beside name, muted)
     this.titleEl = document.createElement('div');
     this.titleEl.style.cssText = `
-      position: absolute;
-      left: 88px;
-      top: 34px;
-      font-size: 11px;
-      color: #888;
+      font-size: 10px;
+      color: #777;
       font-style: italic;
       letter-spacing: 0.5px;
+      margin-top: 1px;
     `;
-    this.overlay.appendChild(this.titleEl);
+    this.namePlate.appendChild(this.titleEl);
 
-    // Text body
+    // Text body — offset for portrait on left
     this.textEl = document.createElement('div');
     this.textEl.style.cssText = `
       position: absolute;
-      left: 88px;
+      left: 72px;
       right: 20px;
-      top: 56px;
-      bottom: 36px;
+      top: 40px;
+      bottom: 32px;
       font-size: 14px;
       line-height: 1.6;
       color: #d4c4a0;
@@ -113,17 +159,53 @@ export class NPCDialogue {
     `;
     this.overlay.appendChild(this.textEl);
 
-    // Prompt
+    // Typewriter cursor (blinking bar)
+    this.cursorEl = document.createElement('span');
+    this.cursorEl.style.cssText = `
+      display: inline;
+      color: #C4A265;
+      animation: dialogue-cursor-blink 0.8s step-end infinite;
+    `;
+    this.cursorEl.textContent = '|';
+    // Inject keyframes for cursor blink
+    if (!document.getElementById('dialogue-cursor-style')) {
+      const style = document.createElement('style');
+      style.id = 'dialogue-cursor-style';
+      style.textContent = `
+        @keyframes dialogue-cursor-blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Prompt bar at bottom
+    this.promptBar = document.createElement('div');
+    this.promptBar.style.cssText = `
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 28px;
+      background: rgba(15, 10, 5, 0.8);
+      border-top: 1px solid #3a2a18;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 16px;
+    `;
+    this.overlay.appendChild(this.promptBar);
+
+    // Prompt text
     this.promptEl = document.createElement('div');
     this.promptEl.style.cssText = `
-      position: absolute;
-      right: 20px;
-      bottom: 12px;
       font-size: 11px;
       color: #666;
+      font-family: monospace;
     `;
-    this.promptEl.textContent = '▼ click to continue';
-    this.overlay.appendChild(this.promptEl);
+    this.promptEl.textContent = 'SPACE / TAP to continue';
+    this.promptBar.appendChild(this.promptEl);
 
     // Click/tap to advance
     this.overlay.addEventListener('click', () => this.advance());
@@ -180,10 +262,13 @@ export class NPCDialogue {
     // Set NPC info
     this.nameEl.textContent = npc.name;
     this.nameEl.style.color = npc.color || '#FFD700';
-    this.titleEl.textContent = npc.title;
+    this.titleEl.textContent = '— ' + npc.title;
     this.portraitEl.textContent = npc.portrait;
+    this.portraitEl.style.borderColor = npc.color || '#5a3d20';
     this.textEl.textContent = '';
-    this.promptEl.style.display = 'none';
+    this.textEl.appendChild(this.cursorEl);
+    this.cursorEl.style.display = 'inline';
+    this.promptBar.style.display = 'none';
 
     this.overlay.style.display = 'block';
     return true;
@@ -195,9 +280,10 @@ export class NPCDialogue {
     if (!this.typewriterDone) {
       // Skip typewriter — show full text
       this.textEl.textContent = this.lines[this.currentLine];
+      this.cursorEl.style.display = 'none';
       this.typewriterDone = true;
-      this.promptEl.style.display = 'block';
-      this.promptEl.textContent = this.currentLine < this.lines.length - 1 ? '▼ click to continue' : '▼ click to close';
+      this.promptBar.style.display = 'flex';
+      this.promptEl.textContent = this.currentLine < this.lines.length - 1 ? 'SPACE / TAP to continue' : 'SPACE / TAP to close';
       return;
     }
 
@@ -213,7 +299,9 @@ export class NPCDialogue {
     this.lastCharTime = 0;
     this.typewriterDone = false;
     this.textEl.textContent = '';
-    this.promptEl.style.display = 'none';
+    this.textEl.appendChild(this.cursorEl);
+    this.cursorEl.style.display = 'inline';
+    this.promptBar.style.display = 'none';
   }
 
   close() {
@@ -236,11 +324,13 @@ export class NPCDialogue {
 
       if (this.charIndex >= line.length) {
         this.textEl.textContent = line;
+        this.cursorEl.style.display = 'none';
         this.typewriterDone = true;
-        this.promptEl.style.display = 'block';
-        this.promptEl.textContent = this.currentLine < this.lines.length - 1 ? '▼ click to continue' : '▼ click to close';
+        this.promptBar.style.display = 'flex';
+        this.promptEl.textContent = this.currentLine < this.lines.length - 1 ? 'SPACE / TAP to continue' : 'SPACE / TAP to close';
       } else {
         this.textEl.textContent = line.substring(0, this.charIndex);
+        this.textEl.appendChild(this.cursorEl);
       }
     }
   }

@@ -4385,15 +4385,51 @@ export class TavernState {
     // Refresh available NPCs
     this.availableNPCs = this.npcDialogue.getAvailableNPCs(fragments);
 
-    // Title
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#C4A265';
-    ctx.font = 'bold 20px monospace';
-    ctx.fillText('THE RUSTY FLAGON — Patrons', w / 2, 80);
+    // --- Dark parchment overlay (matching roster/shop style) ---
+    ctx.fillStyle = 'rgba(15, 8, 3, 0.75)';
+    ctx.fillRect(0, 60, w, h - 110);
+    // Top edge line
+    ctx.strokeStyle = '#5a3d20';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(20, 62); ctx.lineTo(w - 20, 62); ctx.stroke();
+    // Bottom edge
+    ctx.beginPath(); ctx.moveTo(20, h - 52); ctx.lineTo(w - 20, h - 52); ctx.stroke();
+    // Corner ornaments
+    const cornerSize = 12;
+    ctx.strokeStyle = '#6b4e2a';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(20, 62 + cornerSize); ctx.lineTo(20, 62); ctx.lineTo(20 + cornerSize, 62); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w - 20 - cornerSize, 62); ctx.lineTo(w - 20, 62); ctx.lineTo(w - 20, 62 + cornerSize); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(20, h - 52 - cornerSize); ctx.lineTo(20, h - 52); ctx.lineTo(20 + cornerSize, h - 52); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w - 20 - cornerSize, h - 52); ctx.lineTo(w - 20, h - 52); ctx.lineTo(w - 20, h - 52 - cornerSize); ctx.stroke();
 
-    ctx.fillStyle = '#666';
-    ctx.font = '12px monospace';
-    ctx.fillText(`Sunstone Fragments: ${fragments}/10`, w / 2, 105);
+    // Torch sconces
+    this._drawTorchSconce(ctx, 50, 80);
+    this._drawTorchSconce(ctx, w - 50, 80);
+
+    // NPC descriptions for cards (keyed by npc id)
+    const npcDescs = {
+      aldric: { short: 'Tavern owner. Knows everyone.', long: 'Been pouring drinks for twenty years. Sees everything, says just enough. If something happened in this tavern, Aldric knows.', icon: 'tankard' },
+      mira: { short: 'Maps the depths below.', long: 'Her maps have saved more lives than any sword. She charts what others fear to remember — every passage, every dead end.', icon: 'compass' },
+      elden: { short: 'A flickering presence.', long: 'No one sits at table seven. No one living, anyway. Elden speaks in riddles and half-truths, but his warnings have weight.', icon: 'ghost' },
+      orin: { short: 'Scarred veteran. Still sharp.', long: 'Former sellsword with more scars than stories he\'ll tell. Knows the dungeons by the wounds they gave him. His advice cuts deep.', icon: 'sword' },
+      bessa: { short: 'Deals in survival.', long: 'Every potion, blade, and charm passes through Bessa\'s hands first. Fair prices — if she likes you. Steep ones if she doesn\'t.', icon: 'coin' },
+    };
+
+    // --- Header with count ---
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillStyle = '#000';
+    ctx.fillText('AVAILABLE PATRONS', w / 2 + 1, 83);
+    ctx.fillStyle = '#E8D5B0';
+    ctx.fillText('AVAILABLE PATRONS', w / 2, 82);
+    // Count badge
+    ctx.font = '11px monospace';
+    ctx.fillStyle = '#8B7355';
+    ctx.fillText(`${this.availableNPCs.length} soul${this.availableNPCs.length !== 1 ? 's' : ''} present  ·  Fragments: ${fragments}/10`, w / 2, 98);
+    // Divider
+    ctx.fillStyle = '#6b5030';
+    ctx.fillText('═══════════════════════════', w / 2, 110);
 
     if (this.availableNPCs.length === 0) {
       ctx.fillStyle = '#555';
@@ -4403,53 +4439,182 @@ export class TavernState {
       return;
     }
 
-    // NPC cards
-    const cardW = 180;
-    const cardH = 200;
-    const gap = 20;
-    const totalW = this.availableNPCs.length * cardW + (this.availableNPCs.length - 1) * gap;
-    const startX = (w - totalW) / 2;
-    const startY = 130;
+    // --- NPC cards ---
+    const cardW = 150;
+    const cardH = 220;
+    const gap = 12;
+    const maxCards = this.availableNPCs.length;
+    const totalW = maxCards * cardW + (maxCards - 1) * gap;
+    const startX = Math.max(30, (w - totalW) / 2);
+    const startY = 120;
 
     for (let i = 0; i < this.availableNPCs.length; i++) {
       const npc = this.availableNPCs[i];
+      const desc = npcDescs[npc.id] || { short: npc.title, long: '', icon: 'default' };
       const x = startX + i * (cardW + gap);
       const selected = i === this.selectedNPC && !this.npcDialogue.active;
 
-      // Card background
+      // Card background with subtle gradient
+      const cardGrad = ctx.createLinearGradient(x, startY, x, startY + cardH);
       if (selected) {
-        ctx.shadowColor = npc.color || '#FFD700';
-        ctx.shadowBlur = 15;
+        cardGrad.addColorStop(0, '#3a2510');
+        cardGrad.addColorStop(1, '#2a1808');
+      } else {
+        cardGrad.addColorStop(0, '#1e1408');
+        cardGrad.addColorStop(1, '#140e06');
       }
-      ctx.fillStyle = selected ? '#2a1c10' : '#1a1208';
+      ctx.fillStyle = cardGrad;
       ctx.fillRect(x, startY, cardW, cardH);
+
+      // Selected glow
+      if (selected) {
+        ctx.shadowColor = '#FFD700';
+        ctx.shadowBlur = 12;
+      }
+      // Border — gold for selected, muted for others
+      ctx.strokeStyle = selected ? '#FFD700' : '#3a2a18';
+      ctx.lineWidth = selected ? 2.5 : 1;
+      ctx.strokeRect(x, startY, cardW, cardH);
       ctx.shadowBlur = 0;
 
-      // Border
-      ctx.strokeStyle = selected ? (npc.color || '#FFD700') : '#3a2a18';
-      ctx.lineWidth = selected ? 2 : 1;
-      ctx.strokeRect(x, startY, cardW, cardH);
-
-      // Portrait emoji
-      ctx.textAlign = 'center';
-      ctx.font = '48px serif';
-      ctx.fillText(npc.portrait, x + cardW / 2, startY + 65);
-
-      // Name
-      ctx.fillStyle = npc.color || '#C4A265';
-      ctx.font = 'bold 16px monospace';
-      ctx.fillText(npc.name, x + cardW / 2, startY + 105);
-
-      // Title
-      ctx.fillStyle = '#777';
-      ctx.font = 'italic 11px monospace';
-      ctx.fillText(npc.title, x + cardW / 2, startY + 125);
-
-      // "Talk" prompt
+      // Inner border accent for selected
       if (selected) {
-        ctx.fillStyle = '#C4A265';
-        ctx.font = '12px monospace';
-        ctx.fillText('[ ENTER to talk ]', x + cardW / 2, startY + 170);
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 3, startY + 3, cardW - 6, cardH - 6);
+      }
+
+      // --- Portrait silhouette area ---
+      const portraitSize = 48;
+      const portraitX = x + (cardW - portraitSize) / 2;
+      const portraitY = startY + 14;
+      // Portrait background
+      ctx.fillStyle = '#1a0e06';
+      ctx.fillRect(portraitX, portraitY, portraitSize, portraitSize);
+      ctx.fillStyle = '#2d1a0a';
+      ctx.fillRect(portraitX + 2, portraitY + 2, portraitSize - 4, portraitSize - 4);
+      // Portrait frame
+      ctx.strokeStyle = selected ? (npc.color || '#FFD700') : '#5a3d20';
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.strokeRect(portraitX, portraitY, portraitSize, portraitSize);
+
+      // Draw distinct silhouette per NPC identity
+      const cx = portraitX + portraitSize / 2;
+      const cy = portraitY + portraitSize / 2;
+      ctx.fillStyle = selected ? (npc.color || '#6b5030') : '#4a3520';
+
+      if (desc.icon === 'tankard') {
+        // Aldric — tankard silhouette
+        ctx.fillRect(cx - 8, cy - 10, 16, 18);
+        ctx.fillRect(cx + 8, cy - 6, 5, 10);
+        ctx.fillRect(cx - 10, cy + 8, 20, 3);
+      } else if (desc.icon === 'compass') {
+        // Mira — compass/map silhouette
+        ctx.beginPath();
+        ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1a0e06';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = selected ? (npc.color || '#6b5030') : '#4a3520';
+        // Compass needle
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 10); ctx.lineTo(cx + 3, cy); ctx.lineTo(cx, cy + 10); ctx.lineTo(cx - 3, cy);
+        ctx.closePath(); ctx.fill();
+      } else if (desc.icon === 'ghost') {
+        // Elden — ghostly figure
+        ctx.globalAlpha = selected ? 0.8 : 0.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy - 6, 8, Math.PI, 0);
+        ctx.lineTo(cx + 8, cy + 10);
+        ctx.quadraticCurveTo(cx + 4, cy + 6, cx, cy + 10);
+        ctx.quadraticCurveTo(cx - 4, cy + 6, cx - 8, cy + 10);
+        ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 1.0;
+      } else if (desc.icon === 'sword') {
+        // Orin — crossed swords
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(0.5);
+        ctx.fillRect(-2, -14, 4, 24);
+        ctx.fillRect(-6, 8, 12, 3);
+        ctx.restore();
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(-0.5);
+        ctx.fillRect(-2, -14, 4, 24);
+        ctx.fillRect(-6, 8, 12, 3);
+        ctx.restore();
+      } else if (desc.icon === 'coin') {
+        // Bessa — gold coins stack
+        ctx.beginPath(); ctx.ellipse(cx - 4, cy + 4, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#1a0e06';
+        ctx.beginPath(); ctx.ellipse(cx - 4, cy + 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = selected ? (npc.color || '#6b5030') : '#4a3520';
+        ctx.beginPath(); ctx.ellipse(cx + 2, cy - 2, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#1a0e06';
+        ctx.beginPath(); ctx.ellipse(cx + 2, cy - 4, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+      } else {
+        // Default — head + body silhouette
+        ctx.beginPath(); ctx.arc(cx, cy - 6, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(cx - 10, cy + 14); ctx.lineTo(cx, cy + 2); ctx.lineTo(cx + 10, cy + 14); ctx.closePath(); ctx.fill();
+      }
+
+      // --- Name ---
+      ctx.textAlign = 'center';
+      ctx.fillStyle = selected ? '#FFD700' : (npc.color || '#C4A265');
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText(npc.name, x + cardW / 2, startY + 80);
+
+      // --- Title/role ---
+      ctx.fillStyle = '#777';
+      ctx.font = 'italic 10px monospace';
+      ctx.fillText(npc.title, x + cardW / 2, startY + 95);
+
+      // --- Short description ---
+      ctx.fillStyle = '#5a5040';
+      ctx.font = '9px monospace';
+      ctx.fillText(desc.short, x + cardW / 2, startY + 112);
+
+      // --- Expanded description for selected ---
+      if (selected) {
+        // Expanded text area
+        ctx.fillStyle = '#8B7355';
+        ctx.font = '10px monospace';
+        const words = desc.long.split(' ');
+        let line = '';
+        let lineY = startY + 130;
+        const maxLineW = cardW - 16;
+        for (const word of words) {
+          const test = line + (line ? ' ' : '') + word;
+          if (ctx.measureText(test).width > maxLineW && line) {
+            ctx.fillText(line, x + cardW / 2, lineY);
+            line = word;
+            lineY += 14;
+            if (lineY > startY + cardH - 32) break;
+          } else {
+            line = test;
+          }
+        }
+        if (line && lineY <= startY + cardH - 32) {
+          ctx.fillText(line, x + cardW / 2, lineY);
+        }
+
+        // "Talk" prompt with pulsing
+        const pulse = 0.7 + 0.3 * Math.sin(this.flickerPhase * 2);
+        ctx.fillStyle = `rgba(196, 162, 101, ${pulse})`;
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText('[ ENTER to talk ]', x + cardW / 2, startY + cardH - 10);
+      }
+
+      // Touch hit zone for each NPC card
+      if (world.input && world.input.touch) {
+        if (selected) {
+          world.input.touch.registerHitZone(x, startY, cardW, cardH, 'Enter');
+        } else {
+          world.input.touch.registerHitZone(x, startY, cardW, cardH, `_selectNPC_${i}`);
+        }
       }
     }
 
@@ -4460,6 +4625,7 @@ export class TavernState {
       { label: 'BACK', code: 'Escape', width: 80 },
       { label: '◄', code: 'ArrowLeft', width: 50 },
       { label: '►', code: 'ArrowRight', width: 50 },
+      { label: 'TALK', code: 'Enter', width: 70 },
     ];
     this._drawTouchBar(ctx, w, h, world, buttons, -1);
   }
