@@ -2468,17 +2468,64 @@ export class TavernState {
     const h = ctx.canvas.height;
     const roster = world.roster.getAll();
 
+    // Dark parchment background overlay
+    ctx.fillStyle = 'rgba(15, 8, 3, 0.75)';
+    ctx.fillRect(0, 60, w, h - 110);
+    // Top edge line — worn parchment border
+    ctx.strokeStyle = '#5a3d20';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(20, 62);
+    ctx.lineTo(w - 20, 62);
+    ctx.stroke();
+    // Bottom edge
+    ctx.beginPath();
+    ctx.moveTo(20, h - 52);
+    ctx.lineTo(w - 20, h - 52);
+    ctx.stroke();
+    // Corner ornaments
+    const cornerSize = 12;
+    const ornamentColor = '#6b4e2a';
+    ctx.strokeStyle = ornamentColor;
+    ctx.lineWidth = 2;
+    // Top-left
+    ctx.beginPath(); ctx.moveTo(20, 62 + cornerSize); ctx.lineTo(20, 62); ctx.lineTo(20 + cornerSize, 62); ctx.stroke();
+    // Top-right
+    ctx.beginPath(); ctx.moveTo(w - 20 - cornerSize, 62); ctx.lineTo(w - 20, 62); ctx.lineTo(w - 20, 62 + cornerSize); ctx.stroke();
+    // Bottom-left
+    ctx.beginPath(); ctx.moveTo(20, h - 52 - cornerSize); ctx.lineTo(20, h - 52); ctx.lineTo(20 + cornerSize, h - 52); ctx.stroke();
+    // Bottom-right
+    ctx.beginPath(); ctx.moveTo(w - 20 - cornerSize, h - 52); ctx.lineTo(w - 20, h - 52); ctx.lineTo(w - 20, h - 52 - cornerSize); ctx.stroke();
+
     // Draw torch sconces
     this._drawTorchSconce(ctx, 50, 80);
     this._drawTorchSconce(ctx, w - 50, 80);
 
-    // Notice board header
+    // Header with decorative border
     ctx.textAlign = 'center';
-    ctx.font = '14px monospace';
-    ctx.fillStyle = '#C4A265';
-    ctx.fillText('ADVENTURERS FOR HIRE', w / 2, 76);
+    ctx.font = 'bold 16px monospace';
+    ctx.fillStyle = '#000';
+    ctx.fillText('ADVENTURERS FOR HIRE', w / 2 + 1, 83);
+    ctx.fillStyle = '#E8D5B0';
+    ctx.fillText('ADVENTURERS FOR HIRE', w / 2, 82);
+    // Decorative divider
     ctx.fillStyle = '#6b5030';
-    ctx.fillText('───────────────────────────', w / 2, 88);
+    ctx.fillText('═══════════════════════════', w / 2, 96);
+    ctx.textAlign = 'left';
+
+    // Party count indicator (top right area)
+    const partyCount = world.party.getMembers().length;
+    const partyBadgeX = w - 120;
+    const partyBadgeY = 72;
+    ctx.fillStyle = 'rgba(20, 12, 6, 0.9)';
+    ctx.fillRect(partyBadgeX, partyBadgeY, 100, 24);
+    ctx.strokeStyle = partyCount >= 4 ? '#4CAF50' : '#C4A265';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(partyBadgeX, partyBadgeY, 100, 24);
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = partyCount >= 4 ? '#4CAF50' : '#C4A265';
+    ctx.fillText(`PARTY ${partyCount}/4`, partyBadgeX + 50, partyBadgeY + 16);
     ctx.textAlign = 'left';
 
     // Character cards — scrollable window of up to 4 visible
@@ -2490,18 +2537,22 @@ export class TavernState {
     const visibleCount = Math.min(maxVisible, totalCards);
     const totalW = visibleCount * cardW + (visibleCount - 1) * gap;
     const startX = (w - totalW) / 2;
-    const startY = 100;
+    const startY = 106;
 
     // Determine scroll offset to keep selected card visible
     const scrollStart = Math.max(0, Math.min(this.selectedCharacter - Math.floor(maxVisible / 2), totalCards - visibleCount));
 
-    // Draw left arrow indicator if scrolled
+    // Draw left arrow indicator if scrolled — pulsing chevron
     if (scrollStart > 0) {
-      ctx.fillStyle = '#C4A265';
-      ctx.font = 'bold 24px monospace';
+      const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 400);
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 28px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('◄', startX - 20, startY + cardH / 2);
+      ctx.fillText('◄', startX - 24, startY + cardH / 2);
       ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
+      world.needsRender = true;
     }
 
     // Draw visible cards + register touch hit zones
@@ -2511,7 +2562,11 @@ export class TavernState {
       const selected = ci === this.selectedCharacter;
 
       if (ci < roster.length) {
-        this._drawCharacterCard(ctx, roster[ci], x, startY, cardW, cardH, selected);
+        const char = roster[ci];
+        // Check if this is the hero character
+        const isHero = world.heroCharacter && (char === world.heroCharacter ||
+          (char.name === world.heroCharacter.name && char.class === world.heroCharacter.class));
+        this._drawRosterCard(ctx, char, x, startY, cardW, cardH, selected, isHero);
       } else {
         this._drawCustomCard(ctx, x, startY, cardW, cardH, selected);
       }
@@ -2523,19 +2578,22 @@ export class TavernState {
           world.input.touch.registerHitZone(x, startY, cardW, cardH, 'Space');
         } else {
           // Tapping unselected card = select it (arrow key to that index)
-          // Use a special code we handle below
           world.input.touch.registerHitZone(x, startY, cardW, cardH, `_selectCard_${ci}`);
         }
       }
     }
 
-    // Draw right arrow indicator if more cards to the right
+    // Draw right arrow indicator if more cards to the right — pulsing chevron
     if (scrollStart + visibleCount < totalCards) {
-      ctx.fillStyle = '#C4A265';
-      ctx.font = 'bold 24px monospace';
+      const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 400);
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 28px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('►', startX + totalW + 20, startY + cardH / 2);
+      ctx.fillText('►', startX + totalW + 24, startY + cardH / 2);
       ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
+      world.needsRender = true;
     }
 
     // Show recruited indicator on cards already in party
@@ -2545,38 +2603,272 @@ export class TavernState {
       const charInParty = ci < roster.length && (world.party.getMembers().includes(roster[ci]) ||
         world.party.getMembers().some(m => m.name === roster[ci].name && m.class === roster[ci].class));
       if (charInParty) {
-        // Draw "RECRUITED" overlay
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        // Draw "IN PARTY" overlay with shield icon
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fillRect(x, startY, cardW, cardH);
-        ctx.fillStyle = '#4CAF50';
-        ctx.font = 'bold 14px monospace';
+        // Green banner across center
+        ctx.fillStyle = 'rgba(39, 174, 96, 0.85)';
+        ctx.fillRect(x, startY + cardH / 2 - 18, cardW, 36);
+        ctx.strokeStyle = '#2ECC71';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, startY + cardH / 2 - 18, cardW, 36);
+        ctx.fillStyle = '#FFF';
+        ctx.font = 'bold 13px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('✓ IN PARTY', x + cardW / 2, startY + cardH / 2);
+        ctx.fillText('✓ IN PARTY', x + cardW / 2, startY + cardH / 2 + 5);
         ctx.textAlign = 'left';
       }
     }
 
     // H-4: Flash "ALREADY IN PARTY" on failed recruit attempt
     if (this._recruitFailFlash && Date.now() - this._recruitFailFlash < 1000) {
-      ctx.fillStyle = 'rgba(192, 57, 43, 0.8)';
-      ctx.font = 'bold 16px monospace';
+      const flashAge = Date.now() - this._recruitFailFlash;
+      const flashAlpha = Math.max(0, 1 - flashAge / 1000);
+      ctx.globalAlpha = flashAlpha;
+      // Red banner flash
+      ctx.fillStyle = 'rgba(192, 57, 43, 0.9)';
+      ctx.fillRect(w / 2 - 160, startY + cardH + 26, 320, 32);
+      ctx.strokeStyle = '#E74C3C';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(w / 2 - 160, startY + cardH + 26, 320, 32);
+      ctx.fillStyle = '#FFF';
+      ctx.font = 'bold 14px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('ALREADY IN PARTY!', w / 2, startY + cardH + 40);
+      ctx.fillText('⚠ ALREADY IN PARTY!', w / 2, startY + cardH + 47);
       ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
       world.needsRender = true; // Keep rendering until flash fades
     }
-
-    // Party count indicator
-    const partyCount = world.party.getMembers().length;
-    ctx.textAlign = 'center';
-    ctx.font = '12px monospace';
-    ctx.fillStyle = partyCount >= 4 ? '#4CAF50' : '#C4A265';
-    ctx.fillText(`PARTY: ${partyCount}/4`, w / 2, startY + cardH + 20);
-    ctx.textAlign = 'left';
 
     // Bottom bar — touch-friendly buttons (use shared method for consistency)
     const buttons = this._rosterBarButtons(partyCount);
     this._drawTouchBar(ctx, w, h, world, buttons, this.focusArea === 'bar' ? this.selectedBarButton : -1);
+  }
+
+  // --- Roster Card (enhanced character card with class colors, hero badge) ---
+  _drawRosterCard(ctx, char, x, y, w, h, selected, isHero) {
+    const classInfo = CLASS_INSIGHTS[char.class] || CLASS_INSIGHTS.fighter;
+    const classData = CLASS_DATA[char.class];
+
+    // Class color mapping for border accent
+    const classColors = {
+      fighter: '#C0392B', ranger: '#27AE60', mage: '#8E44AD',
+      cleric: '#F1C40F', rogue: '#2C3E50', paladin: '#D4AC0D'
+    };
+    const classColor = classColors[char.class] || '#C4A265';
+
+    // Card background — dark parchment with class-tinted edge
+    if (selected) {
+      ctx.shadowColor = '#FFD700';
+      ctx.shadowBlur = 24;
+    }
+    ctx.fillStyle = selected ? '#3a2a18' : '#2a1c10';
+    ctx.fillRect(x, y, w, h);
+    ctx.shadowBlur = 0;
+
+    // Card border — gold when selected, class-colored accent otherwise
+    ctx.strokeStyle = selected ? '#FFD700' : '#5a3d20';
+    ctx.lineWidth = selected ? 3 : 2;
+    ctx.strokeRect(x, y, w, h);
+
+    // Inner border (double-line frame)
+    ctx.strokeStyle = selected ? 'rgba(255, 215, 0, 0.3)' : 'rgba(90, 61, 32, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 4, y + 4, w - 8, h - 8);
+
+    // Class color accent — thin strip at top of card
+    ctx.fillStyle = classColor;
+    ctx.fillRect(x + 5, y + 5, w - 10, 3);
+
+    // Portrait — BIG (fills card width)
+    const portraitSize = w - 20;
+    const portraitX = x + 10;
+    const portraitY = y + 14;
+    const portrait = char.portrait ? this.assets.get(char.portrait) : null;
+
+    // Portrait frame background
+    ctx.fillStyle = '#1a0e06';
+    ctx.fillRect(portraitX - 2, portraitY - 2, portraitSize + 4, portraitSize + 4);
+
+    if (portrait) {
+      ctx.drawImage(portrait, portraitX, portraitY, portraitSize, portraitSize);
+    } else {
+      // Fallback — class-colored silhouette with icon
+      const grad = ctx.createLinearGradient(portraitX, portraitY, portraitX, portraitY + portraitSize);
+      grad.addColorStop(0, classColor);
+      grad.addColorStop(1, '#1a0e06');
+      ctx.fillStyle = grad;
+      ctx.fillRect(portraitX, portraitY, portraitSize, portraitSize);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(portraitX, portraitY, portraitSize, portraitSize);
+      ctx.fillStyle = '#FFF';
+      ctx.font = '60px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(classInfo.icon, portraitX + portraitSize / 2, portraitY + portraitSize / 2 + 20);
+      ctx.textAlign = 'left';
+    }
+
+    // Portrait frame border
+    ctx.strokeStyle = selected ? '#FFD700' : '#6b4e2a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(portraitX - 2, portraitY - 2, portraitSize + 4, portraitSize + 4);
+
+    // Role badge (top-right corner of portrait)
+    const badgeW = 64;
+    const badgeH = 20;
+    const badgeX = portraitX + portraitSize - badgeW + 2;
+    const badgeY = portraitY;
+    ctx.fillStyle = classColor;
+    ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+    // Badge border
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+    ctx.fillStyle = '#FFF';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${classInfo.icon} ${classInfo.role}`, badgeX + badgeW / 2, badgeY + 14);
+    ctx.textAlign = 'left';
+
+    // Hero badge (top-left corner of portrait)
+    if (isHero) {
+      const heroBW = 50;
+      const heroBH = 20;
+      ctx.fillStyle = '#FFD700';
+      ctx.fillRect(portraitX, portraitY, heroBW, heroBH);
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(portraitX, portraitY, heroBW, heroBH);
+      ctx.fillStyle = '#1a0e06';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('★ HERO', portraitX + heroBW / 2, portraitY + 14);
+      ctx.textAlign = 'left';
+    }
+
+    // Character name with text shadow
+    const nameY = portraitY + portraitSize + 18;
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'center';
+    ctx.fillText(char.name, x + w / 2 + 1, nameY + 1);
+    ctx.fillStyle = selected ? '#FFD700' : '#E8D5B0';
+    ctx.fillText(char.name, x + w / 2, nameY);
+
+    // Class + Level with class color
+    ctx.font = '11px monospace';
+    ctx.fillStyle = classColor;
+    ctx.fillText(`${classData.name} · L${char.level}`, x + w / 2, nameY + 16);
+    ctx.textAlign = 'left';
+
+    // HP bar (enhanced with gradient fill)
+    const barStartY = nameY + 26;
+    const barX = x + 12;
+    const barW = w - 24;
+    const barH = 8;
+    const barGap = 16;
+
+    this._drawEnhancedBar(ctx, barX, barStartY, barW, barH, 'HP',
+      char.currentHP, char.maxHP, '#600', '#22AA22', '#33DD33');
+
+    // Mana bar
+    if (char.maxMana > 0) {
+      this._drawEnhancedBar(ctx, barX, barStartY + barGap, barW, barH, 'MP',
+        char.currentMana, char.maxMana, '#224', '#3355CC', '#5577EE');
+    }
+
+    // Key stats row
+    const statsY = barStartY + barGap * 2 + 8;
+    ctx.font = 'bold 11px monospace';
+
+    const stats = [
+      { label: 'STR', val: char.stats.str },
+      { label: 'DEX', val: char.stats.dex },
+      { label: 'CON', val: char.stats.con },
+    ];
+    const stats2 = [
+      { label: 'INT', val: char.stats.int },
+      { label: 'WIS', val: char.stats.wis },
+      { label: 'CHA', val: char.stats.cha },
+    ];
+
+    stats.forEach((s, i) => {
+      const sx = barX + i * (barW / 3);
+      const highlight = s.val >= 14 ? '#E8D5B0' : '#9B8765';
+      ctx.fillStyle = '#000';
+      ctx.fillText(`${s.label}:${s.val}`, sx + 1, statsY + 1);
+      ctx.fillStyle = highlight;
+      ctx.fillText(`${s.label}:${s.val}`, sx, statsY);
+    });
+    stats2.forEach((s, i) => {
+      const sx = barX + i * (barW / 3);
+      const highlight = s.val >= 14 ? '#E8D5B0' : '#9B8765';
+      ctx.fillStyle = '#000';
+      ctx.fillText(`${s.label}:${s.val}`, sx + 1, statsY + 15);
+      ctx.fillStyle = highlight;
+      ctx.fillText(`${s.label}:${s.val}`, sx, statsY + 14);
+    });
+
+    // AC + Weapon
+    const infoY = statsY + 30;
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#000';
+    ctx.fillText(`AC:${char.getAC()} | ${char.getWeaponDamage()}`, x + w / 2 + 1, infoY + 1);
+    ctx.fillStyle = '#C4A265';
+    ctx.fillText(`AC:${char.getAC()} | ${char.getWeaponDamage()}`, x + w / 2, infoY);
+
+    // "Best at" insight
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#000';
+    ctx.fillText(classInfo.best, x + w / 2 + 1, infoY + 15);
+    ctx.fillStyle = '#9B8765';
+    ctx.fillText(classInfo.best, x + w / 2, infoY + 14);
+    ctx.textAlign = 'left';
+  }
+
+  // --- Enhanced stat bar with gradient fill ---
+  _drawEnhancedBar(ctx, x, y, w, h, label, current, max, bgColor, fillColor, fillHighlight) {
+    const pct = Math.max(0, Math.min(1, current / max));
+
+    // Label
+    ctx.font = 'bold 10px monospace';
+    ctx.fillStyle = '#000';
+    ctx.fillText(label, x + 1, y);
+    ctx.fillStyle = '#C4A265';
+    ctx.fillText(label, x, y - 1);
+
+    // Value
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#000';
+    ctx.fillText(`${current}/${max}`, x + w + 1, y);
+    ctx.fillStyle = '#C4A265';
+    ctx.fillText(`${current}/${max}`, x + w, y - 1);
+    ctx.textAlign = 'left';
+
+    // Bar background
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(x, y + 2, w, h);
+
+    // Gradient fill
+    if (pct > 0) {
+      const grad = ctx.createLinearGradient(x, y + 2, x, y + 2 + h);
+      grad.addColorStop(0, fillHighlight);
+      grad.addColorStop(1, fillColor);
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y + 2, w * pct, h);
+    }
+
+    // Bar border
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y + 2, w, h);
+
+    // Subtle shine line at top of fill
+    if (pct > 0.05) {
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(x + 1, y + 3, w * pct - 2, 2);
+    }
   }
 
   _drawCharacterCard(ctx, char, x, y, w, h, selected) {
@@ -2854,69 +3146,353 @@ export class TavernState {
   _renderPartySelect(ctx, world) {
     const w = ctx.canvas.width;
     const h = ctx.canvas.height;
+    const members = world.party.getMembers();
+    const roster = world.roster.getAll();
+
+    // Dark parchment background overlay
+    ctx.fillStyle = 'rgba(15, 8, 3, 0.75)';
+    ctx.fillRect(0, 60, w, h - 110);
+    // Border edges
+    ctx.strokeStyle = '#5a3d20';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(20, 62); ctx.lineTo(w - 20, 62); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(20, h - 52); ctx.lineTo(w - 20, h - 52); ctx.stroke();
 
     // Draw torch sconces
     this._drawTorchSconce(ctx, 50, 80);
     this._drawTorchSconce(ctx, w - 50, 80);
 
+    // Header
     ctx.textAlign = 'center';
-    ctx.font = '14px monospace';
-    ctx.fillStyle = '#C4A265';
-    ctx.fillText('YOUR PARTY', w / 2, 76);
+    ctx.font = 'bold 16px monospace';
+    ctx.fillStyle = '#000';
+    ctx.fillText('YOUR PARTY', w / 2 + 1, 83);
+    ctx.fillStyle = '#E8D5B0';
+    ctx.fillText('YOUR PARTY', w / 2, 82);
     ctx.fillStyle = '#6b5030';
-    ctx.fillText('───────────────────', w / 2, 88);
+    ctx.fillText('═══════════════════════════', w / 2, 96);
     ctx.textAlign = 'left';
 
-    const members = world.party.getMembers();
-    const cardW = 160;
-    const cardH = 380;
-    const gap = 16;
-    const maxCards = Math.max(members.length, 1);
-    const totalW = maxCards * cardW + (maxCards - 1) * gap;
-    const startX = (w - totalW) / 2;
-    const startY = 100;
+    // --- SPLIT VIEW LAYOUT ---
+    // Left side: 4 party slots (large cards)
+    // Right side: roster reference list (smaller cards)
+    const leftPanelW = Math.min(460, w * 0.55);
+    const rightPanelW = w - leftPanelW - 40;
+    const leftX = 15;
+    const rightX = leftPanelW + 25;
+    const panelTop = 104;
 
-    if (members.length === 0) {
-      ctx.textAlign = 'center';
-      ctx.font = '16px monospace';
-      ctx.fillStyle = '#8B7355';
-      ctx.fillText('No members recruited yet.', w / 2, startY + cardH / 2);
-      ctx.fillText('Go back and recruit adventurers.', w / 2, startY + cardH / 2 + 24);
-      ctx.textAlign = 'left';
-    } else {
-      members.forEach((char, i) => {
-        const isSelected = i === this.selectedPartySlot;
-        const x = startX + i * (cardW + gap);
-        this._drawCharacterCard(ctx, char, x, startY, cardW, cardH, isSelected);
+    // === LEFT PANEL: Party Slots ===
+    // Panel background
+    ctx.fillStyle = 'rgba(20, 12, 6, 0.6)';
+    ctx.fillRect(leftX, panelTop, leftPanelW, h - panelTop - 60);
+    ctx.strokeStyle = '#5a3d20';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(leftX, panelTop, leftPanelW, h - panelTop - 60);
 
-        // Register touch zone — tap to select, tap selected to remove
-        if (world.input && world.input.touch) {
-          if (isSelected) {
-            world.input.touch.registerHitZone(x, startY, cardW, cardH, 'Space');
-          } else {
-            world.input.touch.registerHitZone(x, startY, cardW, cardH, `_selectParty_${i}`);
-          }
+    // Panel title
+    ctx.fillStyle = '#2a1a0e';
+    ctx.fillRect(leftX + 1, panelTop + 1, leftPanelW - 2, 20);
+    ctx.fillStyle = '#C4A265';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`PARTY FORMATION · ${members.length}/4`, leftX + leftPanelW / 2, panelTop + 14);
+    ctx.textAlign = 'left';
+
+    // 4 party slots — 2x2 grid or single row depending on width
+    const slotGap = 10;
+    const slotsPerRow = 2;
+    const slotW = Math.floor((leftPanelW - slotGap * 3) / slotsPerRow);
+    const slotH = Math.floor((h - panelTop - 100) / 2);
+    const slotStartY = panelTop + 28;
+
+    for (let slot = 0; slot < 4; slot++) {
+      const row = Math.floor(slot / slotsPerRow);
+      const col = slot % slotsPerRow;
+      const sx = leftX + slotGap + col * (slotW + slotGap);
+      const sy = slotStartY + row * (slotH + slotGap);
+      const isActive = slot === this.selectedPartySlot;
+      const member = members[slot] || null;
+
+      if (member) {
+        // --- Filled slot ---
+        const classInfo = CLASS_INSIGHTS[member.class] || CLASS_INSIGHTS.fighter;
+        const classData = CLASS_DATA[member.class];
+        const classColors = {
+          fighter: '#C0392B', ranger: '#27AE60', mage: '#8E44AD',
+          cleric: '#F1C40F', rogue: '#2C3E50', paladin: '#D4AC0D'
+        };
+        const classColor = classColors[member.class] || '#C4A265';
+
+        // Card background with glow on active
+        if (isActive) {
+          ctx.shadowColor = '#FFD700';
+          ctx.shadowBlur = 18;
         }
+        ctx.fillStyle = isActive ? '#3a2a18' : '#2a1c10';
+        ctx.fillRect(sx, sy, slotW, slotH);
+        ctx.shadowBlur = 0;
 
-        // Draw "REMOVE" hint on selected card
-        if (isSelected) {
-          ctx.fillStyle = 'rgba(192, 57, 43, 0.7)';
-          ctx.fillRect(x, startY + cardH - 30, cardW, 30);
+        // Card border
+        ctx.strokeStyle = isActive ? '#FFD700' : '#5a3d20';
+        ctx.lineWidth = isActive ? 3 : 2;
+        ctx.strokeRect(sx, sy, slotW, slotH);
+
+        // Inner border
+        ctx.strokeStyle = isActive ? 'rgba(255, 215, 0, 0.3)' : 'rgba(90, 61, 32, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + 3, sy + 3, slotW - 6, slotH - 6);
+
+        // Class color accent strip
+        ctx.fillStyle = classColor;
+        ctx.fillRect(sx + 4, sy + 4, slotW - 8, 3);
+
+        // Slot number badge (top-left)
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(sx + 6, sy + 10, 22, 18);
+        ctx.strokeStyle = '#6b4e2a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + 6, sy + 10, 22, 18);
+        ctx.fillStyle = '#C4A265';
+        ctx.font = 'bold 12px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${slot + 1}`, sx + 17, sy + 24);
+        ctx.textAlign = 'left';
+
+        // Portrait
+        const pSize = Math.min(slotW - 24, slotH - 120);
+        const pX = sx + (slotW - pSize) / 2;
+        const pY = sy + 10;
+        const portrait = member.portrait ? this.assets.get(member.portrait) : null;
+
+        ctx.fillStyle = '#1a0e06';
+        ctx.fillRect(pX - 2, pY - 2, pSize + 4, pSize + 4);
+
+        if (portrait) {
+          ctx.drawImage(portrait, pX, pY, pSize, pSize);
+        } else {
+          const grad = ctx.createLinearGradient(pX, pY, pX, pY + pSize);
+          grad.addColorStop(0, classColor);
+          grad.addColorStop(1, '#1a0e06');
+          ctx.fillStyle = grad;
+          ctx.fillRect(pX, pY, pSize, pSize);
+          ctx.fillStyle = 'rgba(0,0,0,0.4)';
+          ctx.fillRect(pX, pY, pSize, pSize);
           ctx.fillStyle = '#FFF';
-          ctx.font = 'bold 12px monospace';
+          ctx.font = `${Math.floor(pSize * 0.5)}px monospace`;
           ctx.textAlign = 'center';
-          ctx.fillText('PRESS SPACE TO REMOVE', x + cardW / 2, startY + cardH - 12);
+          ctx.fillText(classInfo.icon, pX + pSize / 2, pY + pSize / 2 + Math.floor(pSize * 0.15));
           ctx.textAlign = 'left';
         }
-      });
+
+        ctx.strokeStyle = isActive ? '#FFD700' : '#6b4e2a';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(pX - 2, pY - 2, pSize + 4, pSize + 4);
+
+        // Role badge on portrait
+        const rbW = 56;
+        const rbH = 16;
+        ctx.fillStyle = classColor;
+        ctx.fillRect(pX + pSize - rbW + 2, pY, rbW, rbH);
+        ctx.fillStyle = '#FFF';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(classInfo.role, pX + pSize - rbW / 2 + 2, pY + 12);
+        ctx.textAlign = 'left';
+
+        // Name
+        const nameBaseY = pY + pSize + 14;
+        ctx.font = 'bold 13px monospace';
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'center';
+        ctx.fillText(member.name, sx + slotW / 2 + 1, nameBaseY + 1);
+        ctx.fillStyle = isActive ? '#FFD700' : '#E8D5B0';
+        ctx.fillText(member.name, sx + slotW / 2, nameBaseY);
+
+        // Class + Level
+        ctx.font = '10px monospace';
+        ctx.fillStyle = classColor;
+        ctx.fillText(`${classData.name} · L${member.level}`, sx + slotW / 2, nameBaseY + 14);
+        ctx.textAlign = 'left';
+
+        // HP bar
+        const bX = sx + 10;
+        const bW = slotW - 20;
+        const bY = nameBaseY + 22;
+        this._drawEnhancedBar(ctx, bX, bY, bW, 7, 'HP',
+          member.currentHP, member.maxHP, '#600', '#22AA22', '#33DD33');
+
+        // MP bar
+        if (member.maxMana > 0) {
+          this._drawEnhancedBar(ctx, bX, bY + 14, bW, 7, 'MP',
+            member.currentMana, member.maxMana, '#224', '#3355CC', '#5577EE');
+        }
+
+        // "REMOVE" hint on active card
+        if (isActive) {
+          const removeY = sy + slotH - 26;
+          ctx.fillStyle = 'rgba(192, 57, 43, 0.8)';
+          ctx.fillRect(sx + 4, removeY, slotW - 8, 22);
+          ctx.strokeStyle = '#E74C3C';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(sx + 4, removeY, slotW - 8, 22);
+          ctx.fillStyle = '#FFF';
+          ctx.font = 'bold 10px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('SPACE TO REMOVE', sx + slotW / 2, removeY + 15);
+          ctx.textAlign = 'left';
+        }
+
+        // Register touch zone
+        if (world.input && world.input.touch) {
+          if (isActive) {
+            world.input.touch.registerHitZone(sx, sy, slotW, slotH, 'Space');
+          } else {
+            world.input.touch.registerHitZone(sx, sy, slotW, slotH, `_selectParty_${slot}`);
+          }
+        }
+      } else {
+        // --- Empty slot (dashed outline) ---
+        ctx.fillStyle = isActive ? 'rgba(40, 30, 16, 0.6)' : 'rgba(20, 14, 8, 0.4)';
+        ctx.fillRect(sx, sy, slotW, slotH);
+
+        ctx.strokeStyle = isActive ? '#FFD700' : '#4a3520';
+        ctx.lineWidth = isActive ? 2 : 1;
+        ctx.setLineDash([8, 6]);
+        ctx.strokeRect(sx, sy, slotW, slotH);
+        ctx.setLineDash([]);
+
+        // Slot number
+        ctx.fillStyle = isActive ? '#FFD700' : '#6b5030';
+        ctx.font = 'bold 24px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${slot + 1}`, sx + slotW / 2, sy + slotH / 2 - 16);
+
+        // "Empty Slot" text
+        ctx.font = '12px monospace';
+        ctx.fillStyle = isActive ? '#C4A265' : '#6b5030';
+        ctx.fillText('Empty Slot', sx + slotW / 2, sy + slotH / 2 + 10);
+
+        // Hint text
+        ctx.font = '10px monospace';
+        ctx.fillStyle = '#4a3520';
+        ctx.fillText('Recruit from roster', sx + slotW / 2, sy + slotH / 2 + 28);
+        ctx.textAlign = 'left';
+      }
     }
 
-    // Party count
+    // === RIGHT PANEL: Roster Reference ===
+    ctx.fillStyle = 'rgba(20, 12, 6, 0.6)';
+    ctx.fillRect(rightX, panelTop, rightPanelW, h - panelTop - 60);
+    ctx.strokeStyle = '#5a3d20';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(rightX, panelTop, rightPanelW, h - panelTop - 60);
+
+    // Panel title
+    ctx.fillStyle = '#2a1a0e';
+    ctx.fillRect(rightX + 1, panelTop + 1, rightPanelW - 2, 20);
+    ctx.fillStyle = '#C4A265';
+    ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
-    ctx.font = '12px monospace';
-    ctx.fillStyle = members.length >= 4 ? '#4CAF50' : (members.length > 0 ? '#C4A265' : '#C0392B');
-    ctx.fillText(`${members.length}/4 MEMBERS`, w / 2, startY + cardH + 20);
+    ctx.fillText('AVAILABLE ROSTER', rightX + rightPanelW / 2, panelTop + 14);
     ctx.textAlign = 'left';
+
+    // Mini roster list (compact cards)
+    const listTop = panelTop + 28;
+    const rowH = 44;
+    const listPad = 6;
+    const maxListVisible = Math.floor((h - panelTop - 100) / rowH);
+
+    if (roster.length === 0) {
+      ctx.fillStyle = '#6b5030';
+      ctx.font = '11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('No adventurers available', rightX + rightPanelW / 2, listTop + 40);
+      ctx.textAlign = 'left';
+    } else {
+      for (let ri = 0; ri < Math.min(roster.length, maxListVisible); ri++) {
+        const char = roster[ri];
+        const ry = listTop + ri * rowH;
+        const classInfo = CLASS_INSIGHTS[char.class] || CLASS_INSIGHTS.fighter;
+        const classColors = {
+          fighter: '#C0392B', ranger: '#27AE60', mage: '#8E44AD',
+          cleric: '#F1C40F', rogue: '#2C3E50', paladin: '#D4AC0D'
+        };
+        const classColor = classColors[char.class] || '#C4A265';
+
+        // Check if in party
+        const inParty = members.includes(char) ||
+          members.some(m => m.name === char.name && m.class === char.class);
+
+        // Row background
+        ctx.fillStyle = inParty ? 'rgba(39, 174, 96, 0.15)' : 'rgba(30, 20, 10, 0.5)';
+        ctx.fillRect(rightX + listPad, ry, rightPanelW - listPad * 2, rowH - 4);
+        ctx.strokeStyle = inParty ? 'rgba(39, 174, 96, 0.4)' : '#3a2a18';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(rightX + listPad, ry, rightPanelW - listPad * 2, rowH - 4);
+
+        // Class color dot
+        ctx.fillStyle = classColor;
+        ctx.beginPath();
+        ctx.arc(rightX + listPad + 12, ry + (rowH - 4) / 2, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Mini portrait
+        const miniSize = 30;
+        const miniX = rightX + listPad + 22;
+        const miniY = ry + 3;
+        const portrait = char.portrait ? this.assets.get(char.portrait) : null;
+
+        ctx.fillStyle = '#1a0e06';
+        ctx.fillRect(miniX, miniY, miniSize, miniSize);
+        if (portrait) {
+          ctx.drawImage(portrait, miniX, miniY, miniSize, miniSize);
+        } else {
+          ctx.fillStyle = classColor;
+          ctx.font = '18px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(classInfo.icon, miniX + miniSize / 2, miniY + miniSize / 2 + 6);
+          ctx.textAlign = 'left';
+        }
+        ctx.strokeStyle = '#4a3520';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(miniX, miniY, miniSize, miniSize);
+
+        // Name + class
+        const textX = miniX + miniSize + 8;
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = inParty ? '#4CAF50' : '#E8D5B0';
+        ctx.fillText(char.name, textX, ry + 15);
+
+        ctx.font = '9px monospace';
+        ctx.fillStyle = classColor;
+        ctx.fillText(`${classInfo.role} · L${char.level}`, textX, ry + 28);
+
+        // In party indicator
+        if (inParty) {
+          ctx.fillStyle = '#4CAF50';
+          ctx.font = 'bold 9px monospace';
+          ctx.textAlign = 'right';
+          ctx.fillText('✓ PARTY', rightX + rightPanelW - listPad - 4, ry + 22);
+          ctx.textAlign = 'left';
+        }
+
+        // Dim if in party
+        if (inParty) {
+          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+          ctx.fillRect(rightX + listPad, ry, rightPanelW - listPad * 2, rowH - 4);
+        }
+      }
+
+      // "More..." indicator if roster is longer than visible
+      if (roster.length > maxListVisible) {
+        ctx.fillStyle = '#6b5030';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`+ ${roster.length - maxListVisible} more...`, rightX + rightPanelW / 2, listTop + maxListVisible * rowH + 12);
+        ctx.textAlign = 'left';
+      }
+    }
 
     // Bottom bar (use shared method for consistency)
     const buttons = this._partyBarButtons(members);
