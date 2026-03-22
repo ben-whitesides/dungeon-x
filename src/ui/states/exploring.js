@@ -100,8 +100,11 @@ export class ExploringState {
     if (uiCtx) {
       uiCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // Minimap
-      this.minimapRenderer.render(uiCtx, world.tileMap, world.player.x, world.player.y);
+      // Dungeon info bar (top center)
+      this.uiRenderer.renderDungeonInfo(uiCtx, world.dungeonName, world.floor, world.turnCount);
+
+      // Minimap (with facing direction and floor for level label)
+      this.minimapRenderer.render(uiCtx, world.tileMap, world.player.x, world.player.y, world.player.facing, world.floor);
 
       // Party HUD
       this.uiRenderer.renderPartyHUD(uiCtx, world.party.getMembers());
@@ -112,12 +115,15 @@ export class ExploringState {
       }
       this.uiRenderer.renderVirtualGamepad(uiCtx, world.input && world.input.touch);
 
+      // Action hints (keyboard controls, hidden on touch)
+      this.uiRenderer.renderActionHints(uiCtx);
+
       // Interaction hint
       if (this._interactMessageTimer > 0) {
         this._interactMessageTimer--;
         const alpha = Math.min(1, this._interactMessageTimer / 30);
         uiCtx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
-        uiCtx.font = '14px monospace';
+        uiCtx.font = 'bold 14px serif';
         uiCtx.textAlign = 'center';
         uiCtx.fillText(this._interactMessage, CANVAS_WIDTH / 2, CANVAS_HEIGHT - 50);
         uiCtx.textAlign = 'left';
@@ -130,11 +136,14 @@ export class ExploringState {
       const facingTile = world.tileMap.get(fx, fy);
       const interactTiles = [TILE.TORCH_LIT, TILE.TORCH_UNLIT, TILE.LEVER, TILE.GATE_CLOSED, TILE.STAIRS_DOWN, TILE.STAIRS_UP];
       if (interactTiles.includes(facingTile)) {
-        // Show interact prompt
-        uiCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        // Show interact prompt — parchment style
+        uiCtx.fillStyle = 'rgba(12, 10, 8, 0.75)';
         uiCtx.fillRect(CANVAS_WIDTH / 2 - 100, CANVAS_HEIGHT - 72, 200, 24);
+        uiCtx.strokeStyle = '#8a7a4a';
+        uiCtx.lineWidth = 1;
+        uiCtx.strokeRect(CANVAS_WIDTH / 2 - 100, CANVAS_HEIGHT - 72, 200, 24);
         uiCtx.fillStyle = '#FFD700';
-        uiCtx.font = '12px monospace';
+        uiCtx.font = 'bold 12px serif';
         uiCtx.textAlign = 'center';
         uiCtx.fillText('[SPACE/TAP] Interact', CANVAS_WIDTH / 2, CANVAS_HEIGHT - 55);
         uiCtx.textAlign = 'left';
@@ -145,18 +154,18 @@ export class ExploringState {
         }
       }
 
-      // Status text
-      uiCtx.fillStyle = '#0f0';
-      uiCtx.font = '14px monospace';
+      // Status text — medieval style
+      uiCtx.fillStyle = '#8a7a4a';
+      uiCtx.font = '12px serif';
       const dirs = ['N', 'E', 'S', 'W'];
       uiCtx.fillText(
-        `Floor ${world.floor} | (${world.player.x}, ${world.player.y}) Facing ${dirs[world.player.facing]}`,
+        `(${world.player.x}, ${world.player.y}) Facing ${dirs[world.player.facing]}`,
         10, CANVAS_HEIGHT - 10
       );
 
       // Gold display
       uiCtx.fillStyle = '#FFD700';
-      uiCtx.font = '13px monospace';
+      uiCtx.font = 'bold 13px serif';
       uiCtx.fillText(`Gold: ${world.gold}`, 10, CANVAS_HEIGHT - 28);
     }
   }
