@@ -137,12 +137,43 @@ async function boot() {
           world.stateStack.pushDeathScreen(fallenMembers, dName, dFloor);
           GameSave.save(world);
         } else if (activeState.combat.state === 'victory') {
-          // Show level-up notifications for any members who leveled
+          // Build rewards object for victory screen
+          const goldEarned = activeState.combat.enemies
+            ? Math.max(1, Math.floor(activeState.combat.enemies.reduce((sum, e) => sum + (e.currentHP <= 0 ? e.xp : 0), 0) / 5))
+            : 0;
+          const totalXP = activeState.combat.enemies
+            ? activeState.combat.enemies.reduce((sum, e) => sum + (e.currentHP <= 0 ? e.xp : 0), 0)
+            : 0;
+          const rewards = { gold: goldEarned, xp: totalXP, items: [], fragment: null };
+
+          // Build party snapshot with level-up flags
+          const partySnapshot = world.party.getMembers().map(m => {
+            const leveledUp = activeState._levelUpData
+              ? activeState._levelUpData.some(lu => lu.character === m)
+              : false;
+            return {
+              name: m.name,
+              class: m.class,
+              portrait: m.portrait,
+              currentHP: m.currentHP,
+              maxHP: m.maxHP,
+              currentMana: m.currentMana,
+              maxMana: m.maxMana,
+              leveledUp,
+            };
+          });
+
+          const vName = world.dungeonName || world.dungeonType || 'Unknown Dungeon';
+          const vFloor = world.floor || 1;
+
+          // Push level-up notifications first (they stack on top)
           if (activeState._levelUpData) {
             for (const lu of activeState._levelUpData) {
               world.stateStack.pushLevelUp(lu.character, lu.oldLevel, lu.newLevel);
             }
           }
+          // Push victory screen (shows after level-ups are dismissed)
+          world.stateStack.pushVictoryScreen(rewards, partySnapshot, vName, vFloor);
           GameSave.save(world);
         }
         // Victory or Fled just resumes exploration which is already on the stack
