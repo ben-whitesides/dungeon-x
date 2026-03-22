@@ -4000,194 +4000,342 @@ export class TavernState {
       this._refreshNoticeBoard(world);
     }
 
-    // Wooden board background
-    const boardX = 60;
+    const fragments = world.collectedFragments ? world.collectedFragments.size : 0;
+    const partySize = world.party.getMembers().length;
+    const partyReady = partySize > 0;
+
+    // --- Dark parchment overlay (matching roster/shop style) ---
+    ctx.fillStyle = 'rgba(15, 8, 3, 0.75)';
+    ctx.fillRect(0, 60, w, h - 110);
+    // Top edge line
+    ctx.strokeStyle = '#5a3d20';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(20, 62); ctx.lineTo(w - 20, 62); ctx.stroke();
+    // Bottom edge
+    ctx.beginPath(); ctx.moveTo(20, h - 52); ctx.lineTo(w - 20, h - 52); ctx.stroke();
+    // Corner ornaments
+    const cornerSize = 12;
+    ctx.strokeStyle = '#6b4e2a';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(20, 62 + cornerSize); ctx.lineTo(20, 62); ctx.lineTo(20 + cornerSize, 62); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w - 20 - cornerSize, 62); ctx.lineTo(w - 20, 62); ctx.lineTo(w - 20, 62 + cornerSize); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(20, h - 52 - cornerSize); ctx.lineTo(20, h - 52); ctx.lineTo(20 + cornerSize, h - 52); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w - 20 - cornerSize, h - 52); ctx.lineTo(w - 20, h - 52); ctx.lineTo(w - 20, h - 52 - cornerSize); ctx.stroke();
+
+    // Torch sconces
+    this._drawTorchSconce(ctx, 50, 80);
+    this._drawTorchSconce(ctx, w - 50, 80);
+
+    // Board area
+    const boardX = 30;
     const boardY = 68;
-    const boardW = w - 120;
+    const boardW = w - 60;
     const boardH = h - 140;
 
-    // Board backing — dark wood
-    ctx.fillStyle = '#2a1808';
+    // Board backing — dark wood with grain
+    const woodGrad = ctx.createLinearGradient(boardX, boardY, boardX, boardY + boardH);
+    woodGrad.addColorStop(0, '#2a1808');
+    woodGrad.addColorStop(0.3, '#321e0c');
+    woodGrad.addColorStop(0.7, '#2a1808');
+    woodGrad.addColorStop(1, '#1e1206');
+    ctx.fillStyle = woodGrad;
     ctx.fillRect(boardX, boardY, boardW, boardH);
+
+    // Wood grain lines
+    ctx.strokeStyle = 'rgba(90, 61, 32, 0.3)';
+    ctx.lineWidth = 1;
+    for (let gy = boardY + 8; gy < boardY + boardH - 4; gy += 12) {
+      ctx.beginPath();
+      ctx.moveTo(boardX + 4, gy);
+      ctx.lineTo(boardX + boardW - 4, gy + (Math.sin(gy * 0.1) * 2));
+      ctx.stroke();
+    }
+
+    // Board border — outer frame
     ctx.strokeStyle = '#5a3d20';
     ctx.lineWidth = 4;
     ctx.strokeRect(boardX, boardY, boardW, boardH);
-
     // Inner border (carved look)
     ctx.strokeStyle = '#3d2510';
     ctx.lineWidth = 1;
     ctx.strokeRect(boardX + 6, boardY + 6, boardW - 12, boardH - 12);
 
-    // Nails at corners
+    // Nails at corners and midpoints
     const nails = [
       [boardX + 12, boardY + 12],
       [boardX + boardW - 12, boardY + 12],
       [boardX + 12, boardY + boardH - 12],
       [boardX + boardW - 12, boardY + boardH - 12],
+      [boardX + boardW / 2, boardY + 8],
+      [boardX + boardW / 2, boardY + boardH - 8],
     ];
     for (const [nx, ny] of nails) {
-      ctx.fillStyle = '#888';
+      ctx.fillStyle = '#666';
       ctx.beginPath();
-      ctx.arc(nx, ny, 3, 0, Math.PI * 2);
+      ctx.arc(nx, ny, 3.5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#aaa';
+      ctx.fillStyle = '#999';
       ctx.beginPath();
-      ctx.arc(nx - 1, ny - 1, 1, 0, Math.PI * 2);
+      ctx.arc(nx - 1, ny - 1, 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Title — burned into wood
+    // --- Title — THE NOTICE BOARD with decorative elements ---
     ctx.textAlign = 'center';
+    // Shadow
     ctx.font = 'bold 18px monospace';
     ctx.fillStyle = '#0a0500';
-    ctx.fillText('NOTICE BOARD', w / 2 + 1, boardY + 30);
+    ctx.fillText('\u2550\u2550 THE NOTICE BOARD \u2550\u2550', w / 2 + 1, boardY + 28);
+    // Main title
     ctx.fillStyle = '#C4A265';
-    ctx.fillText('NOTICE BOARD', w / 2, boardY + 29);
+    ctx.fillText('\u2550\u2550 THE NOTICE BOARD \u2550\u2550', w / 2, boardY + 27);
 
-    ctx.font = '11px monospace';
+    // Subtitle
+    ctx.font = '10px monospace';
     ctx.fillStyle = '#8B7355';
-    ctx.fillText('~ Expeditions Available Today ~', w / 2, boardY + 46);
+    ctx.fillText('~ Expeditions Available Today ~', w / 2, boardY + 42);
+
+    // Fragment counter badge (top-right of board)
+    const badgeX = boardX + boardW - 80;
+    const badgeY = boardY + 14;
+    ctx.fillStyle = 'rgba(20, 10, 5, 0.8)';
+    ctx.fillRect(badgeX, badgeY, 68, 20);
+    ctx.strokeStyle = fragments >= 10 ? '#FFD700' : '#5a3d20';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(badgeX, badgeY, 68, 20);
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = fragments >= 10 ? '#FFD700' : '#C4A265';
+    ctx.textAlign = 'center';
+    ctx.fillText(`\u2726 ${fragments}/10`, badgeX + 34, badgeY + 14);
+
+    // Party readiness indicator (top-left of board)
+    const partyBadgeX = boardX + 14;
+    const partyBadgeY = boardY + 14;
+    ctx.fillStyle = 'rgba(20, 10, 5, 0.8)';
+    ctx.fillRect(partyBadgeX, partyBadgeY, 90, 20);
+    ctx.strokeStyle = partyReady ? '#4CAF50' : '#C0392B';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(partyBadgeX, partyBadgeY, 90, 20);
+    ctx.font = 'bold 10px monospace';
+    ctx.fillStyle = partyReady ? '#4CAF50' : '#C0392B';
+    ctx.textAlign = 'center';
+    if (partyReady) {
+      ctx.fillText(`\u2694 Party: ${partySize}/4`, partyBadgeX + 45, partyBadgeY + 14);
+    } else {
+      ctx.fillText('\u26A0 No Party!', partyBadgeX + 45, partyBadgeY + 14);
+    }
     ctx.textAlign = 'left';
+
+    // --- Quest list area ---
+    const questAreaY = boardY + 50;
+    const questAreaH = boardH - 100;
+    const noteGap = 8;
 
     if (this.noticeBoardQuests.length === 0) {
       ctx.textAlign = 'center';
-      ctx.font = '14px monospace';
+      ctx.font = 'italic 13px monospace';
       ctx.fillStyle = '#666';
-      ctx.fillText('No expeditions posted today. Check back tomorrow.', w / 2, boardY + boardH / 2);
+      ctx.fillText('The board is bare. No expeditions posted today.', w / 2, boardY + boardH / 2 - 10);
+      ctx.font = '11px monospace';
+      ctx.fillStyle = '#555';
+      ctx.fillText('Check back tomorrow.', w / 2, boardY + boardH / 2 + 10);
       ctx.textAlign = 'left';
     } else {
-      // Render each quest as a pinned parchment note
-      const noteMargin = 16;
-      const noteX = boardX + 24;
-      const noteW = boardW - 48;
-      const noteGap = 12;
-      const maxNoteH = Math.floor((boardH - 70 - (this.noticeBoardQuests.length - 1) * noteGap) / this.noticeBoardQuests.length);
-      const noteH = Math.max(48, Math.min(maxNoteH, 120));
+      // Calculate note sizes — selected quest gets expanded detail view
+      const numQuests = this.noticeBoardQuests.length;
+      const selectedExpandExtra = 44;
+      const totalGaps = (numQuests - 1) * noteGap;
+      const baseNoteH = Math.floor((questAreaH - totalGaps - selectedExpandExtra) / numQuests);
+      const noteH = Math.max(52, Math.min(baseNoteH, 90));
+      const selectedNoteH = noteH + selectedExpandExtra;
 
-      for (let i = 0; i < this.noticeBoardQuests.length; i++) {
+      const noteX = boardX + 18;
+      const noteW = boardW - 36;
+
+      for (let i = 0; i < numQuests; i++) {
         const quest = this.noticeBoardQuests[i];
-        const ny = boardY + 58 + i * (noteH + noteGap);
         const selected = i === this.selectedQuest;
+        const isCleared = world.completedDungeons && world.completedDungeons.has(quest.id);
+        const hasFragment = world.collectedFragments && world.collectedFragments.has(quest.id);
+        const thisNoteH = selected ? selectedNoteH : noteH;
 
-        // Parchment note — slightly tilted via clipping
+        // Calculate Y position accounting for expanded selected card
+        let ny = questAreaY;
+        for (let j = 0; j < i; j++) {
+          ny += (j === this.selectedQuest ? selectedNoteH : noteH) + noteGap;
+        }
+
+        // Parchment note — slightly tilted
         ctx.save();
-        const tiltAngle = (i % 2 === 0 ? -0.01 : 0.015) + (i * 0.005);
-        ctx.translate(noteX + noteW / 2, ny + noteH / 2);
+        const tiltAngle = (i % 2 === 0 ? -0.008 : 0.012) + (i * 0.003);
+        ctx.translate(noteX + noteW / 2, ny + thisNoteH / 2);
         ctx.rotate(tiltAngle);
-        ctx.translate(-(noteX + noteW / 2), -(ny + noteH / 2));
+        ctx.translate(-(noteX + noteW / 2), -(ny + thisNoteH / 2));
 
-        // Parchment background
+        // Glow for selected
         if (selected) {
           ctx.shadowColor = '#FFD700';
-          ctx.shadowBlur = 12;
+          ctx.shadowBlur = 14;
         }
-        const parchGrad = ctx.createLinearGradient(noteX, ny, noteX, ny + noteH);
-        parchGrad.addColorStop(0, selected ? '#4a3a22' : '#3a2a18');
-        parchGrad.addColorStop(1, selected ? '#3a2a16' : '#2a1c10');
+
+        // Parchment background gradient
+        const parchGrad = ctx.createLinearGradient(noteX, ny, noteX, ny + thisNoteH);
+        if (selected) {
+          parchGrad.addColorStop(0, '#4a3a22');
+          parchGrad.addColorStop(0.5, '#3d2e18');
+          parchGrad.addColorStop(1, '#352816');
+        } else {
+          parchGrad.addColorStop(0, '#3a2a18');
+          parchGrad.addColorStop(1, '#2a1c10');
+        }
         ctx.fillStyle = parchGrad;
-        ctx.fillRect(noteX, ny, noteW, noteH);
+        ctx.fillRect(noteX, ny, noteW, thisNoteH);
         ctx.shadowBlur = 0;
 
-        // Border
+        // Border — gold for selected
         ctx.strokeStyle = selected ? '#FFD700' : '#5a3d20';
         ctx.lineWidth = selected ? 2 : 1;
-        ctx.strokeRect(noteX, ny, noteW, noteH);
+        ctx.strokeRect(noteX, ny, noteW, thisNoteH);
 
-        // Pin at top center
+        // Cleared overlay tint
+        if (isCleared) {
+          ctx.fillStyle = 'rgba(76, 175, 80, 0.08)';
+          ctx.fillRect(noteX + 1, ny + 1, noteW - 2, thisNoteH - 2);
+        }
+
+        // Pin at top-center
         const pinX = noteX + noteW / 2;
-        const pinY = ny - 2;
-        ctx.fillStyle = '#a04020';
+        const pinY = ny - 1;
+        ctx.fillStyle = '#8a3018';
         ctx.beginPath();
         ctx.arc(pinX, pinY + 4, 5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#c06030';
+        ctx.fillStyle = '#b84828';
         ctx.beginPath();
         ctx.arc(pinX - 1, pinY + 3, 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Quest content
-        const textX = noteX + 16;
-        const textY = ny + 20;
+        // --- Quest card content ---
+        const textX = noteX + 14;
+        let textY = ny + 18;
 
-        // Dungeon name
-        ctx.font = 'bold 14px monospace';
+        // Row 1: Dungeon name (bold) + skull rating (right-aligned)
+        ctx.font = 'bold 13px monospace';
         ctx.fillStyle = selected ? '#FFD700' : '#E8D5B0';
         ctx.fillText(quest.name, textX, textY);
 
-        // Skull rating — draw skull symbols
+        // Skull icons
         const skullStr = '\u2620'.repeat(quest.skulls) + '\u25CB'.repeat(5 - quest.skulls);
-        ctx.font = '12px monospace';
+        ctx.font = '11px monospace';
         ctx.fillStyle = quest.skulls >= 4 ? '#C0392B' : (quest.skulls >= 3 ? '#F39C12' : '#8B7355');
         ctx.textAlign = 'right';
-        ctx.fillText(`Danger: ${skullStr}`, noteX + noteW - 16, textY);
+        ctx.fillText(skullStr, noteX + noteW - 14, textY);
         ctx.textAlign = 'left';
 
-        // Fragment + Floors
-        ctx.font = '11px monospace';
+        // Row 2: Fragment name + floors + tier + status badges
+        textY += 16;
+        ctx.font = '10px monospace';
         ctx.fillStyle = '#B8A070';
-        ctx.fillText(`Fragment: ${quest.fragment}  |  Floors: ${quest.floors}  |  Tier ${quest.tier}`, textX, textY + 18);
+        const floorInfo = `Floors: ${quest.floors}  |  Tier ${quest.tier}`;
+        ctx.fillText(floorInfo, textX, textY);
 
-        // Treasure
-        ctx.fillStyle = '#9B8765';
-        ctx.fillText(`Treasure: ${quest.treasure}`, textX, textY + 34);
+        // Recommended level range
+        const levelMin = Math.max(1, (quest.tier - 1) * 2 + 1);
+        const levelMax = quest.tier * 3;
+        ctx.fillStyle = '#8B7355';
+        ctx.fillText(`Lv.${levelMin}-${levelMax}`, textX + 160, textY);
 
-        // Lore (italic, dimmer)
+        // Status badges on the right
+        ctx.textAlign = 'right';
+        if (isCleared) {
+          ctx.font = 'bold 10px monospace';
+          ctx.fillStyle = '#4CAF50';
+          ctx.fillText('\u2713 CLEARED', noteX + noteW - 14, textY);
+        } else if (hasFragment) {
+          ctx.font = 'bold 10px monospace';
+          ctx.fillStyle = '#8E44AD';
+          ctx.fillText('\u2726 FRAGMENT', noteX + noteW - 14, textY);
+        }
+        ctx.textAlign = 'left';
+
+        // Row 3: Lore quote (truncated)
+        textY += 15;
         ctx.font = 'italic 10px monospace';
         ctx.fillStyle = '#7a6a50';
-        // Truncate lore to fit
-        const maxLoreLen = Math.floor((noteW - 32) / 6);
+        const maxLoreLen = Math.floor((noteW - 28) / 6);
         const loreText = quest.lore.length > maxLoreLen ? quest.lore.substring(0, maxLoreLen - 3) + '...' : quest.lore;
-        ctx.fillText(`"${loreText}"`, textX, textY + 52);
+        ctx.fillText(`"${loreText}"`, textX, textY);
 
-        // Theme
-        ctx.font = '10px monospace';
-        ctx.fillStyle = '#6a5a40';
-        ctx.fillText(quest.theme, textX, textY + 68);
+        // --- Expanded detail view for selected quest ---
+        if (selected) {
+          // Separator line
+          textY += 10;
+          ctx.strokeStyle = 'rgba(196, 162, 101, 0.3)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(noteX + 10, textY);
+          ctx.lineTo(noteX + noteW - 10, textY);
+          ctx.stroke();
 
-        // Completed indicator
-        if (world.completedDungeons && world.completedDungeons.has(quest.id)) {
-          ctx.fillStyle = 'rgba(76, 175, 80, 0.15)';
-          ctx.fillRect(noteX + 1, ny + 1, noteW - 2, noteH - 2);
-          ctx.fillStyle = '#4CAF50';
-          ctx.font = 'bold 12px monospace';
-          ctx.textAlign = 'right';
-          ctx.fillText('\u2713 CLEARED', noteX + noteW - 16, ny + noteH - 10);
-          ctx.textAlign = 'left';
+          // Fragment reward
+          textY += 14;
+          ctx.font = '10px monospace';
+          ctx.fillStyle = '#C4A265';
+          ctx.fillText(`\u2726 Fragment: ${quest.fragment}`, textX, textY);
+
+          // Treasure
+          ctx.fillStyle = '#9B8765';
+          const maxTreasLen = Math.floor((noteW - 28) / 6);
+          const truncTreas = quest.treasure.length > maxTreasLen ? quest.treasure.substring(0, maxTreasLen - 3) + '...' : quest.treasure;
+          ctx.fillText(`\u2737 Treasure: ${truncTreas}`, textX, textY + 14);
+
+          // Theme / monster environment
+          ctx.fillStyle = '#6a5a40';
+          const maxThemeLen = Math.floor((noteW - 28) / 6);
+          const truncTheme = quest.theme.length > maxThemeLen ? quest.theme.substring(0, maxThemeLen - 3) + '...' : quest.theme;
+          ctx.fillText(`\u25C6 ${truncTheme}`, textX, textY + 28);
         }
 
         ctx.restore();
       }
-    }
 
-    // Party warning
-    const partySize = world.party.getMembers().length;
-    if (partySize < 4) {
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 12px monospace';
-      ctx.fillStyle = partySize <= 1 ? '#C0392B' : '#F39C12';
-      const warning = partySize <= 1
-        ? 'SOLO ADVENTURER — Extreme danger!'
-        : `PARTY OF ${partySize} — Full party of 4 recommended.`;
-      ctx.fillText(warning, w / 2, h - 60);
-      ctx.textAlign = 'left';
-    }
-
-    // Register touch zones
-    if (world.input && world.input.touch) {
-      const touchNoteH = Math.max(48, Math.min(Math.floor((boardH - 70 - (this.noticeBoardQuests.length - 1) * noteGap) / this.noticeBoardQuests.length), 120));
-      for (let i = 0; i < this.noticeBoardQuests.length; i++) {
-        const ny = boardY + 58 + i * (touchNoteH + noteGap);
-        const code = i === this.selectedQuest ? 'Enter' : (i < this.selectedQuest ? 'ArrowUp' : 'ArrowDown');
-        world.input.touch.registerHitZone(boardX + 24, ny, boardW - 48, touchNoteH, code);
+      // --- Register touch hit zones for quest cards ---
+      if (world.input && world.input.touch) {
+        let touchY = questAreaY;
+        for (let i = 0; i < numQuests; i++) {
+          const thisH = i === this.selectedQuest ? selectedNoteH : noteH;
+          const code = i === this.selectedQuest ? 'Enter' : (i < this.selectedQuest ? 'ArrowUp' : 'ArrowDown');
+          world.input.touch.registerHitZone(noteX, touchY, noteW, thisH, code);
+          touchY += thisH + noteGap;
+        }
       }
     }
 
-    // Bottom bar
+    // --- Party readiness warning (below board, above touch bar) ---
+    const warningY = boardY + boardH + 4;
+    ctx.textAlign = 'center';
+    if (!partyReady) {
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = '#C0392B';
+      ctx.fillText('\u26A0 NO PARTY FORMED \u2014 Recruit adventurers before embarking!', w / 2, warningY);
+    } else if (partySize < 4) {
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#F39C12';
+      ctx.fillText(`\u2694 PARTY OF ${partySize} \u2014 Full party of 4 recommended`, w / 2, warningY);
+    } else {
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#4CAF50';
+      ctx.fillText('\u2694 Party ready \u2014 Choose your expedition', w / 2, warningY);
+    }
+    ctx.textAlign = 'left';
+
+    // --- EMBARK button + bottom bar ---
+    const embarkLabel = partyReady ? '\u2694 EMBARK' : 'EMBARK (no party)';
     this._drawTouchBar(ctx, w, h, world, [
-      { label: 'BACK', code: 'Escape', width: 100 },
-      { label: '\u25B2', code: 'ArrowUp', width: 50 },
-      { label: '\u25BC', code: 'ArrowDown', width: 50 },
-      { label: 'EMBARK', code: 'Enter', width: 160 },
+      { label: 'BACK', code: 'Escape', width: 80 },
+      { label: '\u25B2', code: 'ArrowUp', width: 44 },
+      { label: '\u25BC', code: 'ArrowDown', width: 44 },
+      { label: embarkLabel, code: 'Enter', width: 180 },
     ]);
   }
 
