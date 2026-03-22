@@ -1568,42 +1568,78 @@ export class TavernState {
     ctx.stroke();
     ctx.restore();
 
-    // Old painting (right wall)
+    // Arched window (right wall, perspective-skewed)
     ctx.save();
-    const paintX = w - 80;
-    const paintY = 170;
-    const paintW = 45;
-    const paintH = 35;
-    ctx.fillStyle = '#3d2510';
-    ctx.fillRect(paintX - 4, paintY - 4, paintW + 8, paintH + 8);
-    ctx.fillStyle = '#5a3818';
-    ctx.fillRect(paintX - 3, paintY - 3, paintW + 6, paintH + 6);
-    const paintGrad = ctx.createLinearGradient(paintX, paintY, paintX, paintY + paintH);
-    paintGrad.addColorStop(0, '#1a2030');
-    paintGrad.addColorStop(0.5, '#1a2820');
-    paintGrad.addColorStop(1, '#0f1510');
-    ctx.fillStyle = paintGrad;
-    ctx.fillRect(paintX, paintY, paintW, paintH);
-    ctx.fillStyle = 'rgba(200, 200, 180, 0.3)';
+    // Position within the angled right wall
+    const winX = w - 95;
+    const winY = 140;
+    const winW = 38;
+    const winH = 55;
+    // Skew slightly to match wall angle
+    ctx.transform(1, 0.05, 0, 1, 0, 0);
+    // Window frame (stone)
+    ctx.fillStyle = '#5a4a3a';
+    ctx.fillRect(winX - 5, winY - 5, winW + 10, winH + 10);
+    ctx.fillStyle = '#4a3a2a';
+    ctx.fillRect(winX - 3, winY - 3, winW + 6, winH + 6);
+    // Arch top
     ctx.beginPath();
-    ctx.arc(paintX + 34, paintY + 10, 5, 0, Math.PI * 2);
+    ctx.moveTo(winX - 5, winY);
+    ctx.quadraticCurveTo(winX + winW / 2, winY - 18, winX + winW + 5, winY);
+    ctx.fillStyle = '#5a4a3a';
     ctx.fill();
+    // Night sky through window
+    const skyGrad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+    skyGrad.addColorStop(0, '#0a0a1a');
+    skyGrad.addColorStop(0.4, '#0e1020');
+    skyGrad.addColorStop(1, '#141828');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(winX, winY, winW, winH);
+    // Arch sky
+    ctx.beginPath();
+    ctx.moveTo(winX, winY);
+    ctx.quadraticCurveTo(winX + winW / 2, winY - 14, winX + winW, winY);
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fill();
+    // Moon
+    ctx.fillStyle = 'rgba(200, 210, 230, 0.6)';
+    ctx.beginPath();
+    ctx.arc(winX + winW - 10, winY + 8, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // Stars
+    ctx.fillStyle = 'rgba(220, 220, 240, 0.5)';
+    for (let si = 0; si < 5; si++) {
+      const sx = winX + 4 + seed(si, 800) * (winW - 8);
+      const sy = winY + 2 + seed(si, 801) * (winH * 0.5);
+      ctx.fillRect(sx, sy, 1.5, 1.5);
+    }
+    // Window mullion (cross bar)
+    ctx.fillStyle = '#3d2a18';
+    ctx.fillRect(winX + winW / 2 - 2, winY, 4, winH);
+    ctx.fillRect(winX, winY + winH / 2 - 2, winW, 4);
+    // Moonlight glow into room
+    const moonGlow = ctx.createRadialGradient(winX + winW / 2, winY + winH / 2, 5, winX + winW / 2, winY + winH / 2, 80);
+    moonGlow.addColorStop(0, 'rgba(180, 190, 220, 0.06)');
+    moonGlow.addColorStop(1, 'rgba(180, 190, 220, 0)');
+    ctx.fillStyle = moonGlow;
+    ctx.fillRect(winX - 60, winY - 40, winW + 120, winH + 80);
     ctx.restore();
 
-    // Round shield (right wall, lower)
+    // Round shield (right wall — repositioned for angle)
     ctx.save();
-    const sh2X = w - 50;
-    const sh2Y = 250;
+    const sh2X = w - 60;
+    const sh2Y = 280;
+    ctx.transform(1, 0.04, 0, 1, 0, 0);
     ctx.fillStyle = '#4a3420';
     ctx.beginPath();
-    ctx.arc(sh2X, sh2Y, 16, 0, Math.PI * 2);
+    ctx.arc(sh2X, sh2Y, 14, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#6b4e2a';
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.fillStyle = '#2a1a0e';
     ctx.beginPath();
-    ctx.arc(sh2X, sh2Y, 8, 0, Math.PI * 2);
+    ctx.arc(sh2X, sh2Y, 6, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
@@ -2164,9 +2200,12 @@ export class TavernState {
       // Glass highlight
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
       ctx.fillRect(px + 2, bessaY - 56, 2, 16);
-      // Potion glow
+      // Potion glow (subtle colored light on shelf)
       const pGlow = ctx.createRadialGradient(px + 5, bessaY - 47, 2, px + 5, bessaY - 47, 12);
-      pGlow.addColorStop(0, `rgba(${potionColors[i].slice(1, 3)}, ${potionColors[i].slice(3, 5)}, ${potionColors[i].slice(5, 7)}, 0.15)`);
+      const pr = parseInt(potionColors[i].slice(1, 3), 16);
+      const pg = parseInt(potionColors[i].slice(3, 5), 16);
+      const pb = parseInt(potionColors[i].slice(5, 7), 16);
+      pGlow.addColorStop(0, `rgba(${pr}, ${pg}, ${pb}, 0.15)`);
       pGlow.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = pGlow;
       ctx.fillRect(px - 8, bessaY - 60, 26, 26);
