@@ -1,0 +1,15 @@
+.DS_Store
+*.env
+*.env.*
+node_modules/
+.vscode/
+.idea/
+*.log
+*.tmp
+*.swp
+*~
+Thumbs.db
+
+# Raw source asset packs (not used by game directly)
+assets/portraits/flare/flareportraitpack/
+assets/portraits/flare/flareportraitpack 2/

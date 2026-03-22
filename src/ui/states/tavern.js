@@ -98,6 +98,33 @@ export class TavernState {
       }
 
       const hotspots = this._getHubHotspots(world);
+
+      // Bar button navigation — must be checked BEFORE hotspot nav
+      if (this.focusArea === 'bar') {
+        const hubButtons = this._hubBarButtons(world);
+        if (code === 'ArrowLeft' || code === 'KeyA') {
+          this.selectedBarButton = Math.max(0, this.selectedBarButton - 1);
+          return true;
+        }
+        if (code === 'ArrowRight' || code === 'KeyD') {
+          this.selectedBarButton = Math.min(hubButtons.length - 1, this.selectedBarButton + 1);
+          return true;
+        }
+        if (code === 'ArrowUp' || code === 'KeyW') {
+          this.focusArea = 'cards';
+          return true;
+        }
+        if (code === 'Enter' || code === 'Space') {
+          const btn = hubButtons[this.selectedBarButton];
+          if (btn) {
+            this.focusArea = 'cards';
+            return this._executeHubBarAction(btn.code, world);
+          }
+        }
+        return true;
+      }
+
+      // Hotspot navigation (scene NPCs) — only when NOT in bar mode
       if (code === 'ArrowLeft' || code === 'KeyA') {
         this.selectedHotspot = (this.selectedHotspot - 1 + hotspots.length) % hotspots.length;
         return true;
@@ -113,25 +140,6 @@ export class TavernState {
       if (code === 'ArrowDown' || code === 'KeyS') {
         this.focusArea = 'bar';
         this.selectedBarButton = 0;
-        return true;
-      }
-      if (this.focusArea === 'bar') {
-        const hubButtons = this._hubBarButtons(world);
-        if (code === 'ArrowLeft' || code === 'KeyA') {
-          this.selectedBarButton = Math.max(0, this.selectedBarButton - 1);
-          return true;
-        }
-        if (code === 'ArrowRight' || code === 'KeyD') {
-          this.selectedBarButton = Math.min(hubButtons.length - 1, this.selectedBarButton + 1);
-          return true;
-        }
-        if (code === 'Enter' || code === 'Space') {
-          const btn = hubButtons[this.selectedBarButton];
-          if (btn) {
-            this.focusArea = 'cards';
-            return this._executeHubBarAction(btn.code, world);
-          }
-        }
         return true;
       }
       // Enter/Space activates selected hotspot
@@ -552,17 +560,17 @@ export class TavernState {
   _getHubHotspots(world) {
     const fragments = world.collectedFragments ? world.collectedFragments.size : 0;
     const hotspots = [
-      { id: 'aldric', label: 'Aldric', sublabel: 'Barkeep', x: 130, y: 260, w: 100, h: 80, action: 'roster' },
-      { id: 'bessa', label: 'Bessa', sublabel: 'Supplies', x: 560, y: 260, w: 100, h: 80, action: 'shop' },
-      { id: 'mira', label: 'Mira', sublabel: 'Cartographer', x: 80, y: 380, w: 100, h: 70, action: 'talk_mira' },
-      { id: 'notice_board', label: 'Notice Board', sublabel: 'Quests', x: 320, y: 100, w: 140, h: 70, action: 'notice_board' },
-      { id: 'orin', label: 'Orin', sublabel: 'Sellsword', x: 380, y: 370, w: 100, h: 70, action: 'talk_orin' },
+      { id: 'aldric', label: 'Aldric', sublabel: 'Barkeep', x: 80, y: 165, w: 140, h: 115, action: 'roster' },
+      { id: 'bessa', label: 'Bessa', sublabel: 'Supplies', x: 520, y: 170, w: 120, h: 100, action: 'shop' },
+      { id: 'mira', label: 'Mira', sublabel: 'Cartographer', x: 55, y: 345, w: 120, h: 90, action: 'talk_mira' },
+      { id: 'notice_board', label: 'Notice Board', sublabel: 'Quests', x: 325, y: 80, w: 130, h: 85, action: 'notice_board' },
+      { id: 'orin', label: 'Orin', sublabel: 'Sellsword', x: 375, y: 350, w: 100, h: 85, action: 'talk_orin' },
     ];
     // Elden only appears at fragments >= 2
     if (fragments >= 2) {
-      hotspots.push({ id: 'elden', label: 'Elden', sublabel: 'Table Seven', x: 600, y: 400, w: 100, h: 70, action: 'talk_elden' });
+      hotspots.push({ id: 'elden', label: 'Elden', sublabel: 'Table Seven', x: 580, y: 370, w: 100, h: 75, action: 'talk_elden' });
     } else {
-      hotspots.push({ id: 'elden_empty', label: 'Table Seven', sublabel: 'Empty', x: 600, y: 400, w: 100, h: 70, action: null });
+      hotspots.push({ id: 'elden_empty', label: 'Table Seven', sublabel: 'Empty', x: 580, y: 370, w: 100, h: 75, action: null });
     }
     return hotspots;
   }
@@ -976,8 +984,8 @@ export class TavernState {
     const _seed = (x, y) => Math.sin(x * 127.1 + y * 311.7) * 43758.5453 % 1;
     const seed = (x, y) => Math.abs(_seed(x, y));
 
-    // Dark base — old stone showing through
-    ctx.fillStyle = '#0f0a06';
+    // Warm base — old stone showing through, lit by firelight
+    ctx.fillStyle = '#2a1e14';
     ctx.fillRect(0, 0, w, h);
 
     // Stone patches (behind wood — exposed where planks rotted away)
@@ -992,8 +1000,8 @@ export class TavernState {
       { x: 0, y: 0, w: 80, h: 60 },
     ];
     for (const sp of stonePatches) {
-      // Rough stone fill — dark grey with slight warmth
-      ctx.fillStyle = '#1e1a16';
+      // Rough stone fill — warm grey lit by firelight
+      ctx.fillStyle = '#3a3228';
       ctx.fillRect(sp.x, sp.y, sp.w, sp.h);
 
       // Individual stone blocks with slight color variation
@@ -1007,9 +1015,9 @@ export class TavernState {
           if (bw <= 0 || bh <= 0) continue;
           // Stone color variation
           const sv = seed(sx, sy);
-          const r = 30 + sv * 18;
-          const g = 27 + sv * 14;
-          const b = 22 + sv * 10;
+          const r = 50 + sv * 22;
+          const g = 44 + sv * 16;
+          const b = 35 + sv * 12;
           ctx.fillStyle = `rgb(${r | 0}, ${g | 0}, ${b | 0})`;
           ctx.fillRect(sx + 1, sy + 1, bw, bh);
         }
@@ -1051,9 +1059,9 @@ export class TavernState {
     for (let y = 0; y < h; y += plankHeight) {
       const row = y / plankHeight;
       // Vary wood color — some planks darker, some lighter, some greenish (rot)
-      const baseR = 35 + seed(row, 0) * 20;
-      const baseG = 18 + seed(row, 1) * 12;
-      const baseB = 8 + seed(row, 2) * 6;
+      const baseR = 65 + seed(row, 0) * 25;
+      const baseG = 40 + seed(row, 1) * 15;
+      const baseB = 20 + seed(row, 2) * 10;
       const isRotted = seed(row, 3) > 0.75;
       const isMissing = seed(row, 4) > 0.88;
 
@@ -1229,34 +1237,37 @@ export class TavernState {
     ctx.ellipse(w / 2, fpY + fpH - 40 + fireFlicker * 0.3, 20, 35 + fireFlicker, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Fireplace warm glow on wall above
-    const hearthGlow = ctx.createRadialGradient(w / 2, fpY + 20, 10, w / 2, fpY + 20, 250);
-    hearthGlow.addColorStop(0, `rgba(255, 140, 30, ${0.15 + Math.sin(this.flickerPhase * 1.5) * 0.04})`);
+    // Fireplace warm glow on wall above — large, bright
+    const hearthGlow = ctx.createRadialGradient(w / 2, fpY + 20, 20, w / 2, fpY + 20, 350);
+    hearthGlow.addColorStop(0, `rgba(255, 150, 40, ${0.28 + Math.sin(this.flickerPhase * 1.5) * 0.06})`);
+    hearthGlow.addColorStop(0.5, `rgba(255, 120, 20, ${0.12 + Math.sin(this.flickerPhase * 1.2) * 0.03})`);
     hearthGlow.addColorStop(1, 'rgba(255, 80, 0, 0)');
     ctx.fillStyle = hearthGlow;
-    ctx.fillRect(w / 2 - 250, 0, 500, fpY + fpH);
+    ctx.fillRect(0, 0, w, fpY + fpH);
 
     // === Trophy Wall (right of fireplace) ===
     this._drawTrophyWall(ctx, w, h, fpX + fpW + 40, fpY + 10);
 
-    // Warm torch glow overlay (radial gradients on left and right)
-    const flicker = Math.sin(this.flickerPhase) * 0.04 + 0.12;
-    const glow1 = ctx.createRadialGradient(80, 100, 10, 80, 100, 300);
-    glow1.addColorStop(0, `rgba(255, 160, 40, ${flicker + 0.06})`);
+    // Warm torch glow overlay (radial gradients on left and right) — bright
+    const flicker = Math.sin(this.flickerPhase) * 0.05 + 0.22;
+    const glow1 = ctx.createRadialGradient(80, 120, 15, 80, 120, 350);
+    glow1.addColorStop(0, `rgba(255, 170, 50, ${flicker + 0.08})`);
+    glow1.addColorStop(0.5, `rgba(255, 130, 30, ${flicker * 0.4})`);
     glow1.addColorStop(1, 'rgba(255, 100, 10, 0)');
     ctx.fillStyle = glow1;
-    ctx.fillRect(0, 0, 400, 500);
+    ctx.fillRect(0, 0, 450, 550);
 
-    const glow2 = ctx.createRadialGradient(w - 80, 100, 10, w - 80, 100, 300);
-    glow2.addColorStop(0, `rgba(255, 160, 40, ${flicker + 0.04})`);
+    const glow2 = ctx.createRadialGradient(w - 80, 120, 15, w - 80, 120, 350);
+    glow2.addColorStop(0, `rgba(255, 170, 50, ${flicker + 0.06})`);
+    glow2.addColorStop(0.5, `rgba(255, 130, 30, ${flicker * 0.35})`);
     glow2.addColorStop(1, 'rgba(255, 100, 10, 0)');
     ctx.fillStyle = glow2;
-    ctx.fillRect(w - 400, 0, 400, 500);
+    ctx.fillRect(w - 450, 0, 450, 550);
 
     // === Wooden ceiling beams ===
     const beamH = 12;
-    const beamColor = '#2a1808';
-    const beamHighlight = '#3d2510';
+    const beamColor = '#3d2814';
+    const beamHighlight = '#5a3d1e';
     for (let bx = 0; bx < 4; bx++) {
       const beamX = 60 + bx * (w - 120) / 3;
       // Vertical beam from top
@@ -1342,8 +1353,8 @@ export class TavernState {
     // === Floor — dark wooden planks (below the bar counter line) ===
     const floorY = h - 80;
     const floorGrad = ctx.createLinearGradient(0, floorY, 0, h);
-    floorGrad.addColorStop(0, '#1a1008');
-    floorGrad.addColorStop(1, '#0a0604');
+    floorGrad.addColorStop(0, '#3a2818');
+    floorGrad.addColorStop(1, '#1e140c');
     ctx.fillStyle = floorGrad;
     ctx.fillRect(0, floorY, w, h - floorY);
     // Plank lines on floor
@@ -1353,15 +1364,15 @@ export class TavernState {
     }
 
     // Bottom bar — old dark tavern bar counter
-    ctx.fillStyle = '#0d0704';
+    ctx.fillStyle = '#1e120a';
     ctx.fillRect(0, h - 50, w, 50);
-    ctx.fillStyle = '#2a1a0e';
+    ctx.fillStyle = '#3d2a18';
     ctx.fillRect(0, h - 50, w, 4);
-    ctx.fillStyle = '#3d2814';
+    ctx.fillStyle = '#5a3d20';
     ctx.fillRect(0, h - 48, w, 2);
 
     // Bar counter edge highlight
-    ctx.fillStyle = 'rgba(60, 40, 20, 0.4)';
+    ctx.fillStyle = 'rgba(90, 60, 30, 0.5)';
     ctx.fillRect(0, h - 46, w, 1);
 
     // === TASK 3: Atmosphere overlay based on fragment count ===

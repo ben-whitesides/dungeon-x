@@ -223,66 +223,136 @@ export class SoundManager {
 
     this.ensureAudioContext().then(() => {
       this._tavernAmbientActive = true;
+      const ctx = this.audioContext;
+      const now = ctx.currentTime;
 
-      // === Crackling fire: filtered noise ===
-      const bufferSize = this.audioContext.sampleRate * 2;
-      const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+      // === Layer 1: Soft crackling fire (brown noise, low-passed) ===
+      // Generate brown noise (integrated white noise) for warmer, deeper crackle
+      const bufferSize = ctx.sampleRate * 4;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const noiseData = noiseBuffer.getChannelData(0);
+      let lastOut = 0;
       for (let i = 0; i < bufferSize; i++) {
-        noiseData[i] = Math.random() * 2 - 1;
+        const white = Math.random() * 2 - 1;
+        lastOut = (lastOut + (0.02 * white)) / 1.02; // Brown noise
+        noiseData[i] = lastOut * 3.5; // Normalize
       }
 
-      const noiseSource = this.audioContext.createBufferSource();
+      const noiseSource = ctx.createBufferSource();
       noiseSource.buffer = noiseBuffer;
       noiseSource.loop = true;
 
-      // Bandpass filter — fire crackle range
-      const filter = this.audioContext.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.value = 800;
-      filter.Q.value = 0.5;
+      // Low-pass filter — removes hiss, keeps warm crackle
+      const lpFilter = ctx.createBiquadFilter();
+      lpFilter.type = 'lowpass';
+      lpFilter.frequency.value = 350;
+      lpFilter.Q.value = 1.0;
 
-      // Modulate amplitude for crackling effect
-      const crackleGain = this.audioContext.createGain();
-      crackleGain.gain.value = 0.04;
+      // Amplitude modulation via LFO — intermittent crackle pops
+      const crackleLfo = ctx.createOscillator();
+      crackleLfo.type = 'sine';
+      crackleLfo.frequency.value = 3.5; // ~3-4 crackles per second
+      const crackleLfoGain = ctx.createGain();
+      crackleLfoGain.gain.value = 0.012;
 
-      // Low drone — warm fire base
-      const drone = this.audioContext.createOscillator();
-      drone.type = 'sine';
-      drone.frequency.value = 60;
-      const droneGain = this.audioContext.createGain();
-      droneGain.gain.value = 0.02;
+      const crackleGain = ctx.createGain();
+      crackleGain.gain.value = 0.015;
 
-      // Second harmonic for warmth
-      const warmth = this.audioContext.createOscillator();
-      warmth.type = 'sine';
-      warmth.frequency.value = 120;
-      const warmthGain = this.audioContext.createGain();
-      warmthGain.gain.value = 0.008;
-
-      // Connect
-      noiseSource.connect(filter);
-      filter.connect(crackleGain);
+      noiseSource.connect(lpFilter);
+      lpFilter.connect(crackleGain);
+      crackleLfo.connect(crackleLfoGain);
+      crackleLfoGain.connect(crackleGain.gain); // Modulate volume
       crackleGain.connect(this.masterGain);
+
+      // Fade in crackle
+      crackleGain.gain.setValueAtTime(0, now);
+      crackleGain.gain.linearRampToValueAtTime(0.015, now + 2);
+
+      noiseSource.start();
+      crackleLfo.start();
+
+      // === Layer 2: Very soft warm fire base (low sine hum) ===
+      const drone = ctx.createOscillator();
+      drone.type = 'sine';
+      drone.frequency.value = 55;
+      const droneGain = ctx.createGain();
+      droneGain.gain.value = 0;
+      droneGain.gain.linearRampToValueAtTime(0.008, now + 3);
 
       drone.connect(droneGain);
       droneGain.connect(this.masterGain);
-
-      warmth.connect(warmthGain);
-      warmthGain.connect(this.masterGain);
-
-      // Start
-      noiseSource.start();
       drone.start();
-      warmth.start();
 
-      // Fade in
-      crackleGain.gain.setValueAtTime(0, this.audioContext.currentTime);
-      crackleGain.gain.linearRampToValueAtTime(0.04, this.audioContext.currentTime + 1.5);
-      droneGain.gain.setValueAtTime(0, this.audioContext.currentTime);
-      droneGain.gain.linearRampToValueAtTime(0.02, this.audioContext.currentTime + 2);
+      // === Layer 3: Old-world tavern melody (pentatonic, very quiet) ===
+      // Simple looping melody using D minor pentatonic
+      // Notes: D3, F3, G3, A3, C4, D4 (146, 175, 196, 220, 262, 294 Hz)
+      const melodyNotes = [
+        { freq: 146.83, dur: 2.0 },  // D3
+        { freq: 174.61, dur: 1.5 },  // F3
+        { freq: 196.00, dur: 2.0 },  // G3
+        { freq: 174.61, dur: 1.0 },  // F3
+        { freq: 146.83, dur: 2.5 },  // D3
+        { freq: 0,      dur: 1.5 },  // rest
+        { freq: 196.00, dur: 1.5 },  // G3
+        { freq: 220.00, dur: 2.0 },  // A3
+        { freq: 196.00, dur: 1.5 },  // G3
+        { freq: 174.61, dur: 2.0 },  // F3
+        { freq: 146.83, dur: 2.5 },  // D3
+        { freq: 0,      dur: 2.0 },  // rest
+        { freq: 220.00, dur: 1.5 },  // A3
+        { freq: 261.63, dur: 2.0 },  // C4
+        { freq: 220.00, dur: 1.5 },  // A3
+        { freq: 196.00, dur: 2.0 },  // G3
+        { freq: 174.61, dur: 1.5 },  // F3
+        { freq: 146.83, dur: 3.0 },  // D3 (long hold)
+        { freq: 0,      dur: 3.0 },  // rest
+      ];
 
-      this._ambientNodes.push(noiseSource, drone, warmth);
+      const melodyGain = ctx.createGain();
+      melodyGain.gain.value = 0.012; // Very quiet
+      melodyGain.connect(this.masterGain);
+
+      // Gentle low-pass on melody for warmth
+      const melodyFilter = ctx.createBiquadFilter();
+      melodyFilter.type = 'lowpass';
+      melodyFilter.frequency.value = 600;
+      melodyFilter.Q.value = 0.5;
+      melodyFilter.connect(melodyGain);
+
+      // Schedule the melody loop
+      const totalDuration = melodyNotes.reduce((s, n) => s + n.dur, 0);
+      const loopCount = 100; // ~30+ minutes of music
+
+      for (let loop = 0; loop < loopCount; loop++) {
+        let t = now + 3 + loop * totalDuration; // Start after 3s fade-in
+        for (const note of melodyNotes) {
+          if (note.freq > 0) {
+            const osc = ctx.createOscillator();
+            osc.type = 'triangle'; // Soft, lute-like tone
+            osc.frequency.value = note.freq;
+
+            const noteGain = ctx.createGain();
+            // Soft attack and release
+            noteGain.gain.setValueAtTime(0, t);
+            noteGain.gain.linearRampToValueAtTime(1.0, t + 0.15);
+            noteGain.gain.setValueAtTime(1.0, t + note.dur - 0.2);
+            noteGain.gain.linearRampToValueAtTime(0, t + note.dur);
+
+            osc.connect(noteGain);
+            noteGain.connect(melodyFilter);
+
+            osc.start(t);
+            osc.stop(t + note.dur + 0.01);
+          }
+          t += note.dur;
+        }
+      }
+
+      // Fade in melody
+      melodyGain.gain.setValueAtTime(0, now);
+      melodyGain.gain.linearRampToValueAtTime(0.012, now + 4);
+
+      this._ambientNodes.push(noiseSource, crackleLfo, drone);
     });
   }
 
