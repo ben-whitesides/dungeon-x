@@ -3503,80 +3503,406 @@ export class TavernState {
 
   _renderShop(ctx, world) {
     const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
 
     const chaModifier = this._getCHAPriceModifier(world);
     const chaLabel = this._getCHALabel(chaModifier);
 
-    ctx.fillStyle = '#C4A265';
-    ctx.font = 'bold 16px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText("BESSA'S WARES", w / 2, 76);
-    ctx.font = '12px monospace';
+    // --- Dark parchment overlay (matching roster style) ---
+    ctx.fillStyle = 'rgba(15, 8, 3, 0.75)';
+    ctx.fillRect(0, 60, w, h - 110);
+    // Top edge line
+    ctx.strokeStyle = '#5a3d20';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(20, 62); ctx.lineTo(w - 20, 62); ctx.stroke();
+    // Bottom edge
+    ctx.beginPath(); ctx.moveTo(20, h - 52); ctx.lineTo(w - 20, h - 52); ctx.stroke();
+    // Corner ornaments
+    const cornerSize = 12;
+    ctx.strokeStyle = '#6b4e2a';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(20, 62 + cornerSize); ctx.lineTo(20, 62); ctx.lineTo(20 + cornerSize, 62); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w - 20 - cornerSize, 62); ctx.lineTo(w - 20, 62); ctx.lineTo(w - 20, 62 + cornerSize); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(20, h - 52 - cornerSize); ctx.lineTo(20, h - 52); ctx.lineTo(20 + cornerSize, h - 52); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w - 20 - cornerSize, h - 52); ctx.lineTo(w - 20, h - 52); ctx.lineTo(w - 20, h - 52 - cornerSize); ctx.stroke();
+
+    // Torch sconces
+    this._drawTorchSconce(ctx, 50, 80);
+    this._drawTorchSconce(ctx, w - 50, 80);
+
+    // --- Bessa portrait area (top-left) ---
+    const portraitX = 30;
+    const portraitY = 70;
+    const portraitSize = 44;
+    // Portrait frame
+    ctx.fillStyle = '#1a0e06';
+    ctx.fillRect(portraitX, portraitY, portraitSize, portraitSize);
+    ctx.strokeStyle = '#8B7355';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(portraitX, portraitY, portraitSize, portraitSize);
+    // Silhouette (simple merchant figure)
+    ctx.fillStyle = '#3d2510';
+    ctx.fillRect(portraitX + 2, portraitY + 2, portraitSize - 4, portraitSize - 4);
+    ctx.fillStyle = '#6b5030';
+    // Head
+    ctx.beginPath();
+    ctx.arc(portraitX + portraitSize / 2, portraitY + 14, 8, 0, Math.PI * 2);
+    ctx.fill();
+    // Body
+    ctx.beginPath();
+    ctx.moveTo(portraitX + portraitSize / 2 - 10, portraitY + portraitSize - 4);
+    ctx.lineTo(portraitX + portraitSize / 2, portraitY + 22);
+    ctx.lineTo(portraitX + portraitSize / 2 + 10, portraitY + portraitSize - 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bessa flavor quote
+    ctx.font = 'italic 10px monospace';
+    ctx.fillStyle = '#8B7355';
+    ctx.textAlign = 'left';
+    const bessaQuotes = [
+      '"Fine wares, fair prices..."',
+      '"You break it, you buy it."',
+      '"Bessa has what you need."',
+      '"Steel and potions, friend."',
+    ];
+    const quoteIdx = Math.floor((Date.now() / 8000)) % bessaQuotes.length;
+    ctx.fillText(bessaQuotes[quoteIdx], portraitX + portraitSize + 8, portraitY + 16);
+
+    // --- Gold display (top-center, prominent) ---
+    const goldBoxW = 140;
+    const goldBoxH = 28;
+    const goldBoxX = w / 2 - goldBoxW / 2;
+    const goldBoxY = 68;
+    ctx.fillStyle = 'rgba(20, 12, 6, 0.9)';
+    ctx.fillRect(goldBoxX, goldBoxY, goldBoxW, goldBoxH);
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(goldBoxX, goldBoxY, goldBoxW, goldBoxH);
+    // Coin icon (small circle)
     ctx.fillStyle = '#FFD700';
-    ctx.fillText(`Gold: ${world.gold}`, w / 2, 94);
-    // CHA pricing hint
-    if (chaLabel) {
-      ctx.font = 'italic 11px monospace';
-      ctx.fillStyle = chaModifier < 1.0 ? '#4CAF50' : '#C0392B';
-      ctx.fillText(chaLabel, w / 2, 108);
-    }
+    ctx.beginPath();
+    ctx.arc(goldBoxX + 16, goldBoxY + goldBoxH / 2, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#B8860B';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('G', goldBoxX + 16, goldBoxY + goldBoxH / 2 + 3);
+    // Gold amount
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${world.gold} Gold`, goldBoxX + goldBoxW / 2 + 10, goldBoxY + goldBoxH / 2 + 5);
     ctx.textAlign = 'left';
 
-    // Merchant inventory (left parchment panel)
-    const panelW = 340;
-    const panelH = 400;
+    // --- CHA discount indicator (below gold) ---
+    let headerBottom = goldBoxY + goldBoxH + 4;
+    if (chaLabel) {
+      ctx.font = 'italic 10px monospace';
+      ctx.fillStyle = chaModifier < 1.0 ? '#4CAF50' : '#C0392B';
+      ctx.textAlign = 'center';
+      ctx.fillText(chaLabel, w / 2, headerBottom + 10);
+      ctx.textAlign = 'left';
+      headerBottom += 16;
+    }
+
+    // --- Panel layout ---
+    const panelGap = 12;
+    const panelY = headerBottom + 8;
+    const panelBottomMargin = 60; // room for touch bar
+    const panelH = h - panelY - panelBottomMargin;
+    const availW = w - 60; // 30px margin each side
+    const panelW = Math.floor((availW - panelGap) / 2);
     const leftX = 30;
-    const rightX = w - panelW - 30;
-    const panelY = 110;
+    const rightX = leftX + panelW + panelGap;
 
-    this._drawPanel(ctx, leftX, panelY, panelW, panelH, 'Merchant Wares');
-    this._drawPanel(ctx, rightX, panelY, panelW, panelH, 'Your Items');
+    // --- Left panel: BESSA'S WARES ---
+    this._drawPanel(ctx, leftX, panelY, panelW, panelH, "BESSA'S WARES");
 
+    // --- Right panel: YOUR PACK ---
+    this._drawPanel(ctx, rightX, panelY, panelW, panelH, 'YOUR PACK');
+
+    // --- Item type icons ---
+    const typeIcons = {
+      weapon: '\u2694',  // crossed swords
+      armor: '\u{1F6E1}',   // shield (fallback)
+      shield: '\u{1F6E1}',
+      accessory: '\u2726', // star
+      potion: '\u2697',   // alembic
+      scroll: '\u{1F4DC}',
+      key: '\u{1F511}',
+    };
+    const typeIconsFallback = {
+      weapon: 'WPN',
+      armor: 'ARM',
+      shield: 'SHD',
+      accessory: 'ACC',
+      potion: 'POT',
+      scroll: 'SCR',
+      key: 'KEY',
+    };
+
+    // --- Stat summary helper ---
+    const getStatSummary = (item) => {
+      if (!item.stats || Object.keys(item.stats).length === 0) return '';
+      return Object.entries(item.stats).map(([k, v]) => `${k.toUpperCase()}${v > 0 ? '+' : ''}${v}`).join(' ');
+    };
+
+    // --- Price comparison helper: compare item to currently equipped ---
+    const getComparisonText = (item) => {
+      if (!item.stats || Object.keys(item.stats).length === 0) return null;
+      const slot = item.getSlot ? item.getSlot() : null;
+      if (!slot) return null;
+      const members = world.party.getMembers();
+      if (members.length === 0) return null;
+      // Compare against first party member's equipped item in same slot
+      const leader = members[0];
+      const equipped = leader.getEquippedItem ? leader.getEquippedItem(slot) : null;
+      if (!equipped || !equipped.stats) return { text: 'NEW', color: '#4CAF50' };
+      // Sum stat values for comparison
+      let itemTotal = 0;
+      let equippedTotal = 0;
+      for (const [k, v] of Object.entries(item.stats)) { itemTotal += v; }
+      for (const [k, v] of Object.entries(equipped.stats)) { equippedTotal += v; }
+      if (itemTotal > equippedTotal) return { text: '\u25B2 UPGRADE', color: '#4CAF50' };
+      if (itemTotal < equippedTotal) return { text: '\u25BC DOWNGRADE', color: '#C0392B' };
+      return { text: '= SAME', color: '#8B7355' };
+    };
+
+    // --- Render merchant items (left panel) ---
     const merchantInventory = world.merchant.getInventory();
+    const itemCardH = 32;
+    const listPadX = 8;
+    const listStartY = panelY + 28;
+    const maxVisible = Math.floor((panelH - 36) / itemCardH);
+
     merchantInventory.forEach((item, i) => {
-      const y = panelY + 36 + i * 22;
-      const prefix = i === this.selectedMerchantItem ? '\u25B8 ' : '  ';
+      if (i >= maxVisible) return;
+      const cardY = listStartY + i * itemCardH;
+      const isSelected = i === this.selectedMerchantItem;
+      const cardX = leftX + listPadX;
+      const cardW = panelW - listPadX * 2;
+
+      // Card background
+      ctx.fillStyle = isSelected ? 'rgba(60, 40, 15, 0.9)' : 'rgba(30, 18, 8, 0.6)';
+      ctx.fillRect(cardX, cardY, cardW, itemCardH - 2);
+
+      // Selected gold border
+      if (isSelected) {
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cardX, cardY, cardW, itemCardH - 2);
+      } else {
+        ctx.strokeStyle = '#3d2510';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cardX, cardY, cardW, itemCardH - 2);
+      }
+
+      // Type icon
+      const iconLabel = typeIconsFallback[item.type] || '???';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#6b5030';
+      ctx.textAlign = 'center';
+      ctx.fillText(iconLabel, cardX + 18, cardY + 12);
+
+      // Item name
+      ctx.font = isSelected ? 'bold 11px monospace' : '11px monospace';
+      ctx.fillStyle = isSelected ? '#FFD700' : '#C4A265';
+      ctx.textAlign = 'left';
+      ctx.fillText(item.name, cardX + 36, cardY + 12);
+
+      // Stats line (smaller, below name)
+      const statStr = getStatSummary(item);
+      if (statStr) {
+        ctx.font = '9px monospace';
+        ctx.fillStyle = '#8B7355';
+        ctx.fillText(statStr, cardX + 36, cardY + 24);
+      }
+
+      // Price display (right side)
       const basePrice = world.merchant.getBuyPrice(item);
       const finalPrice = Math.max(1, Math.round(basePrice * chaModifier));
-      ctx.fillStyle = i === this.selectedMerchantItem ? '#FFD700' : '#C4A265';
-      ctx.font = '12px monospace';
-      ctx.fillText(`${prefix}${item.name}`, leftX + 12, y);
-      // Show modified price (with strikethrough on original if different)
       ctx.textAlign = 'right';
       if (chaModifier !== 1.0) {
+        // Strikethrough on original price
         ctx.fillStyle = '#555';
-        ctx.fillText(`${basePrice}g`, leftX + panelW - 55, y);
+        ctx.font = '9px monospace';
+        const origText = `${basePrice}g`;
+        const origX = cardX + cardW - 42;
+        const origY = cardY + 12;
+        ctx.fillText(origText, origX, origY);
+        // Strikethrough line
+        const origWidth = ctx.measureText(origText).width;
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(origX - origWidth, origY - 3);
+        ctx.lineTo(origX, origY - 3);
+        ctx.stroke();
+        // Discounted price
         ctx.fillStyle = chaModifier < 1.0 ? '#4CAF50' : '#C0392B';
-        ctx.fillText(`${finalPrice}g`, leftX + panelW - 12, y);
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText(`${finalPrice}g`, cardX + cardW - 6, cardY + 12);
       } else {
         ctx.fillStyle = '#8B7355';
-        ctx.fillText(`${finalPrice}g`, leftX + panelW - 12, y);
+        ctx.font = '11px monospace';
+        ctx.fillText(`${finalPrice}g`, cardX + cardW - 6, cardY + 12);
       }
+
+      // Affordability indicator
+      if (finalPrice > world.gold) {
+        ctx.fillStyle = 'rgba(192, 57, 43, 0.3)';
+        ctx.fillRect(cardX + 1, cardY + 1, cardW - 2, itemCardH - 4);
+      }
+
       ctx.textAlign = 'left';
+
+      // Touch hit zone for selecting this merchant item
+      if (world.input && world.input.touch) {
+        world.input.touch.registerHitZone(cardX, cardY, cardW, itemCardH - 2,
+          i === this.selectedMerchantItem ? 'KeyB' : (i < this.selectedMerchantItem ? 'ArrowUp' : 'ArrowDown'));
+      }
     });
 
+    // Empty state for merchant
+    if (merchantInventory.length === 0) {
+      ctx.font = 'italic 11px monospace';
+      ctx.fillStyle = '#6b5030';
+      ctx.textAlign = 'center';
+      ctx.fillText('Sold out!', leftX + panelW / 2, listStartY + 20);
+      ctx.textAlign = 'left';
+    }
+
+    // --- Render player items (right panel) ---
     const playerItems = world.inventory.getAllItems();
     playerItems.forEach((item, i) => {
-      const y = panelY + 36 + i * 22;
-      const prefix = i === this.selectedPlayerItem ? '▸ ' : '  ';
-      const price = world.merchant.getSellPrice(item);
-      ctx.fillStyle = i === this.selectedPlayerItem ? '#FFD700' : '#C4A265';
-      ctx.font = '12px monospace';
-      ctx.fillText(`${prefix}${item.name}`, rightX + 12, y);
-      ctx.fillStyle = '#8B7355';
-      ctx.textAlign = 'right';
-      ctx.fillText(`${price}g`, rightX + panelW - 12, y);
+      if (i >= maxVisible) return;
+      const cardY = listStartY + i * itemCardH;
+      const isSelected = i === this.selectedPlayerItem;
+      const cardX = rightX + listPadX;
+      const cardW = panelW - listPadX * 2;
+
+      // Card background
+      ctx.fillStyle = isSelected ? 'rgba(60, 40, 15, 0.9)' : 'rgba(30, 18, 8, 0.6)';
+      ctx.fillRect(cardX, cardY, cardW, itemCardH - 2);
+
+      // Selected gold border
+      if (isSelected) {
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cardX, cardY, cardW, itemCardH - 2);
+      } else {
+        ctx.strokeStyle = '#3d2510';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cardX, cardY, cardW, itemCardH - 2);
+      }
+
+      // Type icon
+      const iconLabel = typeIconsFallback[item.type] || '???';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#6b5030';
+      ctx.textAlign = 'center';
+      ctx.fillText(iconLabel, cardX + 18, cardY + 12);
+
+      // Item name
+      ctx.font = isSelected ? 'bold 11px monospace' : '11px monospace';
+      ctx.fillStyle = isSelected ? '#FFD700' : '#C4A265';
       ctx.textAlign = 'left';
+      ctx.fillText(item.name, cardX + 36, cardY + 12);
+
+      // Stats line
+      const statStr = getStatSummary(item);
+      if (statStr) {
+        ctx.font = '9px monospace';
+        ctx.fillStyle = '#8B7355';
+        ctx.fillText(statStr, cardX + 36, cardY + 24);
+      }
+
+      // Sell price (right side)
+      const price = world.merchant.getSellPrice(item);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#8B7355';
+      ctx.font = '11px monospace';
+      ctx.fillText(`${price}g`, cardX + cardW - 6, cardY + 12);
+      ctx.textAlign = 'left';
+
+      // Touch hit zone for selecting this player item
+      if (world.input && world.input.touch) {
+        world.input.touch.registerHitZone(cardX, cardY, cardW, itemCardH - 2,
+          i === this.selectedPlayerItem ? 'KeyV' : (i < this.selectedPlayerItem ? 'ArrowLeft' : 'ArrowRight'));
+      }
     });
 
-    // Bottom bar — touch-friendly buttons
-    this._drawTouchBar(ctx, w, ctx.canvas.height, world, [
-      { label: 'BACK', code: 'Escape', width: 80 },
-      { label: '▲', code: 'ArrowUp', width: 50 },
-      { label: '▼', code: 'ArrowDown', width: 50 },
-      { label: 'BUY', code: 'KeyB', width: 80 },
-      { label: 'SELL', code: 'KeyV', width: 80 },
-    ]);
+    // Empty state for player pack
+    if (playerItems.length === 0) {
+      ctx.font = 'italic 11px monospace';
+      ctx.fillStyle = '#6b5030';
+      ctx.textAlign = 'center';
+      ctx.fillText('Pack is empty', rightX + panelW / 2, listStartY + 20);
+      ctx.textAlign = 'left';
+    }
+
+    // --- Selected item detail popup (below panels) ---
+    const selectedMItem = merchantInventory[this.selectedMerchantItem];
+    const selectedPItem = playerItems[this.selectedPlayerItem];
+    const detailItem = selectedMItem || selectedPItem;
+    if (detailItem) {
+      const detailY = panelY + panelH + 2;
+      const detailH = 28;
+      const detailX = 30;
+      const detailW = w - 60;
+
+      ctx.fillStyle = 'rgba(20, 12, 6, 0.85)';
+      ctx.fillRect(detailX, detailY, detailW, detailH);
+      ctx.strokeStyle = '#5a3d20';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(detailX, detailY, detailW, detailH);
+
+      // Detail text: name + stats + comparison
+      ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = '#E8D5B0';
+      ctx.textAlign = 'left';
+      const detailName = detailItem.name;
+      const detailStats = getStatSummary(detailItem);
+      ctx.fillText(detailName, detailX + 8, detailY + 12);
+
+      if (detailStats) {
+        ctx.font = '10px monospace';
+        ctx.fillStyle = '#8B7355';
+        ctx.fillText(detailStats, detailX + 8 + ctx.measureText(detailName + '  ').width, detailY + 12);
+      }
+
+      // Price comparison indicator
+      if (selectedMItem) {
+        const comparison = getComparisonText(selectedMItem);
+        if (comparison) {
+          ctx.font = 'bold 10px monospace';
+          ctx.fillStyle = comparison.color;
+          ctx.textAlign = 'right';
+          ctx.fillText(comparison.text, detailX + detailW - 8, detailY + 12);
+          ctx.textAlign = 'left';
+        }
+      }
+
+      // Type label at bottom of detail
+      if (detailItem.type) {
+        ctx.font = '9px monospace';
+        ctx.fillStyle = '#6b5030';
+        ctx.fillText(detailItem.type.toUpperCase(), detailX + 8, detailY + 24);
+      }
+    }
+
+    // --- Bottom bar — touch-friendly buttons ---
+    const buttons = [
+      { label: 'BACK', code: 'Escape', width: 70 },
+      { label: '\u25C0 PREV', code: 'ArrowLeft', width: 65 },
+      { label: '\u25B2', code: 'ArrowUp', width: 42 },
+      { label: '\u25BC', code: 'ArrowDown', width: 42 },
+      { label: 'NEXT \u25B6', code: 'ArrowRight', width: 65 },
+      { label: 'BUY', code: 'KeyB', width: 70 },
+      { label: 'SELL', code: 'KeyV', width: 70 },
+    ];
+    this._drawTouchBar(ctx, w, h, world, buttons, this.focusArea === 'bar' ? this.selectedBarButton : -1);
   }
 
   _drawPanel(ctx, x, y, w, h, title) {
