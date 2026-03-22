@@ -1,5 +1,37 @@
 import { GameSave } from '../../core/game-save.js';
 
+function _downloadSave() {
+  const json = GameSave.exportSave();
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `dungeon-x-save-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function _importSave() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const success = GameSave.importSave(ev.target.result);
+      if (success) {
+        window.location.reload();
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
 /**
  * TitleScreenState — Main menu before the game world loads.
  * CONTINUE (if save exists) or NEW GAME.
@@ -67,40 +99,56 @@ export class TitleScreenState {
 
   handleInput(input, world) {
     const code = input.code;
-    const buttonCount = this.hasSave ? 2 : 1;
+    // Buttons: CONTINUE (if save), NEW GAME, BACKUP SAVE (if save), IMPORT SAVE
+    const buttons = this._getButtons();
 
     if (code === 'ArrowUp' || code === 'KeyW') {
-      this.selectedButton = (this.selectedButton - 1 + buttonCount) % buttonCount;
+      this.selectedButton = (this.selectedButton - 1 + buttons.length) % buttons.length;
       return true;
     }
     if (code === 'ArrowDown' || code === 'KeyS') {
-      this.selectedButton = (this.selectedButton + 1) % buttonCount;
+      this.selectedButton = (this.selectedButton + 1) % buttons.length;
       return true;
     }
 
     if (code === 'Enter' || code === 'Space') {
-      if (this.hasSave && this.selectedButton === 0) {
-        this._action = 'continue';
-      } else {
-        this._action = 'new_game';
-      }
-      this._done = true;
+      const btn = buttons[this.selectedButton];
+      if (btn) this._executeButton(btn.code);
       return true;
     }
 
     // Touch: button codes
-    if (code === '_title_continue') {
-      this._action = 'continue';
-      this._done = true;
-      return true;
-    }
-    if (code === '_title_new_game') {
-      this._action = 'new_game';
-      this._done = true;
+    if (code && code.startsWith('_title_')) {
+      this._executeButton(code);
       return true;
     }
 
     return false;
+  }
+
+  _getButtons() {
+    const btns = [];
+    if (this.hasSave) btns.push({ label: 'CONTINUE', code: '_title_continue' });
+    btns.push({ label: 'NEW GAME', code: '_title_new_game' });
+    if (this.hasSave) btns.push({ label: 'BACKUP SAVE', code: '_title_backup' });
+    btns.push({ label: 'IMPORT SAVE', code: '_title_import' });
+    return btns;
+  }
+
+  _executeButton(code) {
+    if (code === '_title_continue') {
+      this._action = 'continue';
+      this._done = true;
+    } else if (code === '_title_new_game') {
+      this._action = 'new_game';
+      this._done = true;
+    } else if (code === '_title_backup') {
+      _downloadSave();
+      // Don't set done — stay on title screen
+    } else if (code === '_title_import') {
+      _importSave();
+      // Reload happens inside _importSave on success
+    }
   }
 
   render(layers, world) {
@@ -193,16 +241,11 @@ export class TitleScreenState {
     ctx.closePath();
     ctx.fill();
 
-    // === Menu buttons ===
+    // === Menu buttons (dynamic from _getButtons) ===
     const btnW = 200;
-    const btnH = 48;
-    const btnGap = 16;
-    const buttons = [];
-
-    if (this.hasSave) {
-      buttons.push({ label: 'CONTINUE', code: '_title_continue' });
-    }
-    buttons.push({ label: 'NEW GAME', code: '_title_new_game' });
+    const btnH = 42;
+    const btnGap = 12;
+    const buttons = this._getButtons();
 
     const totalH = buttons.length * btnH + (buttons.length - 1) * btnGap;
     const startY = H * 0.52;
@@ -239,12 +282,13 @@ export class TitleScreenState {
         ctx.fillText('◂', btnX + btnW + 8, btnY + btnH / 2 + 5);
       }
 
-      // Button text
+      // Button text — smaller font for utility buttons
+      const isUtility = btn.code === '_title_backup' || btn.code === '_title_import';
       ctx.textAlign = 'center';
-      ctx.font = `bold 18px monospace`;
+      ctx.font = isUtility ? `bold 14px monospace` : `bold 18px monospace`;
       ctx.fillStyle = isSelected
         ? `rgba(255, 215, 0, ${alpha})`
-        : `rgba(180, 160, 120, ${0.8 * alpha})`;
+        : `rgba(${isUtility ? '140, 120, 90' : '180, 160, 120'}, ${0.8 * alpha})`;
       ctx.fillText(btn.label, W / 2, btnY + btnH / 2 + 6);
 
       // Touch zone
