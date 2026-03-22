@@ -7,6 +7,7 @@ import { DungeonTransitionState } from './states/dungeon-transition.js';
 import { LevelUpState } from './states/level-up.js';
 import { TitleScreenState } from './states/title-screen.js';
 import { CharacterSelectState } from './states/character-select.js';
+import { DeathScreenState } from './states/death-screen.js';
 
 export class StateStack {
   constructor(assets) {
@@ -68,6 +69,10 @@ export class StateStack {
 
   pushCharacterSelect() {
     this.push(new CharacterSelectState(this.assets));
+  }
+
+  pushDeathScreen(partyMembers, dungeonName, floor) {
+    this.push(new DeathScreenState(this.assets, partyMembers, dungeonName, floor));
   }
 
   updateAndRender(layers, world, timestamp) {

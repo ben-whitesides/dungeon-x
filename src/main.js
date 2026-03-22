@@ -123,10 +123,18 @@ async function boot() {
       // Handle specific state completion logic
       if (activeState.combat) {
         if (activeState.combat.state === 'defeat') {
-          // Party wipe — return to tavern
+          // Party wipe — show death screen, then return to tavern
+          const fallenMembers = world.party.getMembers().map(m => ({
+            name: m.name,
+            class: m.class,
+            portrait: m.portrait,
+          }));
+          const dName = world.dungeonName || world.dungeonType || 'Unknown Dungeon';
+          const dFloor = world.floor || 1;
           world.exitDungeon(false);
           world.stateStack.clear();
           world.stateStack.pushTavern(renderers);
+          world.stateStack.pushDeathScreen(fallenMembers, dName, dFloor);
           GameSave.save(world);
         } else if (activeState.combat.state === 'victory') {
           // Show level-up notifications for any members who leveled
