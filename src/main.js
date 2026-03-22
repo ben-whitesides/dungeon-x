@@ -56,27 +56,13 @@ async function boot() {
   input.attach();
   world.input = input; // Expose for touch hit zone registration
 
-  // === Save/Load Flow ===
-  const saveData = GameSave.load();
-
-  if (saveData && saveData.heroCharacter) {
-    // --- Returning player: restore from save ---
-    _restoreFromSave(world, saveData);
-    // Go straight to tavern exterior
-    world.stateStack.pushTavernExterior();
-  } else {
-    // --- First launch: exterior splash first, then character creation ---
-    // Don't seed roster with default characters — creation wizard does it
-    // Push character create first (bottom of stack), then exterior on top
-    // When exterior is dismissed, character create is revealed underneath
-    world.stateStack.pushCharacterCreate(true);
-    world.stateStack.pushTavernExterior();
-  }
+  // === Title Screen — always first ===
+  // Title screen handles save detection internally and reports action when done
+  world.stateStack.pushTitleScreen();
 
   world.needsRender = true;
 
-  // Start exterior wind ambient (will play once AudioContext is initialized on first gesture)
-  setTimeout(() => soundManager.startExteriorWind(), 1000);
+  // Wind ambient starts after title screen → exterior transition (handled in game loop)
 
   ui.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
@@ -90,11 +76,31 @@ async function boot() {
       if (handled) world.needsRender = true;
     }
 
-    // Check for state transitions (e.g., combat end)
+    // Check for state transitions (e.g., combat end, title screen)
     const activeState = world.stateStack.peek();
     if (activeState && activeState.isDone && activeState.isDone()) {
       world.stateStack.pop();
       world.needsRender = true;
+
+      // Title screen completed — set up game flow based on action
+      if (activeState.getAction) {
+        const action = activeState.getAction();
+        if (action === 'continue') {
+          // Returning player — restore save and go to exterior
+          const saveData = GameSave.load();
+          if (saveData && saveData.heroCharacter) {
+            _restoreFromSave(world, saveData);
+          }
+          world.stateStack.pushTavernExterior();
+          setTimeout(() => soundManager.startExteriorWind(), 500);
+        } else if (action === 'new_game') {
+          // New game — clear any existing save, push character create under exterior
+          GameSave.clearSave();
+          world.stateStack.pushCharacterCreate(true);
+          world.stateStack.pushTavernExterior();
+          setTimeout(() => soundManager.startExteriorWind(), 500);
+        }
+      }
 
       // Handle specific state completion logic
       if (activeState.combat) {
