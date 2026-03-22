@@ -130,8 +130,8 @@ export class TitleScreenState {
     const btns = [];
     if (this.hasSave) btns.push({ label: 'CONTINUE', code: '_title_continue' });
     btns.push({ label: 'NEW GAME', code: '_title_new_game' });
-    if (this.hasSave) btns.push({ label: 'BACKUP SAVE', code: '_title_backup' });
-    btns.push({ label: 'IMPORT SAVE', code: '_title_import' });
+    if (this.hasSave) btns.push({ label: 'SAVE GAME', code: '_title_backup' });
+    btns.push({ label: 'LOAD GAME', code: '_title_import' });
     return btns;
   }
 
@@ -301,11 +301,13 @@ export class TitleScreenState {
     ctx.font = '10px monospace';
     ctx.fillStyle = `rgba(100, 80, 60, ${0.5 * alpha})`;
     ctx.textAlign = 'center';
-    ctx.fillText('Arrow keys to navigate  ·  Enter to select', W / 2, H - 30);
+    ctx.fillText('Arrow keys to navigate  ·  Enter to select', W / 2, H - 44);
+    ctx.fillStyle = `rgba(90, 70, 50, ${0.35 * alpha})`;
+    ctx.fillText('SAVE GAME downloads your progress  ·  LOAD GAME restores from a backup file', W / 2, H - 28);
 
     // Version
     ctx.fillStyle = `rgba(80, 60, 40, ${0.3 * alpha})`;
-    ctx.fillText('v0.5.0', W / 2, H - 14);
+    ctx.fillText('v0.5.0', W / 2, H - 12);
 
     ctx.textAlign = 'left';
     ctx.restore();
