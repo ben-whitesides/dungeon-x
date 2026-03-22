@@ -397,7 +397,7 @@ export class TavernExteriorState {
     // === Shrubs flanking the doorway (at building base, left and right of door) ===
     const doorLeftX = W / 2 - 25; // door left edge
     const doorRightX = W / 2 + 25; // door right edge
-    const shrubBaseY = bldgBot - 5; // at building base
+    const shrubBaseY = H * 0.58 - 5; // building bottom (bldgBot defined later)
     const fgShrubs = [
       // Left of door
       { x: doorLeftX - 55, y: shrubBaseY - 12, w: 35, h: 22 },
