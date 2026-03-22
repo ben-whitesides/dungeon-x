@@ -1930,85 +1930,449 @@ export class TavernState {
     // Seeded pseudo-random for consistent details
     const seed = (x, y) => Math.abs(Math.sin(x * 127.1 + y * 311.7) * 43758.5453 % 1);
 
+    // === Helper: draw a shaped bottle (narrow neck, wide body, cork) ===
+    const drawBottle = (bx, by, bh, bw, color, hasHighlight) => {
+      const neckH = bh * 0.3;
+      const neckW = bw * 0.35;
+      const bodyH = bh * 0.7;
+      const bodyTop = by + neckH;
+      // Cork
+      ctx.fillStyle = '#6a5a3a';
+      ctx.fillRect(bx + bw / 2 - neckW / 2 + 0.5, by - 3, neckW - 1, 4);
+      // Neck
+      ctx.fillStyle = color;
+      ctx.fillRect(bx + bw / 2 - neckW / 2, by, neckW, neckH + 2);
+      // Body (rounded via arcs)
+      ctx.beginPath();
+      ctx.moveTo(bx + bw / 2 - neckW / 2, bodyTop);
+      ctx.quadraticCurveTo(bx - 1, bodyTop + 2, bx, bodyTop + bodyH * 0.3);
+      ctx.lineTo(bx, bodyTop + bodyH - 3);
+      ctx.quadraticCurveTo(bx, bodyTop + bodyH, bx + 3, bodyTop + bodyH);
+      ctx.lineTo(bx + bw - 3, bodyTop + bodyH);
+      ctx.quadraticCurveTo(bx + bw, bodyTop + bodyH, bx + bw, bodyTop + bodyH - 3);
+      ctx.lineTo(bx + bw, bodyTop + bodyH * 0.3);
+      ctx.quadraticCurveTo(bx + bw + 1, bodyTop + 2, bx + bw / 2 + neckW / 2, bodyTop);
+      ctx.closePath();
+      ctx.fill();
+      // Glass highlight (diagonal streak)
+      if (hasHighlight) {
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(bx + 2, bodyTop + 3);
+        ctx.lineTo(bx + 4, bodyTop + 3);
+        ctx.lineTo(bx + 4, bodyTop + bodyH - 4);
+        ctx.lineTo(bx + 2, bodyTop + bodyH - 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    };
+
+    // === Helper: draw a proper tankard (wider top, handle, foam) ===
+    const drawTankard = (mx, my, tw, th) => {
+      // Body — slight taper (wider at top)
+      ctx.fillStyle = '#4a2e14';
+      ctx.beginPath();
+      ctx.moveTo(mx + 2, my);
+      ctx.lineTo(mx + tw - 2, my);
+      ctx.lineTo(mx + tw - 4, my + th);
+      ctx.lineTo(mx + 4, my + th);
+      ctx.closePath();
+      ctx.fill();
+      // Metal bands
+      ctx.strokeStyle = '#8a7050';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(mx + 1, my + 4); ctx.lineTo(mx + tw - 1, my + 4);
+      ctx.moveTo(mx + 3, my + th - 3); ctx.lineTo(mx + tw - 3, my + th - 3);
+      ctx.stroke();
+      // Inner liquid
+      ctx.fillStyle = '#6a4a18';
+      ctx.fillRect(mx + 3, my + 2, tw - 6, 4);
+      // Foam top
+      ctx.fillStyle = '#d4c890';
+      ctx.beginPath();
+      ctx.ellipse(mx + tw / 2, my + 1, tw / 2 - 1, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Handle
+      ctx.strokeStyle = '#5a3818';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(mx + tw + 2, my + th / 2, 6, -Math.PI * 0.6, Math.PI * 0.6);
+      ctx.stroke();
+      // Highlight on body
+      ctx.fillStyle = 'rgba(255,255,255,0.07)';
+      ctx.fillRect(mx + 2, my + 1, 3, th - 2);
+    };
+
     // === Helper: draw a proportioned NPC figure ===
     const drawNPC = (x, y, opts) => {
-      const { headColor, bodyColor, vestColor, headR, bodyW, bodyH, arms, sling, seated } = {
+      const { headColor, bodyColor, vestColor, headR, bodyW, bodyH, arms, sling, seated,
+        npcType, holdingItem } = {
         headColor: '#c08060', bodyColor: '#3a2a18', vestColor: null,
         headR: 11, bodyW: 24, bodyH: 32, arms: true, sling: false, seated: false,
+        npcType: 'generic', holdingItem: null,
         ...opts
       };
-      // Shadow on floor
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      // Soft elliptical floor shadow
+      ctx.save();
+      const shadowGrad = ctx.createRadialGradient(x, y + bodyH + 6, 2, x, y + bodyH + 6, bodyW * 0.8);
+      shadowGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
+      shadowGrad.addColorStop(0.7, 'rgba(0,0,0,0.08)');
+      shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = shadowGrad;
       ctx.beginPath();
-      ctx.ellipse(x, y + bodyH + 4, bodyW * 0.7, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y + bodyH + 6, bodyW * 0.8, 6, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+
       // Legs (if standing)
       if (!seated) {
+        // Trousers
         ctx.fillStyle = '#2a1a10';
-        ctx.fillRect(x - bodyW / 2 + 3, y + bodyH - 4, 8, 14);
-        ctx.fillRect(x + bodyW / 2 - 11, y + bodyH - 4, 8, 14);
-        // Boots
+        const legW = bodyW * 0.28;
+        const legH = bodyH * 0.42;
+        const legGap = bodyW * 0.08;
+        ctx.fillRect(x - legGap - legW, y + bodyH - 4, legW, legH);
+        ctx.fillRect(x + legGap, y + bodyH - 4, legW, legH);
+        // Knee highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.04)';
+        ctx.fillRect(x - legGap - legW + 1, y + bodyH + 4, legW - 2, 4);
+        ctx.fillRect(x + legGap + 1, y + bodyH + 4, legW - 2, 4);
+        // Boots (shaped)
         ctx.fillStyle = '#1a0e06';
-        ctx.fillRect(x - bodyW / 2 + 2, y + bodyH + 8, 10, 5);
-        ctx.fillRect(x + bodyW / 2 - 12, y + bodyH + 8, 10, 5);
+        const bootW = legW + 3;
+        const bootH = 6;
+        // Left boot
+        ctx.beginPath();
+        ctx.moveTo(x - legGap - legW - 1, y + bodyH - 4 + legH);
+        ctx.lineTo(x - legGap + 3, y + bodyH - 4 + legH);
+        ctx.lineTo(x - legGap + 3, y + bodyH - 4 + legH + bootH);
+        ctx.lineTo(x - legGap - legW - 2, y + bodyH - 4 + legH + bootH);
+        ctx.closePath();
+        ctx.fill();
+        // Right boot
+        ctx.beginPath();
+        ctx.moveTo(x + legGap - 1, y + bodyH - 4 + legH);
+        ctx.lineTo(x + legGap + bootW - 1, y + bodyH - 4 + legH);
+        ctx.lineTo(x + legGap + bootW, y + bodyH - 4 + legH + bootH);
+        ctx.lineTo(x + legGap - 2, y + bodyH - 4 + legH + bootH);
+        ctx.closePath();
+        ctx.fill();
+        // Boot highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fillRect(x - legGap - legW, y + bodyH - 4 + legH, 2, bootH);
+        ctx.fillRect(x + legGap, y + bodyH - 4 + legH, 2, bootH);
       }
-      // Body
+
+      // Torso — slightly tapered shape
       ctx.fillStyle = bodyColor;
-      ctx.fillRect(x - bodyW / 2, y, bodyW, bodyH);
-      // Vest/detail overlay
+      ctx.beginPath();
+      ctx.moveTo(x - bodyW / 2, y);
+      ctx.lineTo(x + bodyW / 2, y);
+      ctx.lineTo(x + bodyW / 2 - 1, y + bodyH);
+      ctx.lineTo(x - bodyW / 2 + 1, y + bodyH);
+      ctx.closePath();
+      ctx.fill();
+
+      // Waist/belt area
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fillRect(x - bodyW / 2 + 1, y + bodyH - 6, bodyW - 2, 4);
+      // Belt buckle
+      ctx.fillStyle = '#8a7040';
+      ctx.fillRect(x - 3, y + bodyH - 6, 6, 4);
+
+      // Vest/clothing detail overlay
       if (vestColor) {
         ctx.fillStyle = vestColor;
-        ctx.fillRect(x - bodyW / 2 + 4, y + 4, bodyW - 8, bodyH - 6);
+        // V-neck shape for vest/apron
+        ctx.beginPath();
+        ctx.moveTo(x - bodyW / 2 + 3, y + 2);
+        ctx.lineTo(x, y + 8);
+        ctx.lineTo(x + bodyW / 2 - 3, y + 2);
+        ctx.lineTo(x + bodyW / 2 - 3, y + bodyH - 8);
+        ctx.lineTo(x - bodyW / 2 + 3, y + bodyH - 8);
+        ctx.closePath();
+        ctx.fill();
       }
-      // Shoulders
+
+      // Clothing texture lines (stitching)
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 0.5;
+      // Vertical center seam
+      ctx.beginPath();
+      ctx.moveTo(x, y + 6); ctx.lineTo(x, y + bodyH - 6);
+      ctx.stroke();
+
+      // Shoulders (rounded)
       ctx.fillStyle = bodyColor;
-      ctx.fillRect(x - bodyW / 2 - 4, y, 6, 10);
-      ctx.fillRect(x + bodyW / 2 - 2, y, 6, 10);
+      ctx.beginPath();
+      ctx.ellipse(x - bodyW / 2 - 2, y + 5, 5, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x + bodyW / 2 + 2, y + 5, 5, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
       // Arms
       if (arms && !sling) {
+        // Upper arms (body color — sleeves)
+        ctx.fillStyle = bodyColor;
+        ctx.fillRect(x - bodyW / 2 - 6, y + 4, 7, 12);
+        ctx.fillRect(x + bodyW / 2 - 1, y + 4, 7, 12);
+        // Forearms (skin)
         ctx.fillStyle = headColor;
-        ctx.fillRect(x - bodyW / 2 - 5, y + 10, 6, 16);
-        ctx.fillRect(x + bodyW / 2 - 1, y + 10, 6, 16);
+        ctx.fillRect(x - bodyW / 2 - 6, y + 15, 6, 12);
+        ctx.fillRect(x + bodyW / 2, y + 15, 6, 12);
+        // Hands
+        ctx.beginPath();
+        ctx.arc(x - bodyW / 2 - 3, y + 28, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x + bodyW / 2 + 3, y + 28, 3, 0, Math.PI * 2);
+        ctx.fill();
       }
       if (sling) {
-        // Good arm
+        // Good arm with sleeve
+        ctx.fillStyle = bodyColor;
+        ctx.fillRect(x - bodyW / 2 - 6, y + 4, 7, 12);
         ctx.fillStyle = headColor;
-        ctx.fillRect(x - bodyW / 2 - 5, y + 10, 6, 16);
-        // Sling arm
-        ctx.strokeStyle = '#c0b090';
-        ctx.lineWidth = 3;
+        ctx.fillRect(x - bodyW / 2 - 6, y + 15, 6, 12);
         ctx.beginPath();
-        ctx.moveTo(x + bodyW / 2 - 2, y + 2);
-        ctx.lineTo(x + bodyW / 2 + 4, y + 14);
-        ctx.lineTo(x + 2, y + 20);
+        ctx.arc(x - bodyW / 2 - 3, y + 28, 3, 0, Math.PI * 2);
+        ctx.fill();
+        // Sling — cloth wrap across chest
+        ctx.fillStyle = '#c0b090';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x - bodyW / 2 + 2, y + 2);
+        ctx.quadraticCurveTo(x + bodyW / 4, y + 10, x + bodyW / 2 + 2, y + 4);
+        ctx.lineTo(x + bodyW / 2 + 2, y + 8);
+        ctx.quadraticCurveTo(x + bodyW / 4, y + 18, x + 2, y + 22);
+        ctx.lineTo(x - 2, y + 22);
+        ctx.quadraticCurveTo(x + bodyW / 4 - 4, y + 14, x - bodyW / 2 + 2, y + 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 0.5;
         ctx.stroke();
+        // Injured arm tucked in sling
+        ctx.fillStyle = headColor;
+        ctx.beginPath();
+        ctx.arc(x + 4, y + 18, 3, 0, Math.PI * 2);
+        ctx.fill();
       }
+
       // Neck
       ctx.fillStyle = headColor;
-      ctx.fillRect(x - 4, y - 6, 8, 8);
+      ctx.fillRect(x - 4, y - 7, 8, 9);
+      // Collar
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.moveTo(x - bodyW / 2 + 2, y);
+      ctx.lineTo(x - 5, y - 2);
+      ctx.lineTo(x, y + 1);
+      ctx.lineTo(x + 5, y - 2);
+      ctx.lineTo(x + bodyW / 2 - 2, y);
+      ctx.lineTo(x + bodyW / 2 - 2, y + 3);
+      ctx.lineTo(x - bodyW / 2 + 2, y + 3);
+      ctx.closePath();
+      ctx.fill();
+
       // Head
       ctx.fillStyle = headColor;
       ctx.beginPath();
-      ctx.arc(x, y - headR - 4, headR, 0, Math.PI * 2);
+      ctx.arc(x, y - headR - 5, headR, 0, Math.PI * 2);
       ctx.fill();
-      // Hair (dark top of head)
-      ctx.fillStyle = 'rgba(30, 20, 10, 0.6)';
-      ctx.beginPath();
-      ctx.arc(x, y - headR - 6, headR - 1, Math.PI, Math.PI * 2);
-      ctx.fill();
+
+      // --- Per-NPC face and hair ---
+      const headCY = y - headR - 5;
+
+      if (npcType === 'aldric') {
+        // Bald / very short stubble top
+        ctx.fillStyle = 'rgba(30, 20, 10, 0.25)';
+        ctx.beginPath();
+        ctx.arc(x, headCY - 1, headR - 1, Math.PI * 1.1, Math.PI * 1.9);
+        ctx.fill();
+        // Eyes (small dark dots)
+        ctx.fillStyle = '#1a1008';
+        ctx.beginPath(); ctx.arc(x - 4, headCY - 1, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + 4, headCY - 1, 1.5, 0, Math.PI * 2); ctx.fill();
+        // Bushy eyebrows
+        ctx.fillStyle = '#3a2a18';
+        ctx.fillRect(x - 6, headCY - 4, 5, 2);
+        ctx.fillRect(x + 1, headCY - 4, 5, 2);
+        // Thick beard
+        ctx.fillStyle = '#3a2818';
+        ctx.beginPath();
+        ctx.moveTo(x - 6, headCY + 3);
+        ctx.quadraticCurveTo(x - 7, headCY + 12, x, headCY + 14);
+        ctx.quadraticCurveTo(x + 7, headCY + 12, x + 6, headCY + 3);
+        ctx.closePath();
+        ctx.fill();
+        // Mustache
+        ctx.fillStyle = '#3a2818';
+        ctx.beginPath();
+        ctx.ellipse(x, headCY + 4, 5, 2.5, 0, 0, Math.PI);
+        ctx.fill();
+        // Nose
+        ctx.fillStyle = 'rgba(0,0,0,0.08)';
+        ctx.beginPath(); ctx.arc(x, headCY + 2, 2, 0, Math.PI * 2); ctx.fill();
+      } else if (npcType === 'bessa') {
+        // Eyes peer from under hood — barely visible
+        ctx.fillStyle = '#1a1008';
+        ctx.beginPath(); ctx.arc(x - 3, headCY, 1.3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + 3, headCY, 1.3, 0, Math.PI * 2); ctx.fill();
+        // Eye glint
+        ctx.fillStyle = 'rgba(200,180,140,0.3)';
+        ctx.beginPath(); ctx.arc(x - 2.5, headCY - 0.5, 0.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + 3.5, headCY - 0.5, 0.5, 0, Math.PI * 2); ctx.fill();
+        // Thin lips
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(x - 3, headCY + 4);
+        ctx.quadraticCurveTo(x, headCY + 5.5, x + 3, headCY + 4);
+        ctx.stroke();
+      } else if (npcType === 'mira') {
+        // Hair tied back (auburn)
+        ctx.fillStyle = '#6a3020';
+        ctx.beginPath();
+        ctx.arc(x, headCY - 1, headR, Math.PI * 1.15, Math.PI * 1.85);
+        ctx.fill();
+        // Hair bun at back
+        ctx.beginPath();
+        ctx.arc(x + headR - 2, headCY - 3, 5, 0, Math.PI * 2);
+        ctx.fill();
+        // Side hair strands
+        ctx.fillRect(x - headR + 1, headCY - 3, 3, 8);
+        // Eyes
+        ctx.fillStyle = '#1a1008';
+        ctx.beginPath(); ctx.arc(x - 3, headCY - 1, 1.3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + 3, headCY - 1, 1.3, 0, Math.PI * 2); ctx.fill();
+        // Glasses (small round spectacles)
+        ctx.strokeStyle = '#8a7a5a';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.arc(x - 3, headCY - 1, 3, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x + 3, headCY - 1, 3, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, headCY - 1); ctx.lineTo(x, headCY - 1); ctx.stroke();
+        // Small nose
+        ctx.fillStyle = 'rgba(0,0,0,0.06)';
+        ctx.beginPath(); ctx.arc(x, headCY + 2, 1.5, 0, Math.PI * 2); ctx.fill();
+        // Slight smile
+        ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.arc(x, headCY + 3, 3, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+      } else if (npcType === 'orin') {
+        // Messy dark hair
+        ctx.fillStyle = '#2a1a0a';
+        ctx.beginPath();
+        ctx.arc(x, headCY - 2, headR + 1, Math.PI * 0.9, Math.PI * 2.1);
+        ctx.fill();
+        // Wild strands sticking up
+        ctx.strokeStyle = '#2a1a0a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x - 5, headCY - headR); ctx.lineTo(x - 7, headCY - headR - 4);
+        ctx.moveTo(x, headCY - headR - 1); ctx.lineTo(x + 1, headCY - headR - 5);
+        ctx.moveTo(x + 4, headCY - headR); ctx.lineTo(x + 6, headCY - headR - 3);
+        ctx.stroke();
+        // Eyes (slightly narrowed — tough look)
+        ctx.fillStyle = '#1a1008';
+        ctx.fillRect(x - 5, headCY - 1, 3, 2);
+        ctx.fillRect(x + 2, headCY - 1, 3, 2);
+        // Scar on face
+        ctx.strokeStyle = '#905040';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x - 5, headCY - 4);
+        ctx.lineTo(x - 1, headCY + 4);
+        ctx.stroke();
+        // Stubble
+        ctx.fillStyle = 'rgba(30, 20, 10, 0.15)';
+        ctx.fillRect(x - 5, headCY + 3, 10, 5);
+        // Nose
+        ctx.fillStyle = 'rgba(0,0,0,0.07)';
+        ctx.beginPath(); ctx.arc(x, headCY + 2, 1.5, 0, Math.PI * 2); ctx.fill();
+      } else if (npcType === 'elden') {
+        // Ghost — glowing eyes, wispy features
+        ctx.fillStyle = 'rgba(180, 180, 255, 0.7)';
+        ctx.beginPath(); ctx.arc(x - 3, headCY - 1, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + 3, headCY - 1, 1.5, 0, Math.PI * 2); ctx.fill();
+        // Faint hair outline
+        ctx.strokeStyle = 'rgba(130, 130, 200, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(x, headCY - 2, headR, Math.PI * 1.1, Math.PI * 1.9);
+        ctx.stroke();
+      } else {
+        // Generic NPC — basic hair and eyes
+        ctx.fillStyle = 'rgba(30, 20, 10, 0.5)';
+        ctx.beginPath();
+        ctx.arc(x, headCY - 2, headR - 1, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1a1008';
+        ctx.beginPath(); ctx.arc(x - 3, headCY - 1, 1.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + 3, headCY - 1, 1.2, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Held item (drawn last so it's on top)
+      if (holdingItem === 'mug') {
+        // Aldric wiping a mug — held in right hand area
+        ctx.fillStyle = '#4a2e14';
+        ctx.fillRect(x + bodyW / 2 + 1, y + 20, 8, 10);
+        ctx.fillStyle = '#d4c890';
+        ctx.beginPath();
+        ctx.ellipse(x + bodyW / 2 + 5, y + 20, 4, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Cloth on mug
+        ctx.fillStyle = '#c8c0a8';
+        ctx.fillRect(x + bodyW / 2 - 2, y + 22, 6, 6);
+      }
+      if (holdingItem === 'quill') {
+        // Mira holding a quill — from right hand downward
+        ctx.strokeStyle = '#2a1a0a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x + bodyW / 2 + 3, y + 22);
+        ctx.lineTo(x + bodyW / 2 + 8, y + 10);
+        ctx.stroke();
+        // Feather
+        ctx.fillStyle = '#c0b090';
+        ctx.beginPath();
+        ctx.moveTo(x + bodyW / 2 + 8, y + 10);
+        ctx.lineTo(x + bodyW / 2 + 14, y + 4);
+        ctx.lineTo(x + bodyW / 2 + 10, y + 6);
+        ctx.closePath();
+        ctx.fill();
+      }
     };
 
-    // === Helper: draw a 3D table with shadow and optional candle ===
+    // === Helper: draw a 3D table with shadow, wood grain, and optional candle ===
     const drawTable = (tx, ty, tw, th, hasCandle) => {
-      // Floor shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      // Floor shadow (soft gradient)
+      ctx.save();
+      const tShadow = ctx.createRadialGradient(tx + tw / 2, ty + th + 20, 4, tx + tw / 2, ty + th + 20, tw * 0.7);
+      tShadow.addColorStop(0, 'rgba(0,0,0,0.18)');
+      tShadow.addColorStop(0.7, 'rgba(0,0,0,0.06)');
+      tShadow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = tShadow;
       ctx.beginPath();
-      ctx.ellipse(tx + tw / 2, ty + th + 18, tw * 0.6, 8, 0, 0, Math.PI * 2);
+      ctx.ellipse(tx + tw / 2, ty + th + 20, tw * 0.65, 10, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+
       // Table legs (back two, darker)
       ctx.fillStyle = '#2a1808';
       ctx.fillRect(tx + 6, ty + th, 6, 18);
       ctx.fillRect(tx + tw - 12, ty + th, 6, 18);
+      // Leg highlights
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(tx + 6, ty + th, 2, 18);
+      ctx.fillRect(tx + tw - 12, ty + th, 2, 18);
+
       // Table top — 3D trapezoid (wider at front)
       ctx.fillStyle = '#4a3018';
       ctx.beginPath();
@@ -2018,9 +2382,30 @@ export class TavernState {
       ctx.lineTo(tx + 4, ty);
       ctx.closePath();
       ctx.fill();
-      // Top surface
+      // Wood grain on table top
+      ctx.strokeStyle = 'rgba(80,55,25,0.25)';
+      ctx.lineWidth = 0.5;
+      for (let gi = 0; gi < 4; gi++) {
+        const gy = ty + 1 + gi * (th / 4);
+        ctx.beginPath();
+        ctx.moveTo(tx + 6, gy);
+        ctx.quadraticCurveTo(tx + tw / 2, gy + seed(gi, tx) * 3 - 1, tx + tw - 6, gy);
+        ctx.stroke();
+      }
+      // Scratches / wear marks
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(tx + 15, ty + 3); ctx.lineTo(tx + 35, ty + 5);
+      ctx.moveTo(tx + 45, ty + 2); ctx.lineTo(tx + 60, ty + 6);
+      ctx.stroke();
+
+      // Top surface highlight
       ctx.fillStyle = '#5a3d20';
-      ctx.fillRect(tx + 2, ty, tw - 4, 5);
+      ctx.fillRect(tx + 2, ty, tw - 4, 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(tx + 4, ty, tw - 8, 2);
+
       // Front face
       ctx.fillStyle = '#3d2510';
       ctx.fillRect(tx - 2, ty + th - 4, tw + 4, 6);
@@ -2028,24 +2413,83 @@ export class TavernState {
       ctx.fillStyle = '#3d2510';
       ctx.fillRect(tx + 4, ty + th, 6, 20);
       ctx.fillRect(tx + tw - 10, ty + th, 6, 20);
+
       // Candle on table
       if (hasCandle) {
         const cx = tx + tw / 2;
-        ctx.fillStyle = '#c0b080';
-        ctx.fillRect(cx - 2, ty - 10, 4, 10);
-        const flick = Math.sin(this.flickerPhase * 3.5 + tx) * 1.5;
-        ctx.fillStyle = `rgba(255, 200, 50, ${0.7 + Math.sin(this.flickerPhase * 2.5 + tx) * 0.2})`;
+        // Candle holder (small dish)
+        ctx.fillStyle = '#6a5a3a';
         ctx.beginPath();
-        ctx.ellipse(cx, ty - 14 + flick, 2.5, 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, ty - 1, 5, 2, 0, 0, Math.PI * 2);
         ctx.fill();
-        // Candle glow on table
-        const cGlow = ctx.createRadialGradient(cx, ty - 10, 2, cx, ty - 10, 30);
+        // Wax body with drip
+        ctx.fillStyle = '#c8be90';
+        ctx.fillRect(cx - 2, ty - 12, 4, 11);
+        // Wax drip
+        ctx.beginPath();
+        ctx.moveTo(cx + 2, ty - 6);
+        ctx.quadraticCurveTo(cx + 3.5, ty - 3, cx + 2.5, ty - 1);
+        ctx.lineTo(cx + 1.5, ty - 1);
+        ctx.quadraticCurveTo(cx + 2, ty - 4, cx + 1, ty - 6);
+        ctx.closePath();
+        ctx.fill();
+        // Wick
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(cx, ty - 12); ctx.lineTo(cx, ty - 15); ctx.stroke();
+        // Flame
+        const flick = Math.sin(this.flickerPhase * 3.5 + tx) * 1.5;
+        ctx.fillStyle = `rgba(255, 200, 50, ${0.8 + Math.sin(this.flickerPhase * 2.5 + tx) * 0.15})`;
+        ctx.beginPath();
+        ctx.moveTo(cx, ty - 22 + flick);
+        ctx.quadraticCurveTo(cx - 3, ty - 17 + flick, cx, ty - 14);
+        ctx.quadraticCurveTo(cx + 3, ty - 17 + flick, cx, ty - 22 + flick);
+        ctx.closePath();
+        ctx.fill();
+        // Inner flame (brighter core)
+        ctx.fillStyle = `rgba(255, 240, 150, ${0.6 + Math.sin(this.flickerPhase * 4 + tx) * 0.2})`;
+        ctx.beginPath();
+        ctx.moveTo(cx, ty - 20 + flick);
+        ctx.quadraticCurveTo(cx - 1.5, ty - 17 + flick, cx, ty - 15);
+        ctx.quadraticCurveTo(cx + 1.5, ty - 17 + flick, cx, ty - 20 + flick);
+        ctx.closePath();
+        ctx.fill();
+        // Candle glow on surroundings
+        const cGlow = ctx.createRadialGradient(cx, ty - 14, 2, cx, ty - 10, 35);
         cGlow.addColorStop(0, 'rgba(255, 180, 50, 0.12)');
         cGlow.addColorStop(1, 'rgba(255, 150, 30, 0)');
         ctx.fillStyle = cGlow;
-        ctx.fillRect(cx - 30, ty - 40, 60, 50);
+        ctx.fillRect(cx - 35, ty - 44, 70, 55);
       }
     };
+
+    // === Atmospheric haze near ceiling (smoke layer) ===
+    const hazeGrad = ctx.createLinearGradient(0, 60, 0, 180);
+    hazeGrad.addColorStop(0, 'rgba(60, 45, 30, 0.12)');
+    hazeGrad.addColorStop(0.5, 'rgba(60, 45, 30, 0.06)');
+    hazeGrad.addColorStop(1, 'rgba(60, 45, 30, 0)');
+    ctx.fillStyle = hazeGrad;
+    ctx.fillRect(0, 60, w, 120);
+
+    // === Warm fireplace light on floor (left-center glow) ===
+    const floorGlow = ctx.createRadialGradient(200, 440, 20, 200, 440, 220);
+    floorGlow.addColorStop(0, 'rgba(255, 140, 40, 0.06)');
+    floorGlow.addColorStop(0.6, 'rgba(255, 120, 30, 0.03)');
+    floorGlow.addColorStop(1, 'rgba(255, 100, 20, 0)');
+    ctx.fillStyle = floorGlow;
+    ctx.fillRect(0, 300, 500, 280);
+
+    // === Dust motes in the light ===
+    const phase = this.flickerPhase || 0;
+    ctx.fillStyle = 'rgba(255, 220, 150, 0.2)';
+    for (let d = 0; d < 8; d++) {
+      const dx = 100 + seed(d, 1) * 350 + Math.sin(phase * 0.3 + d * 2.1) * 15;
+      const dy = 120 + seed(d, 2) * 200 + Math.cos(phase * 0.2 + d * 1.7) * 10;
+      const ds = 1 + seed(d, 3) * 1.5;
+      ctx.beginPath();
+      ctx.arc(dx, dy, ds, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // === Bar counter — left side (3D perspective) ===
     const barX = 40;
@@ -2053,11 +2497,17 @@ export class TavernState {
     const barW = 180;
     const barH = 120;
 
-    // Bar shadow on floor
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    // Bar shadow on floor (soft)
+    ctx.save();
+    const barShadow = ctx.createRadialGradient(barX + barW / 2, barY + barH + 55, 10, barX + barW / 2, barY + barH + 55, barW * 0.65);
+    barShadow.addColorStop(0, 'rgba(0,0,0,0.18)');
+    barShadow.addColorStop(0.7, 'rgba(0,0,0,0.06)');
+    barShadow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = barShadow;
     ctx.beginPath();
-    ctx.ellipse(barX + barW / 2, barY + barH + 55, barW * 0.6, 12, 0, 0, Math.PI * 2);
+    ctx.ellipse(barX + barW / 2, barY + barH + 55, barW * 0.65, 14, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
 
     // Bar front face (3D — wider at bottom)
     ctx.fillStyle = '#2a1808';
@@ -2068,17 +2518,39 @@ export class TavernState {
     ctx.lineTo(barX - 15, barY + barH + 60);
     ctx.closePath();
     ctx.fill();
-    // Plank lines on bar front
+    // Plank lines on bar front with slight variation
     for (let i = 0; i < 4; i++) {
-      const py = barY + barH + 12 + i * 14;
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.fillRect(barX - 12, py, barW + 37, 1);
+      const py = barY + barH + 10 + i * 14;
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(barX - 12, py);
+      ctx.quadraticCurveTo(barX + barW / 2, py + seed(i, 88) * 2 - 1, barX + barW + 25, py);
+      ctx.stroke();
     }
-    // Bar front wood grain
-    ctx.fillStyle = 'rgba(60, 40, 20, 0.1)';
-    for (let i = 0; i < 3; i++) {
-      ctx.fillRect(barX + 10 + i * 60, barY + barH + 5, 40, 50);
+    // Bar front wood grain (vertical grain texture)
+    for (let i = 0; i < 5; i++) {
+      const gx = barX - 5 + i * 42;
+      ctx.strokeStyle = 'rgba(60, 40, 20, 0.12)';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(gx, barY + barH + 3);
+      ctx.quadraticCurveTo(gx + seed(i, 33) * 4 - 2, barY + barH + 30, gx + 1, barY + barH + 58);
+      ctx.stroke();
     }
+    // Metal foot rail
+    ctx.strokeStyle = '#5a4a3a';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(barX - 10, barY + barH + 45);
+    ctx.lineTo(barX + barW + 20, barY + barH + 45);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(barX - 10, barY + barH + 44);
+    ctx.lineTo(barX + barW + 20, barY + barH + 44);
+    ctx.stroke();
 
     // Bar counter top surface (perspective — wider at bottom)
     ctx.fillStyle = '#4a3018';
@@ -2090,229 +2562,577 @@ export class TavernState {
     ctx.closePath();
     ctx.fill();
 
+    // Wood grain on bar top
+    ctx.strokeStyle = 'rgba(80,55,25,0.2)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 6; i++) {
+      const gy = barY + 8 + i * 18;
+      ctx.beginPath();
+      ctx.moveTo(barX + 2, gy);
+      ctx.quadraticCurveTo(barX + barW / 2, gy + seed(i, 44) * 3 - 1, barX + barW + 15, gy + 20);
+      ctx.stroke();
+    }
+
+    // Wet ring stains on bar surface
+    ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(barX + 55, barY + 30, 8, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(barX + 120, barY + 50, 7, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(barX + 85, barY + 70, 6, 0, Math.PI * 2); ctx.stroke();
+
+    // Subtle reflection on bar surface
+    const barReflect = ctx.createLinearGradient(barX, barY, barX, barY + 12);
+    barReflect.addColorStop(0, 'rgba(255,220,150,0.05)');
+    barReflect.addColorStop(1, 'rgba(255,220,150,0)');
+    ctx.fillStyle = barReflect;
+    ctx.fillRect(barX, barY, barW, 12);
+
     // Bar top edge highlight
     ctx.fillStyle = '#6a4a28';
     ctx.fillRect(barX, barY, barW, 5);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(barX, barY, barW, 2);
     // Bar top inner edge
     ctx.fillStyle = '#5a3818';
     ctx.fillRect(barX, barY + 5, barW, 2);
+
+    // Metal tap/spigot on the bar
+    const tapX = barX + barW - 30;
+    const tapY = barY + 2;
+    ctx.fillStyle = '#7a6a50';
+    ctx.fillRect(tapX, tapY, 4, 14); // vertical pipe
+    ctx.fillStyle = '#8a7a60';
+    ctx.fillRect(tapX - 4, tapY, 12, 3); // top plate
+    ctx.fillStyle = '#6a5a40';
+    ctx.fillRect(tapX + 4, tapY + 6, 8, 3); // handle
+    // Tap highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(tapX, tapY, 1.5, 14);
 
     // Back shelf (behind bar)
     ctx.fillStyle = '#3d2510';
     ctx.fillRect(barX + 10, barY - 50, barW - 20, 6);
     ctx.fillRect(barX + 10, barY - 85, barW - 20, 6);
-    // Shelf brackets
-    ctx.fillStyle = '#2a1808';
-    ctx.fillRect(barX + 25, barY - 50, 4, 10);
-    ctx.fillRect(barX + barW - 30, barY - 50, 4, 10);
-
-    // Bottles on shelf (with glass highlights)
-    const bottleColors = ['#6a2020', '#2a5a20', '#4a2a60', '#6a5020', '#205050', '#6a3030', '#305a30'];
-    for (let i = 0; i < 7; i++) {
-      const bx = barX + 18 + i * 22;
-      const by = i < 4 ? barY - 80 : barY - 45;
-      const bh = 18 + seed(i, 70) * 8;
-      ctx.fillStyle = bottleColors[i % bottleColors.length];
-      ctx.fillRect(bx, by, 10, bh);
-      ctx.fillRect(bx + 3, by - 8, 4, 10);
-      ctx.fillStyle = '#5a4a30';
-      ctx.fillRect(bx + 3, by - 10, 4, 3);
-      // Glass highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.fillRect(bx + 2, by + 2, 2, bh - 4);
+    // Shelf edge highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillRect(barX + 10, barY - 50, barW - 20, 1.5);
+    ctx.fillRect(barX + 10, barY - 85, barW - 20, 1.5);
+    // Shelf brackets (iron)
+    ctx.fillStyle = '#3a3030';
+    for (const bx of [barX + 25, barX + barW / 2, barX + barW - 30]) {
+      ctx.fillRect(bx, barY - 50, 4, 12);
+      ctx.fillRect(bx, barY - 85, 4, 12);
+      // Bracket highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(bx, barY - 50, 1.5, 12);
+      ctx.fillStyle = '#3a3030';
     }
 
-    // Mugs on bar top
+    // Bottles on shelf (proper shaped bottles)
+    const bottleColors = ['#5a1818', '#1a4a18', '#3a1a50', '#5a4018', '#1a3a3a', '#5a2020', '#204a20'];
+    const bottleWidths = [10, 9, 11, 10, 9, 10, 8];
+    const bottleHeights = [20, 24, 18, 22, 20, 19, 23];
+    for (let i = 0; i < 7; i++) {
+      const bx = barX + 16 + i * 22;
+      const row = i < 4 ? 0 : 1;
+      const by = row === 0 ? barY - 80 : barY - 45;
+      const bh = bottleHeights[i];
+      const bwid = bottleWidths[i];
+      drawBottle(bx, by, bh, bwid, bottleColors[i], true);
+    }
+
+    // Tankards on bar top (proper shaped)
     for (let i = 0; i < 3; i++) {
       const mx = barX + 30 + i * 50;
       const my = barY + 10;
-      ctx.fillStyle = '#5a3818';
-      ctx.fillRect(mx, my, 16, 20);
-      ctx.strokeStyle = '#5a3818';
-      ctx.lineWidth = 3;
+      drawTankard(mx, my, 14, 18);
+      // Tiny shadow under mug
+      ctx.fillStyle = 'rgba(0,0,0,0.08)';
       ctx.beginPath();
-      ctx.arc(mx + 18, my + 10, 7, -Math.PI / 2, Math.PI / 2);
-      ctx.stroke();
-      ctx.fillStyle = '#8a6020';
-      ctx.fillRect(mx + 2, my + 4, 12, 14);
-      ctx.fillStyle = '#d4c490';
-      ctx.fillRect(mx + 1, my + 2, 14, 4);
+      ctx.ellipse(mx + 7, my + 19, 8, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // === Aldric behind bar (proportioned, broad shoulders, white apron) ===
+    // === Aldric behind bar (barkeep — apron, bald, beard, wiping mug) ===
     const aldricX = barX + barW / 2;
     const aldricY = barY - 30;
     drawNPC(aldricX, aldricY, {
-      headColor: '#c08060', bodyColor: '#3a2a18', vestColor: '#d0c8b8',
-      headR: 12, bodyW: 28, bodyH: 34, seated: false
+      headColor: '#c08060', bodyColor: '#3a2a18', vestColor: '#d0c8b0',
+      headR: 12, bodyW: 28, bodyH: 34, seated: false,
+      npcType: 'aldric', holdingItem: 'mug'
     });
     // Aldric's towel over shoulder
     ctx.fillStyle = '#c8c0a8';
-    ctx.fillRect(aldricX + 12, aldricY + 2, 8, 16);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(aldricX + 14, aldricY);
+    ctx.lineTo(aldricX + 18, aldricY + 2);
+    ctx.lineTo(aldricX + 16, aldricY + 18);
+    ctx.lineTo(aldricX + 12, aldricY + 16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    // Apron strings (tied at back)
+    ctx.strokeStyle = '#b8b098';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(aldricX - 14, aldricY + 12);
+    ctx.quadraticCurveTo(aldricX - 18, aldricY + 16, aldricX - 16, aldricY + 20);
+    ctx.stroke();
 
     // === Bessa's supply corner (right side) ===
     const bessaX = 530;
     const bessaY = 220;
 
-    // Supply crates (3D)
+    // Supply crates (3D with slats and metal brackets)
     // Back crate
     ctx.fillStyle = '#2a1a0e';
     ctx.fillRect(bessaX, bessaY + 18, 42, 38);
-    ctx.strokeStyle = '#3d2814';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(bessaX, bessaY + 18, 42, 38);
-    // Crate top (angled)
+    // Wooden slat lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 0.6;
+    for (let s = 0; s < 4; s++) {
+      ctx.beginPath();
+      ctx.moveTo(bessaX + 2, bessaY + 24 + s * 9);
+      ctx.lineTo(bessaX + 40, bessaY + 24 + s * 9);
+      ctx.stroke();
+    }
+    // Slat gaps (darker lines between planks)
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 0.5;
+    for (let v = 0; v < 3; v++) {
+      ctx.beginPath();
+      ctx.moveTo(bessaX + 12 + v * 12, bessaY + 18);
+      ctx.lineTo(bessaX + 12 + v * 12, bessaY + 56);
+      ctx.stroke();
+    }
+    // Metal corner brackets
+    ctx.fillStyle = '#5a5048';
+    ctx.fillRect(bessaX - 1, bessaY + 17, 6, 6); // TL
+    ctx.fillRect(bessaX + 37, bessaY + 17, 6, 6); // TR
+    ctx.fillRect(bessaX - 1, bessaY + 50, 6, 6); // BL
+    ctx.fillRect(bessaX + 37, bessaY + 50, 6, 6); // BR
+    // Bracket highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(bessaX - 1, bessaY + 17, 2, 6);
+    ctx.fillRect(bessaX + 37, bessaY + 17, 2, 6);
+    // Crate top
     ctx.fillStyle = '#3d2510';
     ctx.fillRect(bessaX - 1, bessaY + 16, 44, 4);
-    // Front crate (offset)
+
+    // Front crate (slightly open)
     ctx.fillStyle = '#2a1a0e';
     ctx.fillRect(bessaX + 42, bessaY + 24, 38, 32);
-    ctx.strokeRect(bessaX + 42, bessaY + 24, 38, 32);
+    // Slat lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 0.6;
+    for (let s = 0; s < 3; s++) {
+      ctx.beginPath();
+      ctx.moveTo(bessaX + 44, bessaY + 30 + s * 9);
+      ctx.lineTo(bessaX + 78, bessaY + 30 + s * 9);
+      ctx.stroke();
+    }
+    // Metal brackets on front crate
+    ctx.fillStyle = '#5a5048';
+    ctx.fillRect(bessaX + 41, bessaY + 23, 5, 5);
+    ctx.fillRect(bessaX + 75, bessaY + 23, 5, 5);
+    ctx.fillRect(bessaX + 41, bessaY + 51, 5, 5);
+    ctx.fillRect(bessaX + 75, bessaY + 51, 5, 5);
+    // Lid slightly ajar (angled)
     ctx.fillStyle = '#3d2510';
-    ctx.fillRect(bessaX + 41, bessaY + 22, 40, 4);
-    // Cross straps
+    ctx.save();
+    ctx.translate(bessaX + 42, bessaY + 22);
+    ctx.rotate(-0.12);
+    ctx.fillRect(0, 0, 40, 4);
+    ctx.restore();
+    // Dark interior visible through gap
+    ctx.fillStyle = '#0a0604';
+    ctx.fillRect(bessaX + 43, bessaY + 24, 36, 5);
+
+    // Cross straps (leather, not just lines)
     ctx.strokeStyle = '#5a3d1e';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.moveTo(bessaX + 2, bessaY + 20);
     ctx.lineTo(bessaX + 40, bessaY + 54);
     ctx.moveTo(bessaX + 40, bessaY + 20);
     ctx.lineTo(bessaX + 2, bessaY + 54);
     ctx.stroke();
+    // Strap highlights
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(bessaX + 3, bessaY + 19);
+    ctx.lineTo(bessaX + 41, bessaY + 53);
+    ctx.stroke();
 
-    // Shelves behind Bessa (with depth shadow)
-    ctx.fillStyle = '#4a3018';
-    ctx.fillRect(bessaX - 10, bessaY - 30, 110, 7);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(bessaX - 10, bessaY - 23, 110, 3);
-    ctx.fillStyle = '#4a3018';
-    ctx.fillRect(bessaX - 10, bessaY - 65, 110, 7);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(bessaX - 10, bessaY - 58, 110, 3);
-
-    // Potion bottles (with glow)
-    const potionColors = ['#c03030', '#3080c0', '#30c030', '#c0a030'];
-    for (let i = 0; i < 4; i++) {
-      const px = bessaX + i * 24;
-      ctx.fillStyle = potionColors[i];
-      ctx.fillRect(px, bessaY - 58, 10, 22);
-      ctx.fillRect(px + 3, bessaY - 64, 4, 8);
-      // Glass highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
-      ctx.fillRect(px + 2, bessaY - 56, 2, 16);
-      // Potion glow (subtle colored light on shelf)
-      const pGlow = ctx.createRadialGradient(px + 5, bessaY - 47, 2, px + 5, bessaY - 47, 12);
-      const pr = parseInt(potionColors[i].slice(1, 3), 16);
-      const pg = parseInt(potionColors[i].slice(3, 5), 16);
-      const pb = parseInt(potionColors[i].slice(5, 7), 16);
-      pGlow.addColorStop(0, `rgba(${pr}, ${pg}, ${pb}, 0.15)`);
-      pGlow.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = pGlow;
-      ctx.fillRect(px - 8, bessaY - 60, 26, 26);
+    // Shelves behind Bessa (with depth shadow and grain)
+    for (const shelfY of [bessaY - 30, bessaY - 65]) {
+      ctx.fillStyle = '#4a3018';
+      ctx.fillRect(bessaX - 10, shelfY, 110, 7);
+      // Wood grain on shelf
+      ctx.strokeStyle = 'rgba(80,55,25,0.2)';
+      ctx.lineWidth = 0.4;
+      ctx.beginPath();
+      ctx.moveTo(bessaX - 8, shelfY + 3);
+      ctx.quadraticCurveTo(bessaX + 45, shelfY + 4, bessaX + 98, shelfY + 3);
+      ctx.stroke();
+      // Shelf edge highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(bessaX - 10, shelfY, 110, 1.5);
+      // Depth shadow under shelf
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(bessaX - 10, shelfY + 7, 110, 3);
     }
 
-    // Bessa figure (hooded, merchant)
+    // Potion bottles (proper flask shapes with wax seals and glow)
+    const potionColors = ['#7a1818', '#184870', '#186a18', '#7a6018'];
+    const potionShapes = [
+      { w: 11, h: 24, round: true },
+      { w: 10, h: 20, round: false },
+      { w: 12, h: 22, round: true },
+      { w: 9, h: 18, round: false },
+    ];
+    for (let i = 0; i < 4; i++) {
+      const px = bessaX + 2 + i * 24;
+      const py = bessaY - 58;
+      const ps = potionShapes[i];
+      const pc = potionColors[i];
+
+      if (ps.round) {
+        // Round flask shape
+        const neckW = ps.w * 0.3;
+        const neckH = ps.h * 0.25;
+        // Neck
+        ctx.fillStyle = pc;
+        ctx.fillRect(px + ps.w / 2 - neckW / 2, py, neckW, neckH);
+        // Round body
+        ctx.beginPath();
+        ctx.arc(px + ps.w / 2, py + neckH + ps.w / 2, ps.w / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Standard bottle
+        drawBottle(px, py, ps.h, ps.w, pc, true);
+      }
+
+      // Cork / wax seal
+      ctx.fillStyle = i % 2 === 0 ? '#8a2020' : '#6a5a3a';
+      ctx.fillRect(px + ps.w / 2 - 2, py - 3, 4, 4);
+      // Tiny wax drip
+      if (i % 2 === 0) {
+        ctx.beginPath();
+        ctx.arc(px + ps.w / 2 + 2, py - 1, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Small label on some
+      if (i === 1 || i === 3) {
+        ctx.fillStyle = '#c8b888';
+        ctx.fillRect(px + 2, py + 10, ps.w - 4, 6);
+        ctx.strokeStyle = '#8a7a5a';
+        ctx.lineWidth = 0.3;
+        ctx.strokeRect(px + 2, py + 10, ps.w - 4, 6);
+      }
+
+      // Glass highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(px + 1, py + 4, 2, ps.h - 6);
+
+      // Potion glow (subtle colored light on shelf)
+      const glowSize = 14 + Math.sin(phase * 1.5 + i * 2) * 2;
+      const pGlow = ctx.createRadialGradient(px + ps.w / 2, py + ps.h / 2, 2, px + ps.w / 2, py + ps.h / 2, glowSize);
+      const pr = parseInt(pc.slice(1, 3), 16);
+      const pg = parseInt(pc.slice(3, 5), 16);
+      const pb = parseInt(pc.slice(5, 7), 16);
+      pGlow.addColorStop(0, `rgba(${pr}, ${pg}, ${pb}, 0.18)`);
+      pGlow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = pGlow;
+      ctx.fillRect(px - 10, py - 8, ps.w + 20, ps.h + 16);
+    }
+
+    // Misc bottles on lower shelf
+    const lowerBottleColors = ['#3a2a50', '#4a3a18', '#1a3a2a'];
+    for (let i = 0; i < 3; i++) {
+      const lbx = bessaX + 4 + i * 28;
+      drawBottle(lbx, bessaY - 24, 16 + seed(i, 77) * 6, 8, lowerBottleColors[i], true);
+    }
+
+    // Bessa figure (hooded, merchant with clasps)
     const bessaFigX = bessaX + 45;
     const bessaFigY = bessaY - 16;
     drawNPC(bessaFigX, bessaFigY, {
-      headColor: '#b08060', bodyColor: '#4a3028', vestColor: '#6a4a30',
-      headR: 10, bodyW: 22, bodyH: 30, seated: false
+      headColor: '#b08060', bodyColor: '#3a2820', vestColor: '#4a3828',
+      headR: 10, bodyW: 22, bodyH: 30, seated: false,
+      npcType: 'bessa'
     });
-    // Hood
-    ctx.fillStyle = '#3a2820';
+    // Deep hood (drawn over head)
+    ctx.fillStyle = '#2a1c14';
     ctx.beginPath();
-    ctx.arc(bessaFigX, bessaFigY - 15, 14, Math.PI, Math.PI * 2);
+    ctx.moveTo(bessaFigX - 14, bessaFigY - 8);
+    ctx.quadraticCurveTo(bessaFigX - 16, bessaFigY - 22, bessaFigX, bessaFigY - 28);
+    ctx.quadraticCurveTo(bessaFigX + 16, bessaFigY - 22, bessaFigX + 14, bessaFigY - 8);
+    ctx.closePath();
     ctx.fill();
-    ctx.fillRect(bessaFigX - 14, bessaFigY - 15, 28, 10);
+    // Hood edge highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(bessaFigX - 13, bessaFigY - 8);
+    ctx.quadraticCurveTo(bessaFigX, bessaFigY - 27, bessaFigX + 13, bessaFigY - 8);
+    ctx.stroke();
+    // Hood drape sides
+    ctx.fillStyle = '#2a1c14';
+    ctx.fillRect(bessaFigX - 14, bessaFigY - 8, 5, 14);
+    ctx.fillRect(bessaFigX + 9, bessaFigY - 8, 5, 14);
+    // Cloak clasps (two metal circles at chest)
+    ctx.fillStyle = '#8a7a5a';
+    ctx.beginPath(); ctx.arc(bessaFigX - 5, bessaFigY + 4, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bessaFigX + 5, bessaFigY + 4, 2.5, 0, Math.PI * 2); ctx.fill();
+    // Clasp highlights
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath(); ctx.arc(bessaFigX - 5.5, bessaFigY + 3.5, 1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bessaFigX + 4.5, bessaFigY + 3.5, 1, 0, Math.PI * 2); ctx.fill();
+    // Chain between clasps
+    ctx.strokeStyle = '#8a7a5a';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(bessaFigX - 3, bessaFigY + 4);
+    ctx.quadraticCurveTo(bessaFigX, bessaFigY + 7, bessaFigX + 3, bessaFigY + 4);
+    ctx.stroke();
 
     // === Mira at table with maps (lower left) ===
     const miraTableX = 60;
     const miraTableY = 380;
     drawTable(miraTableX, miraTableY, 100, 45, true);
-    // Maps / parchments on table
+
+    // Maps / parchments on table (with curled edges)
+    // Main map (large, slightly curled)
     ctx.fillStyle = '#5a4a32';
-    ctx.fillRect(miraTableX + 10, miraTableY + 8, 30, 18);
+    ctx.beginPath();
+    ctx.moveTo(miraTableX + 8, miraTableY + 8);
+    ctx.lineTo(miraTableX + 40, miraTableY + 6);
+    ctx.quadraticCurveTo(miraTableX + 42, miraTableY + 14, miraTableX + 40, miraTableY + 26);
+    ctx.lineTo(miraTableX + 8, miraTableY + 28);
+    ctx.quadraticCurveTo(miraTableX + 6, miraTableY + 20, miraTableX + 8, miraTableY + 8);
+    ctx.closePath();
+    ctx.fill();
+    // Map lines (terrain markings)
+    ctx.strokeStyle = '#3a2a18';
+    ctx.lineWidth = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(miraTableX + 12, miraTableY + 14);
+    ctx.lineTo(miraTableX + 36, miraTableY + 12);
+    ctx.moveTo(miraTableX + 14, miraTableY + 20);
+    ctx.lineTo(miraTableX + 32, miraTableY + 19);
+    ctx.stroke();
+    // X mark on map
+    ctx.strokeStyle = '#8a2020';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(miraTableX + 24, miraTableY + 13); ctx.lineTo(miraTableX + 28, miraTableY + 17);
+    ctx.moveTo(miraTableX + 28, miraTableY + 13); ctx.lineTo(miraTableX + 24, miraTableY + 17);
+    ctx.stroke();
+
+    // Second parchment (angled, smaller)
     ctx.save();
     ctx.translate(miraTableX + 60, miraTableY + 14);
     ctx.rotate(0.15);
     ctx.fillStyle = '#4a3a22';
-    ctx.fillRect(-15, -10, 30, 20);
+    ctx.beginPath();
+    ctx.moveTo(-15, -10);
+    ctx.lineTo(14, -10);
+    ctx.quadraticCurveTo(16, -4, 14, 10);
+    ctx.lineTo(-14, 10);
+    ctx.quadraticCurveTo(-16, -2, -15, -10);
+    ctx.closePath();
+    ctx.fill();
+    // Text lines on scroll
+    ctx.fillStyle = '#1a1208';
+    ctx.fillRect(-11, -6, 18, 0.8);
+    ctx.fillRect(-11, -2, 14, 0.8);
+    ctx.fillRect(-11, 2, 16, 0.8);
+    ctx.fillRect(-11, 6, 10, 0.8);
     ctx.restore();
-    // Ink well
-    ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(miraTableX + 80, miraTableY + 10, 8, 10);
-    ctx.fillStyle = '#2a2a40';
-    ctx.fillRect(miraTableX + 79, miraTableY + 8, 10, 4);
 
-    // Mira figure (seated, blue tunic)
+    // Ink well (proper 3D pot)
+    ctx.fillStyle = '#1a1a2a';
+    ctx.beginPath();
+    ctx.moveTo(miraTableX + 79, miraTableY + 10);
+    ctx.lineTo(miraTableX + 89, miraTableY + 10);
+    ctx.lineTo(miraTableX + 88, miraTableY + 20);
+    ctx.lineTo(miraTableX + 80, miraTableY + 20);
+    ctx.closePath();
+    ctx.fill();
+    // Ink well rim
+    ctx.fillStyle = '#2a2a40';
+    ctx.beginPath();
+    ctx.ellipse(miraTableX + 84, miraTableY + 10, 6, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Ink surface
+    ctx.fillStyle = '#0a0a18';
+    ctx.beginPath();
+    ctx.ellipse(miraTableX + 84, miraTableY + 10, 4, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Shadow under table items
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    ctx.beginPath();
+    ctx.ellipse(miraTableX + 24, miraTableY + 30, 18, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mira figure (seated, blue scholar's tunic with belt, holding quill)
     const miraX = miraTableX + 50;
     const miraY = miraTableY - 12;
     drawNPC(miraX, miraY, {
-      headColor: '#a08060', bodyColor: '#2a3a4a', vestColor: '#3a4a5a',
-      headR: 10, bodyW: 22, bodyH: 26, seated: true
+      headColor: '#a08060', bodyColor: '#1e3040', vestColor: '#2a3a4a',
+      headR: 10, bodyW: 22, bodyH: 26, seated: true,
+      npcType: 'mira', holdingItem: 'quill'
     });
 
-    // === Notice Board on back wall (center) ===
+    // === Notice Board on back wall (center) — weathered oak ===
     const nbX = 330;
     const nbY = 90;
     const nbW = 120;
     const nbH = 70;
-    // Board shadow on wall
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(nbX + 4, nbY + 4, nbW, nbH);
-    // Board
+    // Board shadow on wall (layered)
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(nbX + 5, nbY + 5, nbW, nbH);
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.fillRect(nbX + 3, nbY + 3, nbW, nbH);
+
+    // Board body (weathered wood)
     ctx.fillStyle = '#2a1808';
     ctx.fillRect(nbX, nbY, nbW, nbH);
+    // Vertical planks
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth = 0.6;
+    for (let p = 1; p < 4; p++) {
+      ctx.beginPath();
+      ctx.moveTo(nbX + p * (nbW / 4), nbY + 2);
+      ctx.lineTo(nbX + p * (nbW / 4), nbY + nbH - 2);
+      ctx.stroke();
+    }
+    // Wood grain on board
+    ctx.strokeStyle = 'rgba(60,40,20,0.15)';
+    ctx.lineWidth = 0.4;
+    for (let g = 0; g < 5; g++) {
+      const gy = nbY + 8 + g * 13;
+      ctx.beginPath();
+      ctx.moveTo(nbX + 3, gy);
+      ctx.quadraticCurveTo(nbX + nbW / 2, gy + seed(g, 55) * 3, nbX + nbW - 3, gy);
+      ctx.stroke();
+    }
+    // Knot in wood
+    ctx.fillStyle = '#1e1206';
+    ctx.beginPath();
+    ctx.ellipse(nbX + 28, nbY + 52, 4, 3, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(40,25,10,0.3)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.ellipse(nbX + 28, nbY + 52, 6, 4.5, 0.3, 0, Math.PI * 2);
+    ctx.stroke();
+    // Second knot
+    ctx.fillStyle = '#1e1206';
+    ctx.beginPath();
+    ctx.ellipse(nbX + 95, nbY + 25, 3, 2.5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Frame (thicker, aged)
     ctx.strokeStyle = '#5a3d20';
     ctx.lineWidth = 3;
     ctx.strokeRect(nbX, nbY, nbW, nbH);
-    // Board inner frame
+    // Inner frame bevel
     ctx.strokeStyle = '#3d2510';
     ctx.lineWidth = 1;
-    ctx.strokeRect(nbX + 4, nbY + 4, nbW - 8, nbH - 8);
-    // Nails (metallic)
-    for (const [nx, ny] of [[nbX + 8, nbY + 8], [nbX + nbW - 8, nbY + 8]]) {
-      ctx.fillStyle = '#999';
+    ctx.strokeRect(nbX + 3, nbY + 3, nbW - 6, nbH - 6);
+    // Frame corner bolts (metallic)
+    for (const [nx, ny] of [[nbX + 6, nbY + 6], [nbX + nbW - 6, nbY + 6], [nbX + 6, nbY + nbH - 6], [nbX + nbW - 6, nbY + nbH - 6]]) {
+      ctx.fillStyle = '#777';
       ctx.beginPath(); ctx.arc(nx, ny, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#bbb';
+      ctx.fillStyle = '#999';
       ctx.beginPath(); ctx.arc(nx - 0.5, ny - 0.5, 1.5, 0, Math.PI * 2); ctx.fill();
+      // Bolt slot
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath(); ctx.moveTo(nx - 1.5, ny - 1.5); ctx.lineTo(nx + 1.5, ny + 1.5); ctx.stroke();
     }
-    // Pinned parchments
+
+    // Pinned parchments (varied sizes, some overlapping, curled edges)
     const notes = [
-      { x: nbX + 10, y: nbY + 16, w: 35, h: 25, rot: -0.05 },
-      { x: nbX + 50, y: nbY + 14, w: 30, h: 28, rot: 0.08 },
-      { x: nbX + 25, y: nbY + 40, w: 40, h: 20, rot: -0.03 },
-      { x: nbX + 70, y: nbY + 38, w: 35, h: 22, rot: 0.04 },
+      { x: nbX + 10, y: nbY + 14, w: 38, h: 28, rot: -0.05, hasWax: true },
+      { x: nbX + 52, y: nbY + 12, w: 28, h: 30, rot: 0.08, hasWax: false },
+      { x: nbX + 22, y: nbY + 38, w: 42, h: 22, rot: -0.03, hasWax: false },
+      { x: nbX + 68, y: nbY + 35, w: 32, h: 25, rot: 0.04, hasWax: true },
+      { x: nbX + 84, y: nbY + 14, w: 26, h: 20, rot: -0.02, hasWax: false },
     ];
-    for (const note of notes) {
+    for (let ni = 0; ni < notes.length; ni++) {
+      const note = notes[ni];
       ctx.save();
       ctx.translate(note.x + note.w / 2, note.y + note.h / 2);
       ctx.rotate(note.rot);
-      // Parchment with aged edges
+      // Parchment shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect(-note.w / 2 + 2, -note.h / 2 + 2, note.w, note.h);
+      // Parchment body with curled bottom edge
       ctx.fillStyle = '#5a4a32';
-      ctx.fillRect(-note.w / 2, -note.h / 2, note.w, note.h);
+      ctx.beginPath();
+      ctx.moveTo(-note.w / 2, -note.h / 2);
+      ctx.lineTo(note.w / 2, -note.h / 2);
+      ctx.lineTo(note.w / 2, note.h / 2 - 3);
+      ctx.quadraticCurveTo(note.w / 2 - 4, note.h / 2 + 2, note.w / 2 - 8, note.h / 2);
+      ctx.lineTo(-note.w / 2 + 5, note.h / 2);
+      ctx.quadraticCurveTo(-note.w / 2 + 1, note.h / 2 + 1, -note.w / 2, note.h / 2 - 2);
+      ctx.closePath();
+      ctx.fill();
+      // Inner parchment (lighter center)
       ctx.fillStyle = '#4a3a22';
-      ctx.fillRect(-note.w / 2 + 1, -note.h / 2 + 1, note.w - 2, note.h - 2);
-      // Pin
-      ctx.fillStyle = '#c04020';
+      ctx.fillRect(-note.w / 2 + 2, -note.h / 2 + 2, note.w - 4, note.h - 5);
+      // Aged edge staining
+      ctx.fillStyle = 'rgba(40, 30, 15, 0.15)';
+      ctx.fillRect(-note.w / 2, -note.h / 2, note.w, 2);
+      ctx.fillRect(-note.w / 2, -note.h / 2, 2, note.h);
+      ctx.fillRect(note.w / 2 - 2, -note.h / 2, 2, note.h);
+
+      // Pin (iron nail)
+      ctx.fillStyle = '#888';
       ctx.beginPath();
-      ctx.arc(0, -note.h / 2 + 3, 3, 0, Math.PI * 2);
+      ctx.arc(0, -note.h / 2 + 3, 2.5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#e06040';
+      ctx.fillStyle = '#aaa';
       ctx.beginPath();
-      ctx.arc(-0.5, -note.h / 2 + 2.5, 1.5, 0, Math.PI * 2);
+      ctx.arc(-0.5, -note.h / 2 + 2.5, 1.2, 0, Math.PI * 2);
       ctx.fill();
-      // Text lines
+
+      // Wax seal on some
+      if (note.hasWax) {
+        const sealX = seed(ni, 77) * 10 - 5;
+        const sealY = note.h / 2 - 8;
+        ctx.fillStyle = '#8a2020';
+        ctx.beginPath(); ctx.arc(sealX, sealY, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#a03030';
+        ctx.beginPath(); ctx.arc(sealX - 0.5, sealY - 0.5, 2.5, 0, Math.PI * 2); ctx.fill();
+        // Stamp impression
+        ctx.strokeStyle = '#6a1010';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(sealX - 2, sealY); ctx.lineTo(sealX + 2, sealY); ctx.stroke();
+      }
+
+      // Text lines (varied length)
       ctx.fillStyle = '#1a1208';
-      for (let li = 0; li < 3; li++) {
-        const lw = note.w - 8 - seed(li + note.x, note.y) * 12;
-        ctx.fillRect(-note.w / 2 + 4, -note.h / 2 + 8 + li * 5, lw, 1);
+      const lineCount = Math.floor(note.h / 6) - 1;
+      for (let li = 0; li < lineCount; li++) {
+        const lw = note.w - 10 - seed(li + note.x, note.y) * 14;
+        if (lw > 4) {
+          ctx.fillRect(-note.w / 2 + 5, -note.h / 2 + 8 + li * 5, lw, 0.8);
+        }
       }
       ctx.restore();
     }
     // "NOTICE BOARD" label
     ctx.textAlign = 'center';
     ctx.font = 'bold 9px monospace';
+    ctx.fillStyle = '#000';
+    ctx.fillText('NOTICE BOARD', nbX + nbW / 2 + 1, nbY - 3);
     ctx.fillStyle = '#C4A265';
     ctx.fillText('NOTICE BOARD', nbX + nbW / 2, nbY - 4);
     ctx.textAlign = 'left';
@@ -2321,41 +3141,67 @@ export class TavernState {
     const orinTableX = 380;
     const orinTableY = 380;
     drawTable(orinTableX, orinTableY, 80, 42, true);
-    // Mug on table
-    ctx.fillStyle = '#5a3818';
-    ctx.fillRect(orinTableX + 15, orinTableY + 8, 14, 16);
-    ctx.fillStyle = '#8a6020';
-    ctx.fillRect(orinTableX + 17, orinTableY + 12, 10, 10);
-    ctx.fillStyle = '#d4c490';
-    ctx.fillRect(orinTableX + 16, orinTableY + 10, 12, 3);
+    // Tankard on table
+    drawTankard(orinTableX + 15, orinTableY + 6, 12, 16);
+    // Shadow under tankard
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    ctx.beginPath();
+    ctx.ellipse(orinTableX + 21, orinTableY + 23, 7, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Orin figure (seated, arm in sling, leather armor)
+    // Orin figure (seated, arm in sling, leather armor with stitching)
     const orinX = orinTableX + 55;
     const orinY = orinTableY - 10;
     drawNPC(orinX, orinY, {
-      headColor: '#b08060', bodyColor: '#4a3020', vestColor: '#6a4828',
-      headR: 11, bodyW: 24, bodyH: 28, sling: true, seated: true
+      headColor: '#b08060', bodyColor: '#4a3020', vestColor: '#5a3818',
+      headR: 11, bodyW: 24, bodyH: 28, sling: true, seated: true,
+      npcType: 'orin'
     });
-    // Scar on face
-    ctx.strokeStyle = '#905040';
-    ctx.lineWidth = 1.5;
+    // Leather armor stitching on Orin
+    ctx.strokeStyle = 'rgba(160,120,60,0.3)';
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([2, 2]);
     ctx.beginPath();
-    ctx.moveTo(orinX - 4, orinY - 18);
-    ctx.lineTo(orinX + 2, orinY - 10);
+    ctx.moveTo(orinX - 10, orinY + 4); ctx.lineTo(orinX - 10, orinY + 22);
+    ctx.moveTo(orinX + 10, orinY + 4); ctx.lineTo(orinX + 10, orinY + 22);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Armor shoulder pauldron (left — visible one)
+    ctx.fillStyle = '#5a3818';
+    ctx.beginPath();
+    ctx.ellipse(orinX - 14, orinY + 3, 7, 5, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(160,120,60,0.2)';
+    ctx.lineWidth = 0.4;
     ctx.stroke();
 
     // === Table Seven (Elden or empty chair) — lower right ===
     const t7X = 590;
     const t7Y = 390;
 
-    // Round table with shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    // Round table with soft shadow
+    ctx.save();
+    const t7Shadow = ctx.createRadialGradient(t7X + 30, t7Y + 38, 4, t7X + 30, t7Y + 38, 35);
+    t7Shadow.addColorStop(0, 'rgba(0,0,0,0.16)');
+    t7Shadow.addColorStop(0.7, 'rgba(0,0,0,0.05)');
+    t7Shadow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = t7Shadow;
     ctx.beginPath();
-    ctx.ellipse(t7X + 30, t7Y + 38, 30, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(t7X + 30, t7Y + 38, 35, 10, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Table leg
+    ctx.restore();
+
+    // Table leg (turned wood with decorative rings)
     ctx.fillStyle = '#2a1808';
     ctx.fillRect(t7X + 26, t7Y + 20, 8, 22);
+    // Leg detail rings
+    ctx.fillStyle = '#3d2510';
+    ctx.fillRect(t7X + 25, t7Y + 25, 10, 2);
+    ctx.fillRect(t7X + 25, t7Y + 34, 10, 2);
+    // Leg highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillRect(t7X + 26, t7Y + 20, 2, 22);
+
     // Table top (ellipse)
     ctx.fillStyle = '#3d2510';
     ctx.beginPath();
@@ -2365,16 +3211,35 @@ export class TavernState {
     ctx.beginPath();
     ctx.ellipse(t7X + 30, t7Y + 8, 33, 14, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Wood grain on round table
+    ctx.strokeStyle = 'rgba(80,55,25,0.15)';
+    ctx.lineWidth = 0.4;
+    ctx.beginPath();
+    ctx.ellipse(t7X + 30, t7Y + 8, 20, 8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(t7X + 30, t7Y + 8, 10, 4, 0, 0, Math.PI * 2);
+    ctx.stroke();
 
-    // Chair (3D)
+    // Chair (3D with slats)
     ctx.fillStyle = '#3d2510';
     ctx.fillRect(t7X + 52, t7Y + 18, 18, 28);
-    // Chair back
+    // Chair seat highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.03)';
+    ctx.fillRect(t7X + 52, t7Y + 18, 18, 3);
+    // Chair back (with vertical slats)
     ctx.fillStyle = '#4a3018';
     ctx.fillRect(t7X + 53, t7Y - 8, 16, 28);
     ctx.strokeStyle = '#3d2510';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(t7X + 53, t7Y - 8, 16, 28);
+    ctx.lineWidth = 0.8;
+    // Slat dividers
+    ctx.beginPath();
+    ctx.moveTo(t7X + 58, t7Y - 6); ctx.lineTo(t7X + 58, t7Y + 18);
+    ctx.moveTo(t7X + 64, t7Y - 6); ctx.lineTo(t7X + 64, t7Y + 18);
+    ctx.stroke();
+    // Chair back top rail
+    ctx.fillStyle = '#5a3d20';
+    ctx.fillRect(t7X + 52, t7Y - 8, 18, 3);
 
     if (fragments >= 2) {
       // Elden's ghostly figure — ethereal, translucent
@@ -2382,17 +3247,32 @@ export class TavernState {
       ctx.globalAlpha = eldenAlpha;
       drawNPC(t7X + 62, t7Y - 4, {
         headColor: '#8888CC', bodyColor: '#6666AA', vestColor: '#7777BB',
-        headR: 9, bodyW: 18, bodyH: 24, seated: true
+        headR: 9, bodyW: 18, bodyH: 24, seated: true,
+        npcType: 'elden'
       });
-      // Ghostly aura
-      const ghostGlow = ctx.createRadialGradient(t7X + 62, t7Y + 5, 5, t7X + 62, t7Y + 5, 40);
-      ghostGlow.addColorStop(0, 'rgba(130, 130, 200, 0.15)');
+      // Ghostly aura (pulsing)
+      const ghostGlow = ctx.createRadialGradient(t7X + 62, t7Y + 5, 5, t7X + 62, t7Y + 5, 45);
+      ghostGlow.addColorStop(0, 'rgba(130, 130, 200, 0.18)');
+      ghostGlow.addColorStop(0.5, 'rgba(130, 130, 200, 0.06)');
       ghostGlow.addColorStop(1, 'rgba(130, 130, 200, 0)');
       ctx.fillStyle = ghostGlow;
-      ctx.fillRect(t7X + 22, t7Y - 35, 80, 80);
-      // Ghostly cup on table
-      ctx.fillStyle = 'rgba(136, 136, 204, 0.5)';
+      ctx.fillRect(t7X + 17, t7Y - 40, 90, 90);
+      // Ghostly tankard on table
+      ctx.fillStyle = 'rgba(136, 136, 204, 0.4)';
       ctx.fillRect(t7X + 20, t7Y + 2, 10, 12);
+      ctx.fillStyle = 'rgba(170, 170, 230, 0.3)';
+      ctx.beginPath();
+      ctx.ellipse(t7X + 25, t7Y + 2, 5, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Wispy particles around Elden
+      ctx.fillStyle = 'rgba(150, 150, 220, 0.25)';
+      for (let ep = 0; ep < 4; ep++) {
+        const epx = t7X + 52 + Math.sin(phase * 0.5 + ep * 1.8) * 18;
+        const epy = t7Y - 10 + Math.cos(phase * 0.4 + ep * 2.3) * 15;
+        ctx.beginPath();
+        ctx.arc(epx, epy, 1 + seed(ep, 99) * 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.globalAlpha = 1.0;
     }
 

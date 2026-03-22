@@ -95,19 +95,18 @@ export class FirstPersonRenderer {
       this._drawPosition(ctx, tile, i, tx, ty);
     }
 
-    // === Depth fog overlay — distant tiles fade into darkness ===
-    // Back row fog (positions 0-4)
-    const fogAlpha = 0.25 + Math.sin(this.flickerPhase * 0.3) * 0.03;
+    // === Subtle depth atmosphere (very light — don't black out the view) ===
+    const fogAlpha = 0.06 + Math.sin(this.flickerPhase * 0.3) * 0.015;
     ctx.fillStyle = `rgba(6, 6, 10, ${fogAlpha})`;
     ctx.fillRect(FP_VIEW.x, FP_VIEW.y, vw, vh);
 
-    // Vignette — darker at edges like dungeon corridors
+    // Soft vignette — gentle darkening at edges only
     const vig = ctx.createRadialGradient(
-      FP_VIEW.x + vw / 2, FP_VIEW.y + vh / 2, vw * 0.2,
-      FP_VIEW.x + vw / 2, FP_VIEW.y + vh / 2, vw * 0.55
+      FP_VIEW.x + vw / 2, FP_VIEW.y + vh / 2, vw * 0.3,
+      FP_VIEW.x + vw / 2, FP_VIEW.y + vh / 2, vw * 0.6
     );
     vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    vig.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+    vig.addColorStop(1, 'rgba(0, 0, 0, 0.15)');
     ctx.fillStyle = vig;
     ctx.fillRect(FP_VIEW.x, FP_VIEW.y, vw, vh);
 
@@ -135,7 +134,7 @@ export class FirstPersonRenderer {
 
     // Depth layer: 0 = front (player), 1 = middle, 2 = back
     const depth = pos < 5 ? 2 : pos < 10 ? 1 : 0;
-    const depthFog = depth * 0.12; // Fog increases with distance
+    const depthFog = depth * 0.06; // Subtle fog with distance
 
     // For walkable tiles: draw ceiling, then floor, then any object on top
     if (tile !== TILE.WALL) {

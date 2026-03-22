@@ -302,6 +302,130 @@ export class TavernExteriorState {
       }
     }
 
+    // === Old gnarled trees (foreground, framing the scene) ===
+
+    // Left tree — old twisted oak, next to the tavern door
+    const treeL = { x: W / 2 - 110, y: groundY + H * 0.06 };
+    // Trunk
+    ctx.fillStyle = '#1a1410';
+    ctx.fillRect(treeL.x, treeL.y, 14, H * 0.22);
+    // Trunk bark texture
+    ctx.strokeStyle = 'rgba(30, 22, 14, 0.6)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath();
+      ctx.moveTo(treeL.x + 2, treeL.y + i * 12);
+      ctx.quadraticCurveTo(treeL.x + 7 + Math.sin(i) * 3, treeL.y + i * 12 + 6, treeL.x + 12, treeL.y + i * 12 + 12);
+      ctx.stroke();
+    }
+    // Branches
+    ctx.strokeStyle = '#1a1410';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(treeL.x + 7, treeL.y - 5);
+    ctx.quadraticCurveTo(treeL.x - 20, treeL.y - 30, treeL.x - 35, treeL.y - 25);
+    ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(treeL.x + 7, treeL.y + 5);
+    ctx.quadraticCurveTo(treeL.x + 30, treeL.y - 20, treeL.x + 45, treeL.y - 30);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(treeL.x + 10, treeL.y + 15);
+    ctx.quadraticCurveTo(treeL.x + 35, treeL.y + 5, treeL.x + 50, treeL.y - 5);
+    ctx.stroke();
+    // Sparse leaf clusters (dark, barely visible — it's night)
+    const leafClusters = [
+      { x: treeL.x - 30, y: treeL.y - 30, r: 18 },
+      { x: treeL.x + 40, y: treeL.y - 28, r: 15 },
+      { x: treeL.x - 15, y: treeL.y - 15, r: 12 },
+      { x: treeL.x + 48, y: treeL.y - 8, r: 14 },
+    ];
+    for (const lc of leafClusters) {
+      ctx.fillStyle = 'rgba(12, 22, 10, 0.7)';
+      ctx.beginPath();
+      ctx.arc(lc.x, lc.y, lc.r, 0, Math.PI * 2);
+      ctx.fill();
+      // Darker inner leaves
+      ctx.fillStyle = 'rgba(8, 16, 6, 0.5)';
+      ctx.beginPath();
+      ctx.arc(lc.x + 2, lc.y + 2, lc.r * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Right tree — taller, dead/dying, right of tavern door
+    const treeR = { x: W / 2 + 80, y: groundY + H * 0.03 };
+    ctx.fillStyle = '#18120e';
+    ctx.fillRect(treeR.x, treeR.y, 12, H * 0.28);
+    // Bark
+    ctx.strokeStyle = 'rgba(28, 20, 12, 0.5)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 8; i++) {
+      ctx.beginPath();
+      ctx.moveTo(treeR.x + 1, treeR.y + i * 10);
+      ctx.lineTo(treeR.x + 11, treeR.y + i * 10 + 5);
+      ctx.stroke();
+    }
+    // Bare branches — skeletal
+    ctx.strokeStyle = '#18120e';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(treeR.x + 6, treeR.y);
+    ctx.quadraticCurveTo(treeR.x + 30, treeR.y - 25, treeR.x + 40, treeR.y - 40);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(treeR.x + 6, treeR.y + 10);
+    ctx.quadraticCurveTo(treeR.x - 25, treeR.y - 10, treeR.x - 30, treeR.y - 25);
+    ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(treeR.x + 38, treeR.y - 35);
+    ctx.lineTo(treeR.x + 50, treeR.y - 45);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(treeR.x - 25, treeR.y - 18);
+    ctx.lineTo(treeR.x - 35, treeR.y - 30);
+    ctx.stroke();
+    // One sparse leaf cluster
+    ctx.fillStyle = 'rgba(10, 20, 8, 0.5)';
+    ctx.beginPath();
+    ctx.arc(treeR.x + 35, treeR.y - 35, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === Shrubs flanking the doorway (at building base, left and right of door) ===
+    const doorLeftX = W / 2 - 25; // door left edge
+    const doorRightX = W / 2 + 25; // door right edge
+    const shrubBaseY = bldgBot - 5; // at building base
+    const fgShrubs = [
+      // Left of door
+      { x: doorLeftX - 55, y: shrubBaseY - 12, w: 35, h: 22 },
+      { x: doorLeftX - 30, y: shrubBaseY - 6, w: 25, h: 16 },
+      { x: doorLeftX - 75, y: shrubBaseY - 8, w: 28, h: 18 },
+      // Right of door
+      { x: doorRightX + 15, y: shrubBaseY - 10, w: 32, h: 20 },
+      { x: doorRightX + 40, y: shrubBaseY - 6, w: 28, h: 16 },
+      { x: doorRightX + 60, y: shrubBaseY - 14, w: 35, h: 22 },
+    ];
+    for (const sh of fgShrubs) {
+      // Main bush shape
+      ctx.fillStyle = 'rgba(14, 24, 10, 0.8)';
+      ctx.beginPath();
+      ctx.ellipse(sh.x + sh.w / 2, sh.y + sh.h / 2, sh.w / 2, sh.h / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Highlight top
+      ctx.fillStyle = 'rgba(18, 30, 14, 0.4)';
+      ctx.beginPath();
+      ctx.ellipse(sh.x + sh.w / 2, sh.y + sh.h * 0.3, sh.w / 2.5, sh.h / 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Shadow base
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.beginPath();
+      ctx.ellipse(sh.x + sh.w / 2, sh.y + sh.h * 0.8, sh.w / 2.2, sh.h / 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     // === Old stone path — cracked, mossy, ancient ===
     const pathCX = W / 2;
     const pathTopW = 80;
