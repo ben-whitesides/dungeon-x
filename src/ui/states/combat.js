@@ -43,6 +43,20 @@ export class CombatState {
     if (this.combatLog.length > 50) this.combatLog.shift();
   }
 
+  _rollDice(notation) {
+    if (typeof notation === 'number') return notation;
+    const match = String(notation).match(/(\d*)d(\d+)([+-]\d+)?/);
+    if (!match) return parseInt(notation) || 0;
+    const count = parseInt(match[1]) || 1;
+    const sides = parseInt(match[2]);
+    const bonus = parseInt(match[3]) || 0;
+    let total = bonus;
+    for (let i = 0; i < count; i++) {
+      total += Math.floor(Math.random() * sides) + 1;
+    }
+    return Math.max(1, total);
+  }
+
   _getEnemySpritePos(enemyIdx) {
     const w = 760;
     const enemyAreaWidth = w - 40;
@@ -201,11 +215,107 @@ export class CombatState {
       return true;
     }
     if (code === 'KeyS') {
-      // H-1 fix: spell placeholder skips turn (no free stall)
-      this._log(`${current.entity.name} focuses... (no spells learned yet)`);
-      this.combat.advanceTurn();
-      this._processEnemyTurns(world);
+      // Open ability selection submenu
+      const abilities = current.entity.getAvailableAbilities();
+      if (abilities.length === 0) {
+        this._log(`${current.entity.name} has no abilities available.`);
+        return true; // Don't waste turn
+      }
+      this._abilityMode = true;
+      this._abilityList = abilities;
+      this._selectedAbility = 0;
       return true;
+    }
+
+    // Touch: ability selection
+    if (code && code.startsWith('_ability_') && this._abilityMode) {
+      const idx = parseInt(code.split('_')[2], 10);
+      if (!isNaN(idx) && idx >= 0 && idx < this._abilityList.length) {
+        this._selectedAbility = idx;
+        // Simulate Enter to use it
+        return this.handleInput({ code: 'Enter' }, world);
+      }
+    }
+
+    // Ability selection submenu
+    if (this._abilityMode) {
+      if (code === 'ArrowUp' || code === 'KeyW') {
+        this._selectedAbility = Math.max(0, this._selectedAbility - 1);
+        return true;
+      }
+      if (code === 'ArrowDown' || code === 'KeyS') {
+        this._selectedAbility = Math.min(this._abilityList.length - 1, this._selectedAbility + 1);
+        return true;
+      }
+      if (code === 'Escape' || code === 'Backspace') {
+        this._abilityMode = false;
+        return true;
+      }
+      if (code === 'Enter' || code === 'Space') {
+        const ability = this._abilityList[this._selectedAbility];
+        const result = current.entity.useAbility(ability.id);
+        if (result.success) {
+          // Apply ability effects
+          const effect = ability.effect || {};
+          const target = this.combat.enemies[this.combat.targetIndex];
+
+          if (effect.damage) {
+            // Damage ability — apply to target(s)
+            const statMod = current.entity.getModifier(ability.scaleStat || 'str');
+            const baseDmg = typeof effect.damage === 'string'
+              ? this._rollDice(effect.damage)
+              : (effect.damage || 0);
+            const totalDmg = Math.max(1, baseDmg + statMod);
+
+            if (effect.aoe) {
+              // Hit all enemies
+              for (const e of this.combat.enemies) {
+                if (e.currentHP > 0) {
+                  e.currentHP = Math.max(0, e.currentHP - totalDmg);
+                  this._log(`${ability.name} hits ${e.name} for ${totalDmg}!`);
+                }
+              }
+            } else if (target && target.currentHP > 0) {
+              target.currentHP = Math.max(0, target.currentHP - totalDmg);
+              this._log(`${current.entity.name} uses ${ability.name} on ${target.name} for ${totalDmg}!`);
+            }
+          }
+
+          if (effect.heal) {
+            // Heal ability — apply to self or party
+            const healAmt = typeof effect.heal === 'string'
+              ? this._rollDice(effect.heal)
+              : (effect.heal || 0);
+            if (effect.targetAll) {
+              for (const m of this.combat.party) {
+                if (m.currentHP > 0) {
+                  m.currentHP = Math.min(m.maxHP, m.currentHP + healAmt);
+                }
+              }
+              this._log(`${ability.name} heals the party for ${healAmt}!`);
+            } else {
+              current.entity.currentHP = Math.min(current.entity.maxHP, current.entity.currentHP + healAmt);
+              this._log(`${current.entity.name} uses ${ability.name}, heals ${healAmt}!`);
+            }
+          }
+
+          if (effect.buff) {
+            this._log(`${current.entity.name} uses ${ability.name}!`);
+          }
+
+          if (!effect.damage && !effect.heal && !effect.buff) {
+            this._log(`${current.entity.name} uses ${ability.name}!`);
+          }
+        } else {
+          this._log(`${ability.name} failed: ${result.reason}`);
+        }
+
+        this._abilityMode = false;
+        this.combat.advanceTurn();
+        this._processEnemyTurns(world);
+        return true;
+      }
+      return true; // Consume all input in ability mode
     }
 
     return false;
@@ -314,6 +424,78 @@ export class CombatState {
     } else {
       // === ACTION BUTTONS: Medieval parchment buttons ===
       this._renderActionButtons(ctx, W, H, aliveEnemies, world);
+    }
+
+    // === ABILITY SELECTION OVERLAY ===
+    if (this._abilityMode && this._abilityList) {
+      const abX = W / 2 - 150;
+      const abY = H / 2 - 80;
+      const abW = 300;
+      const abH = Math.min(200, 30 + this._abilityList.length * 32);
+
+      // Dark overlay
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(0, 0, W, H);
+
+      // Ability panel
+      ctx.fillStyle = '#1a1208';
+      ctx.fillRect(abX, abY, abW, abH);
+      ctx.strokeStyle = '#8a7a4a';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(abX, abY, abW, abH);
+
+      // Title
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillStyle = '#FFD700';
+      ctx.fillText('ABILITIES', abX + abW / 2, abY + 20);
+
+      // List abilities
+      ctx.textAlign = 'left';
+      ctx.font = '12px monospace';
+      for (let i = 0; i < this._abilityList.length; i++) {
+        const ab = this._abilityList[i];
+        const ay = abY + 35 + i * 32;
+        const selected = i === this._selectedAbility;
+
+        if (selected) {
+          ctx.fillStyle = 'rgba(60, 40, 20, 0.8)';
+          ctx.fillRect(abX + 5, ay - 4, abW - 10, 28);
+          ctx.strokeStyle = '#FFD700';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(abX + 5, ay - 4, abW - 10, 28);
+        }
+
+        // Name
+        ctx.fillStyle = selected ? '#FFD700' : '#C4A265';
+        ctx.fillText(ab.name, abX + 15, ay + 10);
+
+        // Mana cost
+        ctx.fillStyle = '#5080c0';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${ab.manaCost || 0} MP`, abX + abW - 15, ay + 10);
+        ctx.textAlign = 'left';
+
+        // Description (small, below name)
+        if (selected && ab.description) {
+          ctx.font = '10px monospace';
+          ctx.fillStyle = '#8B7355';
+          ctx.fillText(ab.description.slice(0, 45), abX + 15, ay + 22);
+          ctx.font = '12px monospace';
+        }
+
+        // Touch zone
+        if (world.input && world.input.touch) {
+          world.input.touch.registerHitZone(abX + 5, ay - 4, abW - 10, 28, `_ability_${i}`);
+        }
+      }
+
+      // Escape hint
+      ctx.textAlign = 'center';
+      ctx.font = '10px monospace';
+      ctx.fillStyle = '#666';
+      ctx.fillText('ESC to cancel  |  ENTER to use', abX + abW / 2, abY + abH - 8);
+      ctx.textAlign = 'left';
     }
 
     // === ROUND COUNTER: Top-right ===

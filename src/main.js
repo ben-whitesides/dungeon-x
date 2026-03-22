@@ -38,7 +38,7 @@ async function boot() {
   const assets = await loadAssets();
   const atlas = new SpriteAtlas(assets);
 
-  const world = new GameWorld(42, assets);
+  const world = new GameWorld(undefined, assets); // undefined = use daily seed
   // Don't call init() yet — dungeon generates when player enters from tavern
 
   const renderers = {

@@ -184,16 +184,21 @@ export class GameWorld {
       // Mark dungeon as completed and award fragment
       this.completedDungeons.add(this.dungeonType);
       
-      // Award appropriate fragment
-      if (this.dungeonType === 'crypts') {
-        this.collectedFragments.add('dawn');
+      // Award appropriate fragment based on dungeon type
+      const DUNGEON_FRAGMENTS = {
+        crypts: 'dawn', goblin_warrens: 'dusk', flooded_vaults: 'storm',
+        ember_depths: 'flame', frozen_abyss: 'frost', shattered_halls: 'stone',
+        howling_spire: 'wind', void_chambers: 'shadow', crystal_sanctum: 'light',
+        final_descent: 'life',
+      };
+      const fragmentId = DUNGEON_FRAGMENTS[this.dungeonType];
+      if (fragmentId && !this.collectedFragments.has(fragmentId)) {
+        this.collectedFragments.add(fragmentId);
         this.inventory.addItem(createItem('sunstone_fragment'));
-      } else if (this.dungeonType === 'goblin_warrens') {
-        this.collectedFragments.add('dusk');
-        this.inventory.addItem(createItem('sunstone_fragment'));
+        console.log(`Fragment of ${fragmentId} collected!`);
       }
-      
-      console.log(`Dungeon ${this.dungeonType} completed! Fragment of ${this.dungeonType === 'crypts' ? 'Dawn' : 'Dusk'} collected.`);
+
+      console.log(`Dungeon ${this.dungeonType} completed!`);
     }
     
     if (!victory) {
