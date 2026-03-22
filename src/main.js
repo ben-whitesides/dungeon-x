@@ -56,6 +56,15 @@ async function boot() {
   input.attach();
   world.input = input; // Expose for touch hit zone registration
 
+  // === Browser persistence + safety net ===
+  // Request persistent storage (prevents browser eviction)
+  GameSave.requestPersistence();
+
+  // beforeunload — save on tab close/navigate away
+  window.addEventListener('beforeunload', () => {
+    GameSave.save(world);
+  });
+
   // === Title Screen — always first ===
   // Title screen handles save detection internally and reports action when done
   world.stateStack.pushTitleScreen();
@@ -135,7 +144,7 @@ async function boot() {
           world.stateStack.clear();
           world.stateStack.pushTavern(renderers);
           world.stateStack.pushDeathScreen(fallenMembers, dName, dFloor);
-          GameSave.save(world);
+          GameSave.harvestRunOnDeath(world);
         } else if (activeState.combat.state === 'victory') {
           // Build rewards object for victory screen
           const goldEarned = activeState.combat.enemies
@@ -174,7 +183,7 @@ async function boot() {
           }
           // Push victory screen (shows after level-ups are dismissed)
           world.stateStack.pushVictoryScreen(rewards, partySnapshot, vName, vFloor);
-          GameSave.save(world);
+          GameSave.harvestRunOnVictory(world);
         }
         // Victory or Fled just resumes exploration which is already on the stack
       }

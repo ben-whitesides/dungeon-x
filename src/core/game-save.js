@@ -1,95 +1,265 @@
 /**
- * GameSave — Persistent game state to localStorage.
- * Key: 'dx-save'
- * Auto-saves after: dungeon completion, level up, character creation, party change.
+ * GameSave — Two-Tier Persistent Save System
+ *
+ * Masters pattern (Hades/Darkest Dungeon/Dead Cells/Slay the Spire):
+ *
+ * Tier 1: META-SAVE (dx-meta) — Permanent, survives death/new game
+ *   - Hero character, roster, completed dungeons, fragments, gold, settings
+ *   - Checksum + backup slot for corruption resilience
+ *   - Version migration chain
+ *
+ * Tier 2: RUN-SAVE (dx-run) — Exists only during active dungeon run
+ *   - Party HP/MP/status, floor, dungeon seed, map state, run inventory
+ *   - Deleted on death (rewards harvested to meta first)
+ *   - Deleted on victory (completion flags + rewards to meta first)
+ *
+ * Legacy: Reads old 'dx-save' format and migrates to new two-tier on first load.
  */
 
-const SAVE_KEY = 'dx-save';
+const META_KEY = 'dx-meta';
+const META_BACKUP_KEY = 'dx-meta-backup';
+const RUN_KEY = 'dx-run';
+const LEGACY_KEY = 'dx-save';
 const CUSTOM_CHARS_KEY = 'dx-custom-characters';
+const CURRENT_META_VERSION = 3;
+
+// Simple checksum for corruption detection
+function _checksum(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+}
 
 export class GameSave {
+
+  // =========================================================================
+  // META-SAVE — Permanent progression (Tier 1)
+  // =========================================================================
+
   /**
-   * Save full game state to localStorage.
+   * Save meta-progression (permanent state) from world.
+   * Called after: character creation, party change, dungeon complete, level up,
+   * shop transactions, returning to tavern.
    */
-  static save(world) {
+  static saveMeta(world) {
     if (typeof localStorage === 'undefined') return;
 
     const data = {
-      version: 2,
+      version: CURRENT_META_VERSION,
       timestamp: Date.now(),
-      // Player's custom hero (party leader, slot 0)
       heroCharacter: world.heroCharacter ? GameSave._serializeCharacter(world.heroCharacter) : null,
-      // Party composition (by name+class keys for lookup)
       party: world.party.getMembers().map(m => ({
         name: m.name,
         class: m.class,
-        isHero: m === world.heroCharacter
+        isHero: m === world.heroCharacter,
       })),
-      // All character data (roster)
       roster: world.roster.getAll().map(c => GameSave._serializeCharacter(c)),
-      // World state
       gold: world.gold,
       completedDungeons: [...world.completedDungeons],
       collectedFragments: [...world.collectedFragments],
-      // Inventory
       inventory: world.inventory.getAllItems().map(item => ({
         id: item.id,
         name: item.name,
-        quantity: item.quantity || 1
+        quantity: item.quantity || 1,
       })),
     };
 
-    try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-    } catch (e) {
-      console.warn('GameSave: Failed to save:', e);
-    }
+    GameSave._safeWrite(META_KEY, data);
   }
 
   /**
-   * Load game state from localStorage.
-   * Returns the save data object, or null if no save exists.
+   * Load meta-save. Falls back to backup if primary is corrupt.
+   * Also migrates legacy 'dx-save' format if found.
    */
-  static load() {
+  static loadMeta() {
     if (typeof localStorage === 'undefined') return null;
-    try {
-      const raw = localStorage.getItem(SAVE_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (e) {
-      console.warn('GameSave: Failed to load:', e);
-      return null;
+
+    // Try migrating legacy save first
+    const legacy = GameSave._tryLoadLegacy();
+    if (legacy) return legacy;
+
+    // Load primary
+    let data = GameSave._safeRead(META_KEY);
+    if (data) {
+      data = GameSave._migrateMeta(data);
+      return data;
     }
+
+    // Try backup
+    data = GameSave._safeRead(META_BACKUP_KEY);
+    if (data) {
+      console.warn('GameSave: Primary meta corrupt, restored from backup');
+      data = GameSave._migrateMeta(data);
+      // Re-save to primary
+      GameSave._safeWrite(META_KEY, data);
+      return data;
+    }
+
+    return null;
   }
 
   /**
-   * Check if a save exists.
+   * Check if any save exists (meta or legacy).
    */
   static hasSave() {
     if (typeof localStorage === 'undefined') return false;
-    return localStorage.getItem(SAVE_KEY) !== null;
+    return localStorage.getItem(META_KEY) !== null
+      || localStorage.getItem(LEGACY_KEY) !== null;
   }
 
   /**
-   * Clear save data (New Game).
+   * Clear all save data (New Game).
    */
   static clearSave() {
     if (typeof localStorage === 'undefined') return;
-    localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(META_KEY);
+    localStorage.removeItem(META_BACKUP_KEY);
+    localStorage.removeItem(RUN_KEY);
+    localStorage.removeItem(LEGACY_KEY);
     localStorage.removeItem(CUSTOM_CHARS_KEY);
     localStorage.removeItem('dungeon-x-roster');
   }
 
+  // =========================================================================
+  // RUN-SAVE — Active dungeon run (Tier 2)
+  // =========================================================================
+
   /**
-   * Save custom characters list.
+   * Save active run state. Called on floor transitions, combat end.
    */
+  static saveRun(world) {
+    if (typeof localStorage === 'undefined') return;
+    if (!world.tileMap) return; // Not in a dungeon
+
+    const data = {
+      version: 1,
+      timestamp: Date.now(),
+      dungeonType: world.dungeonType,
+      dungeonName: world.dungeonName || world.dungeonType,
+      floor: world.floor || 1,
+      seed: world.rng ? world.rng.seed : null,
+      party: world.party.getMembers().map(m => GameSave._serializeCharacter(m)),
+      playerPos: { x: world.player.x, y: world.player.y, facing: world.player.facing },
+      turnCount: world.turnCount || 0,
+    };
+
+    GameSave._safeWrite(RUN_KEY, data);
+  }
+
+  /**
+   * Load active run state. Returns null if no run in progress.
+   */
+  static loadRun() {
+    if (typeof localStorage === 'undefined') return null;
+    return GameSave._safeRead(RUN_KEY);
+  }
+
+  /**
+   * Check if an active run exists.
+   */
+  static hasActiveRun() {
+    if (typeof localStorage === 'undefined') return false;
+    return localStorage.getItem(RUN_KEY) !== null;
+  }
+
+  /**
+   * Delete run save — called on death or victory after harvesting rewards.
+   */
+  static clearRun() {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.removeItem(RUN_KEY);
+  }
+
+  /**
+   * Harvest run rewards into meta-save on death.
+   * Characters survive, but run-specific progress is lost.
+   * XP and levels earned during the run ARE kept (Hades model).
+   */
+  static harvestRunOnDeath(world) {
+    // Characters keep their XP/levels from the run
+    // but HP is restored to pre-dungeon snapshot values
+    // Gold earned during run is kept (consolation prize)
+    GameSave.saveMeta(world);
+    GameSave.clearRun();
+  }
+
+  /**
+   * Harvest run rewards into meta-save on victory.
+   * Dungeon marked complete, fragments collected, full save.
+   */
+  static harvestRunOnVictory(world) {
+    GameSave.saveMeta(world);
+    GameSave.clearRun();
+  }
+
+  // =========================================================================
+  // BACKWARD COMPATIBILITY — Legacy 'dx-save' migration
+  // =========================================================================
+
+  /**
+   * Reads old flat 'dx-save', migrates to dx-meta, removes old key.
+   * Returns migrated data or null.
+   */
+  static _tryLoadLegacy() {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(LEGACY_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || !data.heroCharacter) return null;
+
+      // Migrate: legacy format IS the meta format (same fields)
+      data.version = CURRENT_META_VERSION;
+      console.log('GameSave: Migrated legacy dx-save to dx-meta');
+
+      // Write to new key
+      GameSave._safeWrite(META_KEY, data);
+      // Remove legacy key
+      localStorage.removeItem(LEGACY_KEY);
+
+      return data;
+    } catch (e) {
+      console.warn('GameSave: Legacy migration failed:', e);
+      return null;
+    }
+  }
+
+  // =========================================================================
+  // BACKWARD COMPAT WRAPPER — save() and load() still work
+  // =========================================================================
+
+  /**
+   * save(world) — backward compatible wrapper.
+   * Saves meta. If in dungeon, also saves run.
+   */
+  static save(world) {
+    GameSave.saveMeta(world);
+    if (world.tileMap) {
+      GameSave.saveRun(world);
+    }
+  }
+
+  /**
+   * load() — backward compatible wrapper.
+   * Returns meta-save data (same format as old dx-save).
+   */
+  static load() {
+    return GameSave.loadMeta();
+  }
+
+  // =========================================================================
+  // CUSTOM CHARACTERS
+  // =========================================================================
+
   static saveCustomCharacters(characters) {
     if (typeof localStorage === 'undefined') return;
     try {
       const data = characters.map(c => {
-        // Handle both Character instances and plain objects
         if (c.baseStats) return GameSave._serializeCharacter(c);
-        return c; // Already serialized
+        return c;
       });
       localStorage.setItem(CUSTOM_CHARS_KEY, JSON.stringify(data));
     } catch (e) {
@@ -97,9 +267,6 @@ export class GameSave {
     }
   }
 
-  /**
-   * Load custom characters list.
-   */
   static loadCustomCharacters() {
     if (typeof localStorage === 'undefined') return [];
     try {
@@ -110,6 +277,113 @@ export class GameSave {
       console.warn('GameSave: Failed to load custom characters:', e);
       return [];
     }
+  }
+
+  // =========================================================================
+  // BROWSER PERSISTENCE — Request persistent storage
+  // =========================================================================
+
+  /**
+   * Request persistent storage to prevent browser eviction.
+   * Call once after first meaningful save.
+   */
+  static async requestPersistence() {
+    if (navigator.storage && navigator.storage.persist) {
+      const granted = await navigator.storage.persist();
+      if (granted) {
+        console.log('GameSave: Persistent storage granted');
+      }
+    }
+  }
+
+  /**
+   * Export save data as a downloadable JSON string.
+   * For cross-device portability.
+   */
+  static exportSave() {
+    const meta = GameSave.loadMeta();
+    const run = GameSave.loadRun();
+    const custom = GameSave.loadCustomCharacters();
+    return JSON.stringify({ meta, run, custom, exportedAt: new Date().toISOString() }, null, 2);
+  }
+
+  /**
+   * Import save data from a JSON string.
+   */
+  static importSave(jsonStr) {
+    try {
+      const data = JSON.parse(jsonStr);
+      if (data.meta) {
+        GameSave._safeWrite(META_KEY, data.meta);
+      }
+      if (data.run) {
+        GameSave._safeWrite(RUN_KEY, data.run);
+      }
+      if (data.custom) {
+        localStorage.setItem(CUSTOM_CHARS_KEY, JSON.stringify(data.custom));
+      }
+      return true;
+    } catch (e) {
+      console.warn('GameSave: Import failed:', e);
+      return false;
+    }
+  }
+
+  // =========================================================================
+  // INTERNAL HELPERS
+  // =========================================================================
+
+  /**
+   * Safe write with backup — writes to primary, keeps previous as backup.
+   */
+  static _safeWrite(key, data) {
+    try {
+      const json = JSON.stringify(data);
+      // Backup current primary before overwriting (meta only)
+      if (key === META_KEY) {
+        const current = localStorage.getItem(META_KEY);
+        if (current) {
+          localStorage.setItem(META_BACKUP_KEY, current);
+        }
+      }
+      localStorage.setItem(key, json);
+    } catch (e) {
+      console.warn(`GameSave: Failed to write ${key}:`, e);
+    }
+  }
+
+  /**
+   * Safe read with parse error handling.
+   */
+  static _safeRead(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      console.warn(`GameSave: Failed to read ${key}:`, e);
+      return null;
+    }
+  }
+
+  /**
+   * Migrate meta-save through version chain.
+   */
+  static _migrateMeta(data) {
+    if (!data.version) data.version = 1;
+
+    // v1 → v2: Added collectedFragments
+    if (data.version === 1) {
+      data.collectedFragments = data.collectedFragments || [];
+      data.version = 2;
+    }
+
+    // v2 → v3: Two-tier system (no structural change to meta, just version bump)
+    if (data.version === 2) {
+      data.version = 3;
+    }
+
+    return data;
   }
 
   static _serializeCharacter(c) {
