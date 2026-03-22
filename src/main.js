@@ -86,19 +86,37 @@ async function boot() {
       if (activeState.getAction) {
         const action = activeState.getAction();
         if (action === 'continue') {
-          // Returning player — restore save and go to exterior
-          const saveData = GameSave.load();
-          if (saveData && saveData.heroCharacter) {
-            _restoreFromSave(world, saveData);
-          }
-          world.stateStack.pushTavernExterior();
-          setTimeout(() => soundManager.startExteriorWind(), 500);
+          // Show character select before entering
+          world.stateStack.pushCharacterSelect();
         } else if (action === 'new_game') {
           // New game — clear any existing save, push character create under exterior
           GameSave.clearSave();
           world.stateStack.pushCharacterCreate(true);
           world.stateStack.pushTavernExterior();
           setTimeout(() => soundManager.startExteriorWind(), 500);
+        }
+      }
+
+      // Character select completed — handle action
+      if (activeState.constructor && activeState.constructor.name === 'CharacterSelectState' && activeState.getAction) {
+        const csAction = activeState.getAction();
+        if (csAction === 'continue') {
+          // Load save and go to exterior
+          const saveData = GameSave.load();
+          if (saveData && saveData.heroCharacter) {
+            _restoreFromSave(world, saveData);
+          }
+          world.stateStack.pushTavernExterior();
+          setTimeout(() => soundManager.startExteriorWind(), 500);
+        } else if (csAction === 'new') {
+          // Create new character — clear save
+          GameSave.clearSave();
+          world.stateStack.pushCharacterCreate(true);
+          world.stateStack.pushTavernExterior();
+          setTimeout(() => soundManager.startExteriorWind(), 500);
+        } else if (csAction === 'back') {
+          // Back to title screen
+          world.stateStack.pushTitleScreen();
         }
       }
 

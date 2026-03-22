@@ -6,6 +6,7 @@ import { ExploringState } from './states/exploring.js';
 import { DungeonTransitionState } from './states/dungeon-transition.js';
 import { LevelUpState } from './states/level-up.js';
 import { TitleScreenState } from './states/title-screen.js';
+import { CharacterSelectState } from './states/character-select.js';
 
 export class StateStack {
   constructor(assets) {
@@ -63,6 +64,10 @@ export class StateStack {
 
   pushTitleScreen() {
     this.push(new TitleScreenState(this.assets));
+  }
+
+  pushCharacterSelect() {
+    this.push(new CharacterSelectState(this.assets));
   }
 
   updateAndRender(layers, world, timestamp) {
