@@ -1004,394 +1004,656 @@ export class TavernState {
     const _seed = (x, y) => Math.sin(x * 127.1 + y * 311.7) * 43758.5453 % 1;
     const seed = (x, y) => Math.abs(_seed(x, y));
 
-    // Warm base — old stone showing through, lit by firelight
-    ctx.fillStyle = '#2a1e14';
+    // === 3D PERSPECTIVE CONSTANTS ===
+    // Vanishing point at center-top for depth illusion
+    const vpX = w / 2;
+    const vpY = 60;
+    // Back wall boundaries (where walls meet)
+    const backWallTop = 75;
+    const backWallBottom = 320;
+    const backWallLeft = 140;
+    const backWallRight = w - 140;
+    // Floor starts at back wall bottom, extends to canvas bottom
+    const floorTop = backWallBottom;
+    const floorBottom = h - 50; // leave room for bar counter
+
+    // === DARK BASE FILL ===
+    ctx.fillStyle = '#1a120c';
     ctx.fillRect(0, 0, w, h);
 
-    // Stone patches (behind wood — exposed where planks rotted away)
-    const stonePatches = [
-      { x: 0, y: 180, w: 110, h: 80 },
-      { x: 200, y: 420, w: 90, h: 60 },
-      { x: w / 2 + 60, y: 130, w: 80, h: 70 },
-      // Large bottom-right stone corner — foundation exposed
-      { x: w - 260, y: h - 200, w: 260, h: 150 },
-      { x: w - 180, y: h - 280, w: 180, h: 80 },
-      // Top-left crumble
-      { x: 0, y: 0, w: 80, h: 60 },
-    ];
-    for (const sp of stonePatches) {
-      // Rough stone fill — warm grey lit by firelight
-      ctx.fillStyle = '#3a3228';
-      ctx.fillRect(sp.x, sp.y, sp.w, sp.h);
-
-      // Individual stone blocks with slight color variation
-      const blockH = 20;
-      const blockW = sp.w * 0.45;
-      for (let sy = sp.y; sy < sp.y + sp.h; sy += blockH) {
-        const rowOffset = ((sy - sp.y) / blockH) % 2 === 0 ? 0 : blockW * 0.5;
-        for (let sx = sp.x + rowOffset; sx < sp.x + sp.w; sx += blockW) {
-          const bw = Math.min(blockW - 3, sp.x + sp.w - sx);
-          const bh = Math.min(blockH - 3, sp.y + sp.h - sy);
-          if (bw <= 0 || bh <= 0) continue;
-          // Stone color variation
-          const sv = seed(sx, sy);
-          const r = 50 + sv * 22;
-          const g = 44 + sv * 16;
-          const b = 35 + sv * 12;
-          ctx.fillStyle = `rgb(${r | 0}, ${g | 0}, ${b | 0})`;
-          ctx.fillRect(sx + 1, sy + 1, bw, bh);
-        }
-        // Horizontal mortar line
-        ctx.fillStyle = 'rgba(15, 10, 6, 0.7)';
-        ctx.fillRect(sp.x, sy, sp.w, 3);
-      }
-      // Vertical mortar lines
-      for (let row = 0; row < sp.h / blockH; row++) {
-        const sy = sp.y + row * blockH;
-        const rowOffset = row % 2 === 0 ? 0 : blockW * 0.5;
-        for (let sx = sp.x + rowOffset; sx < sp.x + sp.w; sx += blockW) {
-          ctx.fillStyle = 'rgba(15, 10, 6, 0.6)';
-          ctx.fillRect(sx, sy, 3, blockH);
-        }
-      }
-
-      // Moss/damp stains on stone
-      if (sp.h > 60) {
-        const mx = sp.x + seed(sp.x + 1, sp.y + 1) * sp.w * 0.5;
-        const my = sp.y + sp.h * 0.6;
-        const mw = 30 + seed(sp.x + 2, sp.y) * 40;
-        ctx.fillStyle = 'rgba(20, 35, 15, 0.25)';
-        ctx.fillRect(mx, my, mw, 15);
-        ctx.fillStyle = 'rgba(25, 40, 18, 0.15)';
-        ctx.fillRect(mx + 5, my - 8, mw - 10, 10);
-      }
-
-      // Edge shadow where wood meets stone
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-      ctx.fillRect(sp.x, sp.y, sp.w, 2);
-      ctx.fillRect(sp.x, sp.y, 2, sp.h);
-      ctx.fillRect(sp.x + sp.w - 2, sp.y, 2, sp.h);
-      ctx.fillRect(sp.x, sp.y + sp.h - 2, sp.w, 2);
-    }
-
-    // Weathered wood planks over stone
-    const plankHeight = 32;
-    for (let y = 0; y < h; y += plankHeight) {
-      const row = y / plankHeight;
-      // Vary wood color — some planks darker, some lighter, some greenish (rot)
-      const baseR = 65 + seed(row, 0) * 25;
-      const baseG = 40 + seed(row, 1) * 15;
-      const baseB = 20 + seed(row, 2) * 10;
-      const isRotted = seed(row, 3) > 0.75;
-      const isMissing = seed(row, 4) > 0.88;
-
-      if (isMissing) continue; // Skip — stone shows through
-
-      if (isRotted) {
-        // Rotted plank — darker, greenish tint
-        ctx.fillStyle = `rgb(${baseR - 10}, ${baseG + 8}, ${baseB})`;
-      } else {
-        ctx.fillStyle = `rgb(${baseR | 0}, ${baseG | 0}, ${baseB | 0})`;
-      }
-      ctx.fillRect(0, y, w, plankHeight - 1);
-
-      // Wood grain lines — irregular
-      ctx.strokeStyle = `rgba(0, 0, 0, ${isRotted ? 0.25 : 0.12})`;
-      ctx.lineWidth = 1;
-      for (let g = 0; g < 3; g++) {
-        const gy = y + 5 + g * 9;
-        ctx.beginPath();
-        ctx.moveTo(0, gy);
-        for (let x = 0; x < w; x += 30) {
-          const wobble = Math.sin(x * 0.08 + y * 0.3 + g) * 2.5;
-          ctx.lineTo(x + 15, gy + wobble);
-          ctx.lineTo(x + 30, gy + wobble * 0.3);
-        }
-        ctx.stroke();
-      }
-
-      // Dark knots in wood
-      if (seed(row, 5) > 0.5) {
-        const kx = seed(row, 6) * (w - 40) + 20;
-        const kr = 4 + seed(row, 7) * 5;
-        ctx.beginPath();
-        ctx.arc(kx, y + plankHeight / 2, kr, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(10, 6, 2, ${0.5 + seed(row, 8) * 0.3})`;
-        ctx.fill();
-        // Knot ring
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-
-      // Rot stains — dark wet patches
-      if (isRotted) {
-        const rx = seed(row, 9) * w * 0.6;
-        const rw = 60 + seed(row, 10) * 120;
-        ctx.fillStyle = 'rgba(15, 20, 10, 0.35)';
-        ctx.fillRect(rx, y + 2, rw, plankHeight - 4);
-      }
-
-      // Plank gap — wider and darker than before
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-      ctx.fillRect(0, y + plankHeight - 1, w, 2);
-    }
-
-    // Vertical plank joints (staggered, uneven)
-    for (let row = 0; row < h / plankHeight; row++) {
-      const y = row * plankHeight;
-      const offset = row % 2 === 0 ? 0 : w * 0.35;
-      for (let x = offset; x < w; x += w * 0.45) {
-        const jitter = seed(row, x) * 6 - 3;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.fillRect(x + jitter, y, 2, plankHeight);
-      }
-    }
-
-    // Cracks in the wall — thin dark lines
-    const cracks = [
-      { x1: 120, y1: 60, x2: 135, y2: 130, x3: 128, y3: 180 },
-      { x1: w - 200, y1: 200, x2: w - 185, y2: 260, x3: w - 195, y3: 300 },
-      { x1: w / 2 + 80, y1: 380, x2: w / 2 + 90, y2: 430, x3: w / 2 + 75, y3: 470 },
-    ];
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.lineWidth = 1;
-    for (const c of cracks) {
-      ctx.beginPath();
-      ctx.moveTo(c.x1, c.y1);
-      ctx.quadraticCurveTo(c.x2, c.y2, c.x3, c.y3);
-      ctx.stroke();
-      // Thin highlight next to crack
-      ctx.strokeStyle = 'rgba(50, 35, 20, 0.2)';
-      ctx.beginPath();
-      ctx.moveTo(c.x1 + 1, c.y1);
-      ctx.quadraticCurveTo(c.x2 + 1, c.y2, c.x3 + 1, c.y3);
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-    }
-
-    // === Fireplace (center of back wall) ===
-    const fpX = w / 2 - 80;
-    const fpY = h - 200;
-    const fpW = 160;
-    const fpH = 150;
-
-    // Stone hearth surround
-    ctx.fillStyle = '#2a2220';
-    ctx.fillRect(fpX - 12, fpY - 8, fpW + 24, fpH + 8);
-    // Hearth arch (rounded top)
+    // === CEILING (dark, receding into depth) ===
+    ctx.save();
+    const ceilGrad = ctx.createLinearGradient(0, 0, 0, backWallTop + 20);
+    ceilGrad.addColorStop(0, '#1a100a');
+    ceilGrad.addColorStop(1, '#2a1c12');
+    ctx.fillStyle = ceilGrad;
     ctx.beginPath();
-    ctx.moveTo(fpX, fpY + fpH);
-    ctx.lineTo(fpX, fpY + 20);
-    ctx.quadraticCurveTo(fpX + fpW / 2, fpY - 30, fpX + fpW, fpY + 20);
-    ctx.lineTo(fpX + fpW, fpY + fpH);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(w, 0);
+    ctx.lineTo(backWallRight, backWallTop);
+    ctx.lineTo(backWallLeft, backWallTop);
     ctx.closePath();
-    ctx.fillStyle = '#0a0604';
     ctx.fill();
-    ctx.strokeStyle = '#3d3230';
-    ctx.lineWidth = 3;
-    ctx.stroke();
 
-    // Inner stone border
-    ctx.strokeStyle = '#4a3d38';
-    ctx.lineWidth = 2;
+    // Ceiling planks receding toward vanishing point
+    for (let i = 0; i < 8; i++) {
+      const t = i / 8;
+      const leftX = t * backWallLeft;
+      const rightX = w - t * (w - backWallRight);
+      const topY = t * backWallTop;
+      ctx.strokeStyle = `rgba(60, 40, 20, ${0.15 + t * 0.1})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(leftX, topY);
+      ctx.lineTo(rightX, topY);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // === LEFT WALL (angling inward) ===
+    ctx.save();
+    const leftWallGrad = ctx.createLinearGradient(0, 0, backWallLeft, 0);
+    leftWallGrad.addColorStop(0, '#3a2818');
+    leftWallGrad.addColorStop(0.5, '#4a3520');
+    leftWallGrad.addColorStop(1, '#3d2a18');
+    ctx.fillStyle = leftWallGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(backWallLeft, backWallTop);
+    ctx.lineTo(backWallLeft, backWallBottom);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.fill();
+
+    // Stone/timber texture on left wall
+    const leftBlockH = 28;
+    const leftBlockW = 45;
+    for (let row = 0; row < 18; row++) {
+      for (let col = 0; col < 4; col++) {
+        const baseY = row * leftBlockH;
+        const baseX = col * leftBlockW + (row % 2 === 0 ? 0 : leftBlockW * 0.5);
+        // Calculate perspective-adjusted position on left wall
+        const wallT = baseY / h;
+        const xOff = wallT * 0 + (1 - wallT) * 0;
+        const actualX = baseX + xOff;
+        if (actualX > backWallLeft) continue;
+        const sv = seed(row * 4 + col, 50);
+        const r = 58 + sv * 28;
+        const g = 42 + sv * 18;
+        const b = 28 + sv * 12;
+        ctx.fillStyle = `rgb(${r | 0}, ${g | 0}, ${b | 0})`;
+        ctx.fillRect(actualX + 1, baseY + 1, Math.min(leftBlockW - 2, backWallLeft - actualX), leftBlockH - 2);
+        // Mortar line
+        ctx.fillStyle = 'rgba(15, 10, 6, 0.5)';
+        ctx.fillRect(actualX, baseY, Math.min(leftBlockW, backWallLeft - actualX), 2);
+        ctx.fillRect(actualX, baseY, 2, leftBlockH);
+      }
+    }
+
+    // Left wall timber beams (vertical, perspective)
+    for (let i = 0; i < 3; i++) {
+      const bx = 20 + i * 45;
+      if (bx > backWallLeft - 10) break;
+      ctx.fillStyle = '#2a1a0e';
+      ctx.fillRect(bx, 0, 10, h);
+      ctx.fillStyle = '#3d2510';
+      ctx.fillRect(bx, 0, 3, h);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(bx + 8, 0, 2, h);
+    }
+    ctx.restore();
+
+    // === RIGHT WALL (angling inward) ===
+    ctx.save();
+    const rightWallGrad = ctx.createLinearGradient(backWallRight, 0, w, 0);
+    rightWallGrad.addColorStop(0, '#3d2a18');
+    rightWallGrad.addColorStop(0.5, '#4a3520');
+    rightWallGrad.addColorStop(1, '#3a2818');
+    ctx.fillStyle = rightWallGrad;
+    ctx.beginPath();
+    ctx.moveTo(w, 0);
+    ctx.lineTo(backWallRight, backWallTop);
+    ctx.lineTo(backWallRight, backWallBottom);
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    ctx.fill();
+
+    // Stone texture on right wall
+    for (let row = 0; row < 18; row++) {
+      for (let col = 0; col < 4; col++) {
+        const baseY = row * 28;
+        const baseX = backWallRight + col * 45 + (row % 2 === 0 ? 0 : 22);
+        if (baseX >= w) continue;
+        const sv = seed(row * 4 + col + 100, 60);
+        const r = 55 + sv * 28;
+        const g = 40 + sv * 18;
+        const b = 26 + sv * 12;
+        ctx.fillStyle = `rgb(${r | 0}, ${g | 0}, ${b | 0})`;
+        ctx.fillRect(baseX + 1, baseY + 1, Math.min(43, w - baseX - 1), 26);
+        ctx.fillStyle = 'rgba(15, 10, 6, 0.5)';
+        ctx.fillRect(baseX, baseY, Math.min(45, w - baseX), 2);
+        ctx.fillRect(baseX, baseY, 2, 28);
+      }
+    }
+
+    // Right wall timber beams
+    for (let i = 0; i < 3; i++) {
+      const bx = w - 30 - i * 45;
+      if (bx < backWallRight + 10) break;
+      ctx.fillStyle = '#2a1a0e';
+      ctx.fillRect(bx, 0, 10, h);
+      ctx.fillStyle = '#3d2510';
+      ctx.fillRect(bx, 0, 3, h);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(bx + 8, 0, 2, h);
+    }
+    ctx.restore();
+
+    // === BACK WALL (center, stone masonry with mortar) ===
+    ctx.save();
+    const backGrad = ctx.createLinearGradient(backWallLeft, 0, backWallRight, 0);
+    backGrad.addColorStop(0, '#3d3028');
+    backGrad.addColorStop(0.3, '#5a4a3a');
+    backGrad.addColorStop(0.5, '#5d4d3d');
+    backGrad.addColorStop(0.7, '#5a4a3a');
+    backGrad.addColorStop(1, '#3d3028');
+    ctx.fillStyle = backGrad;
+    ctx.fillRect(backWallLeft, backWallTop, backWallRight - backWallLeft, backWallBottom - backWallTop);
+
+    // Stone blocks on back wall
+    const bwBlockH = 22;
+    const bwBlockW = 48;
+    for (let row = 0; row < Math.ceil((backWallBottom - backWallTop) / bwBlockH); row++) {
+      const sy = backWallTop + row * bwBlockH;
+      const rowOff = row % 2 === 0 ? 0 : bwBlockW * 0.5;
+      for (let sx = backWallLeft + rowOff; sx < backWallRight; sx += bwBlockW) {
+        const bw = Math.min(bwBlockW - 3, backWallRight - sx);
+        const bh = Math.min(bwBlockH - 3, backWallBottom - sy);
+        if (bw <= 0 || bh <= 0) continue;
+        const sv = seed(sx, sy);
+        const r = 70 + sv * 25;
+        const g = 58 + sv * 18;
+        const b = 45 + sv * 14;
+        ctx.fillStyle = `rgb(${r | 0}, ${g | 0}, ${b | 0})`;
+        ctx.fillRect(sx + 1, sy + 1, bw, bh);
+      }
+      // Horizontal mortar
+      ctx.fillStyle = 'rgba(20, 14, 8, 0.6)';
+      ctx.fillRect(backWallLeft, sy, backWallRight - backWallLeft, 3);
+    }
+    // Vertical mortar
+    for (let row = 0; row < Math.ceil((backWallBottom - backWallTop) / bwBlockH); row++) {
+      const sy = backWallTop + row * bwBlockH;
+      const rowOff = row % 2 === 0 ? 0 : bwBlockW * 0.5;
+      for (let sx = backWallLeft + rowOff; sx < backWallRight; sx += bwBlockW) {
+        ctx.fillStyle = 'rgba(20, 14, 8, 0.5)';
+        ctx.fillRect(sx, sy, 3, bwBlockH);
+      }
+    }
+
+    // Back wall corner shadows (depth where walls meet)
+    const leftCorner = ctx.createLinearGradient(backWallLeft, 0, backWallLeft + 30, 0);
+    leftCorner.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+    leftCorner.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = leftCorner;
+    ctx.fillRect(backWallLeft, backWallTop, 30, backWallBottom - backWallTop);
+
+    const rightCorner = ctx.createLinearGradient(backWallRight - 30, 0, backWallRight, 0);
+    rightCorner.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    rightCorner.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+    ctx.fillStyle = rightCorner;
+    ctx.fillRect(backWallRight - 30, backWallTop, 30, backWallBottom - backWallTop);
+    ctx.restore();
+
+    // === 3D PERSPECTIVE FLOOR (wooden planks converging to vanishing point) ===
+    ctx.save();
+    // Floor base with warm gradient
+    const flGrad = ctx.createLinearGradient(0, floorTop, 0, floorBottom);
+    flGrad.addColorStop(0, '#3a2818');
+    flGrad.addColorStop(0.5, '#4a3520');
+    flGrad.addColorStop(1, '#2a1c10');
+    ctx.fillStyle = flGrad;
+    ctx.beginPath();
+    ctx.moveTo(backWallLeft, floorTop);
+    ctx.lineTo(backWallRight, floorTop);
+    ctx.lineTo(w, floorBottom);
+    ctx.lineTo(0, floorBottom);
+    ctx.closePath();
+    ctx.fill();
+
+    // Floor planks with perspective (lines converging toward vpX, vpY)
+    const plankCount = 14;
+    for (let i = 0; i <= plankCount; i++) {
+      const t = i / plankCount;
+      // At back wall
+      const backX = backWallLeft + t * (backWallRight - backWallLeft);
+      // At front
+      const frontX = t * w;
+      ctx.strokeStyle = `rgba(20, 12, 6, ${0.4 + t * 0.1})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(backX, floorTop);
+      ctx.lineTo(frontX, floorBottom);
+      ctx.stroke();
+    }
+
+    // Horizontal plank joints (cross-lines), more spaced at back, closer at front
+    for (let i = 1; i < 8; i++) {
+      const t = i / 8;
+      // Perspective: closer lines are more spaced
+      const pt = t * t; // quadratic for perspective compression
+      const yy = floorTop + pt * (floorBottom - floorTop);
+      // Width expands from back to front
+      const leftEdge = backWallLeft + (0 - backWallLeft) * pt;
+      const rightEdge = backWallRight + (w - backWallRight) * pt;
+      ctx.strokeStyle = 'rgba(20, 12, 6, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(leftEdge, yy);
+      ctx.lineTo(rightEdge, yy);
+      ctx.stroke();
+    }
+
+    // Wood grain on floor planks (subtle horizontal lines)
+    for (let i = 0; i < 12; i++) {
+      const t = (i + 0.5) / 12;
+      const pt = t * t;
+      const yy = floorTop + pt * (floorBottom - floorTop);
+      const leftEdge = backWallLeft + (0 - backWallLeft) * pt;
+      const rightEdge = backWallRight + (w - backWallRight) * pt;
+      ctx.strokeStyle = `rgba(80, 55, 30, ${0.08 + seed(i, 200) * 0.06})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(leftEdge, yy);
+      for (let sx = leftEdge; sx < rightEdge; sx += 40) {
+        const wobble = Math.sin(sx * 0.05 + i * 2) * 1.5;
+        ctx.lineTo(sx + 20, yy + wobble);
+      }
+      ctx.stroke();
+    }
+
+    // Floor shadow at back wall base (depth transition)
+    const floorShadow = ctx.createLinearGradient(0, floorTop, 0, floorTop + 30);
+    floorShadow.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+    floorShadow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = floorShadow;
+    ctx.fillRect(backWallLeft - 20, floorTop, backWallRight - backWallLeft + 40, 30);
+    ctx.restore();
+
+    // === FIREPLACE (center of back wall, 3D stone surround) ===
+    const fpX = w / 2 - 80;
+    const fpY = backWallTop + 60;
+    const fpW = 160;
+    const fpH = backWallBottom - fpY;
+
+    // Stone hearth surround — 3D frame with depth
+    // Outer stone frame
+    ctx.fillStyle = '#3a2e26';
+    ctx.fillRect(fpX - 18, fpY - 12, fpW + 36, fpH + 16);
+    // Inner depth shadow (recessed hearth)
+    ctx.fillStyle = '#2a2220';
+    ctx.fillRect(fpX - 12, fpY - 6, fpW + 24, fpH + 10);
+
+    // Stone blocks around fireplace
+    const fpStoneH = 18;
+    const fpStoneW = 28;
+    // Left column of stones
+    for (let i = 0; i < Math.ceil(fpH / fpStoneH) + 1; i++) {
+      const sy = fpY - 12 + i * fpStoneH;
+      const sv = seed(i, 300);
+      ctx.fillStyle = `rgb(${55 + sv * 20 | 0}, ${45 + sv * 15 | 0}, ${38 + sv * 10 | 0})`;
+      ctx.fillRect(fpX - 17, sy + 1, fpStoneW - 2, fpStoneH - 2);
+      // Right column
+      ctx.fillStyle = `rgb(${52 + sv * 22 | 0}, ${43 + sv * 16 | 0}, ${36 + sv * 11 | 0})`;
+      ctx.fillRect(fpX + fpW - 10, sy + 1, fpStoneW - 2, fpStoneH - 2);
+    }
+    // Top lintel stones
+    for (let i = 0; i < 5; i++) {
+      const sx = fpX - 12 + i * (fpW + 24) / 5;
+      const sv = seed(i, 310);
+      ctx.fillStyle = `rgb(${58 + sv * 18 | 0}, ${48 + sv * 14 | 0}, ${40 + sv * 10 | 0})`;
+      ctx.fillRect(sx + 1, fpY - 11, (fpW + 24) / 5 - 2, 14);
+    }
+
+    // Hearth arch (rounded top, deep black interior)
+    ctx.beginPath();
+    ctx.moveTo(fpX + 4, fpY + fpH);
+    ctx.lineTo(fpX + 4, fpY + 30);
+    ctx.quadraticCurveTo(fpX + fpW / 2, fpY - 10, fpX + fpW - 4, fpY + 30);
+    ctx.lineTo(fpX + fpW - 4, fpY + fpH);
+    ctx.closePath();
+    ctx.fillStyle = '#060402';
+    ctx.fill();
+
+    // Inner arch glow edge
+    ctx.strokeStyle = '#4a3d30';
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(fpX + 6, fpY + fpH);
-    ctx.lineTo(fpX + 6, fpY + 26);
-    ctx.quadraticCurveTo(fpX + fpW / 2, fpY - 22, fpX + fpW - 6, fpY + 26);
+    ctx.lineTo(fpX + 6, fpY + 32);
+    ctx.quadraticCurveTo(fpX + fpW / 2, fpY - 6, fpX + fpW - 6, fpY + 32);
     ctx.lineTo(fpX + fpW - 6, fpY + fpH);
     ctx.stroke();
 
-    // Mantle shelf
+    // Mantle shelf with 3D depth
     ctx.fillStyle = '#3d2814';
-    ctx.fillRect(fpX - 20, fpY - 12, fpW + 40, 8);
-    ctx.fillStyle = '#5a3d1e';
-    ctx.fillRect(fpX - 20, fpY - 14, fpW + 40, 3);
+    ctx.fillRect(fpX - 24, fpY - 16, fpW + 48, 10);
+    // Mantle top highlight
+    ctx.fillStyle = '#6a4a28';
+    ctx.fillRect(fpX - 24, fpY - 18, fpW + 48, 3);
+    // Mantle bottom shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(fpX - 24, fpY - 6, fpW + 48, 3);
+    // Mantle depth (front face)
+    ctx.fillStyle = '#4a3018';
+    ctx.fillRect(fpX - 24, fpY - 16, fpW + 48, 2);
 
-    // Logs
+    // Candles on mantle
+    for (let i = 0; i < 3; i++) {
+      const cx = fpX - 10 + i * (fpW / 2 + 15);
+      ctx.fillStyle = '#c0b080';
+      ctx.fillRect(cx, fpY - 28, 5, 12);
+      // Flame
+      const flick = Math.sin(this.flickerPhase * 3 + i * 2.5) * 1.5;
+      ctx.fillStyle = `rgba(255, 200, 50, ${0.7 + Math.sin(this.flickerPhase * 2 + i) * 0.2})`;
+      ctx.beginPath();
+      ctx.ellipse(cx + 2.5, fpY - 32 + flick, 2.5, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Candle glow
+      const candleGlow = ctx.createRadialGradient(cx + 2.5, fpY - 30, 2, cx + 2.5, fpY - 30, 20);
+      candleGlow.addColorStop(0, 'rgba(255, 180, 50, 0.15)');
+      candleGlow.addColorStop(1, 'rgba(255, 150, 30, 0)');
+      ctx.fillStyle = candleGlow;
+      ctx.fillRect(cx - 18, fpY - 50, 42, 40);
+    }
+
+    // Logs in fireplace
     ctx.fillStyle = '#2a1508';
-    ctx.fillRect(fpX + 20, fpY + fpH - 30, 50, 12);
-    ctx.fillRect(fpX + 60, fpY + fpH - 35, 55, 10);
+    ctx.fillRect(fpX + 20, fpY + fpH - 28, 50, 14);
+    ctx.fillRect(fpX + 60, fpY + fpH - 33, 55, 12);
     ctx.fillStyle = '#3d1e0a';
-    ctx.fillRect(fpX + 35, fpY + fpH - 40, 45, 8);
+    ctx.fillRect(fpX + 35, fpY + fpH - 38, 45, 10);
+    // Log bark texture
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(fpX + 22 + i * 12, fpY + fpH - 27);
+      ctx.lineTo(fpX + 22 + i * 12, fpY + fpH - 15);
+      ctx.stroke();
+    }
 
     // Embers at base
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 16; i++) {
       const ex = fpX + 25 + seed(i, 100) * (fpW - 50);
-      const ey = fpY + fpH - 10 - seed(i, 101) * 20;
-      const er = 2 + seed(i, 102) * 3;
+      const ey = fpY + fpH - 8 - seed(i, 101) * 18;
+      const er = 1.5 + seed(i, 102) * 3;
       const pulse = Math.sin(this.flickerPhase * 2 + i * 1.7) * 0.3 + 0.7;
-      ctx.fillStyle = `rgba(255, ${80 + seed(i, 103) * 80 | 0}, 0, ${pulse * 0.6})`;
+      ctx.fillStyle = `rgba(255, ${80 + seed(i, 103) * 100 | 0}, 0, ${pulse * 0.7})`;
       ctx.beginPath();
       ctx.arc(ex, ey, er, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Fire flames (animated)
+    // Fire flames (animated) — larger, more vibrant
     const fireFlicker = Math.sin(this.flickerPhase * 2.5) * 8;
     // Outer flame
     const fireGrad = ctx.createRadialGradient(
-      w / 2, fpY + fpH - 50 + fireFlicker * 0.3, 5,
-      w / 2, fpY + fpH - 20, 50
+      w / 2, fpY + fpH - 50 + fireFlicker * 0.3, 8,
+      w / 2, fpY + fpH - 15, 55
     );
-    fireGrad.addColorStop(0, 'rgba(255, 220, 50, 0.8)');
-    fireGrad.addColorStop(0.4, 'rgba(255, 120, 10, 0.5)');
+    fireGrad.addColorStop(0, 'rgba(255, 230, 60, 0.85)');
+    fireGrad.addColorStop(0.3, 'rgba(255, 150, 20, 0.6)');
+    fireGrad.addColorStop(0.7, 'rgba(255, 80, 10, 0.3)');
     fireGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
     ctx.fillStyle = fireGrad;
     ctx.beginPath();
-    ctx.moveTo(fpX + 30, fpY + fpH - 10);
-    ctx.quadraticCurveTo(fpX + 50 + fireFlicker, fpY + 40, w / 2, fpY + 30 + fireFlicker * 0.5);
-    ctx.quadraticCurveTo(fpX + fpW - 50 - fireFlicker, fpY + 40, fpX + fpW - 30, fpY + fpH - 10);
+    ctx.moveTo(fpX + 25, fpY + fpH - 8);
+    ctx.quadraticCurveTo(fpX + 45 + fireFlicker, fpY + 50, w / 2, fpY + 35 + fireFlicker * 0.5);
+    ctx.quadraticCurveTo(fpX + fpW - 45 - fireFlicker, fpY + 50, fpX + fpW - 25, fpY + fpH - 8);
     ctx.fill();
 
     // Inner bright flame
     const innerGrad = ctx.createRadialGradient(
-      w / 2, fpY + fpH - 45, 3,
-      w / 2, fpY + fpH - 25, 30
+      w / 2, fpY + fpH - 42, 4,
+      w / 2, fpY + fpH - 22, 32
     );
-    innerGrad.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
-    innerGrad.addColorStop(0.5, 'rgba(255, 200, 50, 0.4)');
+    innerGrad.addColorStop(0, 'rgba(255, 255, 210, 0.95)');
+    innerGrad.addColorStop(0.4, 'rgba(255, 210, 60, 0.5)');
     innerGrad.addColorStop(1, 'rgba(255, 120, 0, 0)');
     ctx.fillStyle = innerGrad;
     ctx.beginPath();
-    ctx.ellipse(w / 2, fpY + fpH - 40 + fireFlicker * 0.3, 20, 35 + fireFlicker, 0, 0, Math.PI * 2);
+    ctx.ellipse(w / 2, fpY + fpH - 38 + fireFlicker * 0.3, 22, 38 + fireFlicker, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Fireplace warm glow on wall above — large, bright
-    const hearthGlow = ctx.createRadialGradient(w / 2, fpY + 20, 20, w / 2, fpY + 20, 350);
-    hearthGlow.addColorStop(0, `rgba(255, 150, 40, ${0.28 + Math.sin(this.flickerPhase * 1.5) * 0.06})`);
-    hearthGlow.addColorStop(0.5, `rgba(255, 120, 20, ${0.12 + Math.sin(this.flickerPhase * 1.2) * 0.03})`);
+    // God-rays from fireplace (vertical light streaks)
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 5; i++) {
+      const rayX = fpX + 25 + i * (fpW - 50) / 4;
+      const rayFlicker = Math.sin(this.flickerPhase * 1.3 + i * 1.8) * 0.02 + 0.03;
+      const rayGrad = ctx.createLinearGradient(rayX, fpY + 30, rayX, fpY - 60);
+      rayGrad.addColorStop(0, `rgba(255, 180, 60, ${rayFlicker})`);
+      rayGrad.addColorStop(1, 'rgba(255, 150, 40, 0)');
+      ctx.fillStyle = rayGrad;
+      ctx.fillRect(rayX - 4, fpY - 60, 8, 90);
+    }
+    ctx.restore();
+
+    // Fireplace warm glow on entire room — large, warm
+    const hearthGlow = ctx.createRadialGradient(w / 2, fpY + fpH / 2, 30, w / 2, fpY + fpH / 2, 400);
+    hearthGlow.addColorStop(0, `rgba(255, 160, 50, ${0.22 + Math.sin(this.flickerPhase * 1.5) * 0.05})`);
+    hearthGlow.addColorStop(0.4, `rgba(255, 120, 30, ${0.10 + Math.sin(this.flickerPhase * 1.2) * 0.03})`);
     hearthGlow.addColorStop(1, 'rgba(255, 80, 0, 0)');
     ctx.fillStyle = hearthGlow;
-    ctx.fillRect(0, 0, w, fpY + fpH);
+    ctx.fillRect(0, 0, w, h);
 
     // === Trophy Wall (right of fireplace) ===
     this._drawTrophyWall(ctx, w, h, fpX + fpW + 40, fpY + 10);
 
-    // Warm torch glow overlay (radial gradients on left and right) — bright
-    const flicker = Math.sin(this.flickerPhase) * 0.05 + 0.22;
-    const glow1 = ctx.createRadialGradient(80, 120, 15, 80, 120, 350);
-    glow1.addColorStop(0, `rgba(255, 170, 50, ${flicker + 0.08})`);
-    glow1.addColorStop(0.5, `rgba(255, 130, 30, ${flicker * 0.4})`);
-    glow1.addColorStop(1, 'rgba(255, 100, 10, 0)');
-    ctx.fillStyle = glow1;
-    ctx.fillRect(0, 0, 450, 550);
-
-    const glow2 = ctx.createRadialGradient(w - 80, 120, 15, w - 80, 120, 350);
-    glow2.addColorStop(0, `rgba(255, 170, 50, ${flicker + 0.06})`);
-    glow2.addColorStop(0.5, `rgba(255, 130, 30, ${flicker * 0.35})`);
-    glow2.addColorStop(1, 'rgba(255, 100, 10, 0)');
-    ctx.fillStyle = glow2;
-    ctx.fillRect(w - 450, 0, 450, 550);
-
-    // === Wooden ceiling beams ===
-    const beamH = 12;
-    const beamColor = '#3d2814';
-    const beamHighlight = '#5a3d1e';
-    for (let bx = 0; bx < 4; bx++) {
-      const beamX = 60 + bx * (w - 120) / 3;
-      // Vertical beam from top
-      ctx.fillStyle = beamColor;
-      ctx.fillRect(beamX - 6, 0, 12, h * 0.7);
-      ctx.fillStyle = beamHighlight;
-      ctx.fillRect(beamX - 6, 0, 3, h * 0.7);
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.fillRect(beamX + 4, 0, 2, h * 0.7);
+    // === TORCH SCONCES on side walls ===
+    const torchPositions = [
+      { x: 60, y: 140 },
+      { x: 60, y: 320 },
+      { x: w - 60, y: 140 },
+      { x: w - 60, y: 320 },
+    ];
+    for (let ti = 0; ti < torchPositions.length; ti++) {
+      const torch = torchPositions[ti];
+      // Sconce bracket
+      ctx.fillStyle = '#3a2a1a';
+      ctx.fillRect(torch.x - 3, torch.y, 6, 16);
+      // Torch stick
+      ctx.fillStyle = '#5a3818';
+      ctx.fillRect(torch.x - 2, torch.y - 14, 4, 16);
+      // Flame
+      const tFlick = Math.sin(this.flickerPhase * 3.2 + ti * 1.9) * 2;
+      ctx.fillStyle = `rgba(255, 190, 50, ${0.75 + Math.sin(this.flickerPhase * 2.5 + ti) * 0.15})`;
+      ctx.beginPath();
+      ctx.ellipse(torch.x, torch.y - 18 + tFlick, 4, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Bright core
+      ctx.fillStyle = 'rgba(255, 255, 200, 0.6)';
+      ctx.beginPath();
+      ctx.ellipse(torch.x, torch.y - 16 + tFlick, 2, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
-    // Horizontal beam across top
-    ctx.fillStyle = beamColor;
-    ctx.fillRect(0, 58, w, beamH);
-    ctx.fillStyle = beamHighlight;
-    ctx.fillRect(0, 58, w, 3);
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(0, 58 + beamH - 2, w, 2);
 
-    // === Wall decorations — old paintings and shields ===
-    // Shield (left wall)
-    const shieldX = 130;
-    const shieldY = 140;
-    ctx.fillStyle = '#3a2a18';
+    // Warm torch glow overlay (radial gradients from each torch)
+    const flicker = Math.sin(this.flickerPhase) * 0.04 + 0.18;
+    for (const torch of torchPositions) {
+      const glow = ctx.createRadialGradient(torch.x, torch.y, 10, torch.x, torch.y, 280);
+      glow.addColorStop(0, `rgba(255, 170, 50, ${flicker + 0.06})`);
+      glow.addColorStop(0.4, `rgba(255, 130, 30, ${flicker * 0.3})`);
+      glow.addColorStop(1, 'rgba(255, 100, 10, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(
+        Math.max(0, torch.x - 280), Math.max(0, torch.y - 280),
+        Math.min(560, w), Math.min(560, h)
+      );
+    }
+
+    // === CEILING RAFTERS (3D perspective beams) ===
+    ctx.save();
+    // Main horizontal beam across back wall top
+    ctx.fillStyle = '#2a1a0e';
     ctx.beginPath();
-    ctx.moveTo(shieldX, shieldY);
-    ctx.lineTo(shieldX + 30, shieldY);
-    ctx.lineTo(shieldX + 30, shieldY + 30);
-    ctx.lineTo(shieldX + 15, shieldY + 42);
-    ctx.lineTo(shieldX, shieldY + 30);
+    ctx.moveTo(backWallLeft - 5, backWallTop - 2);
+    ctx.lineTo(backWallRight + 5, backWallTop - 2);
+    ctx.lineTo(backWallRight + 5, backWallTop + 10);
+    ctx.lineTo(backWallLeft - 5, backWallTop + 10);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = '#5a3d20';
+    ctx.fillStyle = '#3d2510';
+    ctx.fillRect(backWallLeft - 5, backWallTop - 2, backWallRight - backWallLeft + 10, 3);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(backWallLeft - 5, backWallTop + 8, backWallRight - backWallLeft + 10, 2);
+
+    // Perspective rafters from back wall to front
+    for (let i = 0; i < 5; i++) {
+      const t = (i + 0.5) / 5;
+      const backX = backWallLeft + t * (backWallRight - backWallLeft);
+      // Rafters spread outward toward viewer
+      const frontX = t * w;
+      ctx.strokeStyle = '#2a1a0e';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(backX, backWallTop + 4);
+      ctx.lineTo(frontX, 0);
+      ctx.stroke();
+      // Highlight on rafter
+      ctx.strokeStyle = '#3d2510';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(backX - 2, backWallTop + 2);
+      ctx.lineTo(frontX - 2, 0);
+      ctx.stroke();
+    }
+
+    // Second horizontal beam (closer to viewer)
+    const midBeamY = 40;
+    ctx.fillStyle = '#2a1a0e';
+    ctx.fillRect(0, midBeamY, w, 12);
+    ctx.fillStyle = '#3d2510';
+    ctx.fillRect(0, midBeamY, w, 3);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(0, midBeamY + 10, w, 2);
+    ctx.restore();
+
+    // === WALL DECORATIONS ===
+    // Shield (left wall)
+    ctx.save();
+    const shieldX = 50;
+    const shieldY = 180;
+    ctx.fillStyle = '#4a3420';
+    ctx.beginPath();
+    ctx.moveTo(shieldX, shieldY);
+    ctx.lineTo(shieldX + 32, shieldY);
+    ctx.lineTo(shieldX + 32, shieldY + 32);
+    ctx.lineTo(shieldX + 16, shieldY + 44);
+    ctx.lineTo(shieldX, shieldY + 32);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#6b4e2a';
     ctx.lineWidth = 2;
     ctx.stroke();
     // Shield cross
-    ctx.strokeStyle = '#6b4e2a';
+    ctx.strokeStyle = '#8a6830';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(shieldX + 15, shieldY + 4);
-    ctx.lineTo(shieldX + 15, shieldY + 36);
-    ctx.moveTo(shieldX + 4, shieldY + 16);
-    ctx.lineTo(shieldX + 26, shieldY + 16);
+    ctx.moveTo(shieldX + 16, shieldY + 4);
+    ctx.lineTo(shieldX + 16, shieldY + 38);
+    ctx.moveTo(shieldX + 4, shieldY + 18);
+    ctx.lineTo(shieldX + 28, shieldY + 18);
     ctx.stroke();
+    ctx.restore();
 
-    // Old painting (right wall) — simple framed rectangle
-    const paintX = w - 180;
-    const paintY = 130;
-    const paintW = 50;
-    const paintH = 40;
-    // Frame
+    // Old painting (right wall)
+    ctx.save();
+    const paintX = w - 80;
+    const paintY = 170;
+    const paintW = 45;
+    const paintH = 35;
     ctx.fillStyle = '#3d2510';
     ctx.fillRect(paintX - 4, paintY - 4, paintW + 8, paintH + 8);
     ctx.fillStyle = '#5a3818';
     ctx.fillRect(paintX - 3, paintY - 3, paintW + 6, paintH + 6);
-    // Canvas (dark landscape)
     const paintGrad = ctx.createLinearGradient(paintX, paintY, paintX, paintY + paintH);
     paintGrad.addColorStop(0, '#1a2030');
     paintGrad.addColorStop(0.5, '#1a2820');
     paintGrad.addColorStop(1, '#0f1510');
     ctx.fillStyle = paintGrad;
     ctx.fillRect(paintX, paintY, paintW, paintH);
-    // Hint of a moon
     ctx.fillStyle = 'rgba(200, 200, 180, 0.3)';
     ctx.beginPath();
-    ctx.arc(paintX + 38, paintY + 12, 6, 0, Math.PI * 2);
+    ctx.arc(paintX + 34, paintY + 10, 5, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
 
-    // Second shield (right side, lower)
-    const sh2X = w - 110;
-    const sh2Y = 200;
+    // Round shield (right wall, lower)
+    ctx.save();
+    const sh2X = w - 50;
+    const sh2Y = 250;
     ctx.fillStyle = '#4a3420';
     ctx.beginPath();
-    ctx.arc(sh2X + 14, sh2Y + 14, 16, 0, Math.PI * 2);
+    ctx.arc(sh2X, sh2Y, 16, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#6b4e2a';
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.fillStyle = '#2a1a0e';
     ctx.beginPath();
-    ctx.arc(sh2X + 14, sh2Y + 14, 8, 0, Math.PI * 2);
+    ctx.arc(sh2X, sh2Y, 8, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
 
-    // === Floor — dark wooden planks (below the bar counter line) ===
-    const floorY = h - 80;
-    const floorGrad = ctx.createLinearGradient(0, floorY, 0, h);
-    floorGrad.addColorStop(0, '#3a2818');
-    floorGrad.addColorStop(1, '#1e140c');
-    ctx.fillStyle = floorGrad;
-    ctx.fillRect(0, floorY, w, h - floorY);
-    // Plank lines on floor
-    for (let fy = floorY; fy < h - 50; fy += 8) {
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.fillRect(0, fy, w, 1);
+    // === ATMOSPHERIC HAZE / SMOKE near ceiling ===
+    ctx.save();
+    const hazeGrad = ctx.createLinearGradient(0, 0, 0, 120);
+    hazeGrad.addColorStop(0, 'rgba(80, 65, 45, 0.12)');
+    hazeGrad.addColorStop(0.5, 'rgba(70, 55, 35, 0.06)');
+    hazeGrad.addColorStop(1, 'rgba(60, 45, 25, 0)');
+    ctx.fillStyle = hazeGrad;
+    ctx.fillRect(0, 0, w, 120);
+    // Wisps of smoke
+    for (let i = 0; i < 4; i++) {
+      const sx = 100 + i * 180 + Math.sin(this.flickerPhase * 0.3 + i * 1.5) * 15;
+      const sy = 25 + Math.sin(this.flickerPhase * 0.2 + i) * 8;
+      const smokeGrad = ctx.createRadialGradient(sx, sy, 5, sx, sy, 50);
+      smokeGrad.addColorStop(0, 'rgba(90, 75, 55, 0.06)');
+      smokeGrad.addColorStop(1, 'rgba(80, 65, 45, 0)');
+      ctx.fillStyle = smokeGrad;
+      ctx.fillRect(sx - 50, sy - 30, 100, 60);
     }
+    ctx.restore();
 
-    // Bottom bar — old dark tavern bar counter
+    // === DUST MOTES floating in firelight ===
+    ctx.save();
+    for (let i = 0; i < 20; i++) {
+      const baseX = seed(i, 500) * w;
+      const baseY = seed(i, 501) * (h - 100) + 50;
+      const driftX = Math.sin(this.flickerPhase * 0.4 + i * 2.3) * 8;
+      const driftY = Math.sin(this.flickerPhase * 0.3 + i * 1.7) * 5;
+      const mx = baseX + driftX;
+      const my = baseY + driftY;
+      const distToFire = Math.sqrt((mx - w / 2) ** 2 + (my - (fpY + fpH / 2)) ** 2);
+      const brightness = Math.max(0, 1 - distToFire / 350);
+      if (brightness > 0.05) {
+        ctx.fillStyle = `rgba(255, 210, 140, ${brightness * 0.15})`;
+        ctx.beginPath();
+        ctx.arc(mx, my, 1 + seed(i, 502) * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    // === Bottom bar — old dark tavern bar counter ===
     ctx.fillStyle = '#1e120a';
     ctx.fillRect(0, h - 50, w, 50);
     ctx.fillStyle = '#3d2a18';
     ctx.fillRect(0, h - 50, w, 4);
     ctx.fillStyle = '#5a3d20';
     ctx.fillRect(0, h - 48, w, 2);
-
-    // Bar counter edge highlight
     ctx.fillStyle = 'rgba(90, 60, 30, 0.5)';
     ctx.fillRect(0, h - 46, w, 1);
 
@@ -1632,14 +1894,158 @@ export class TavernState {
     // Seeded pseudo-random for consistent details
     const seed = (x, y) => Math.abs(Math.sin(x * 127.1 + y * 311.7) * 43758.5453 % 1);
 
-    // === Bar counter — left side ===
+    // === Helper: draw a proportioned NPC figure ===
+    const drawNPC = (x, y, opts) => {
+      const { headColor, bodyColor, vestColor, headR, bodyW, bodyH, arms, sling, seated } = {
+        headColor: '#c08060', bodyColor: '#3a2a18', vestColor: null,
+        headR: 11, bodyW: 24, bodyH: 32, arms: true, sling: false, seated: false,
+        ...opts
+      };
+      // Shadow on floor
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(x, y + bodyH + 4, bodyW * 0.7, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Legs (if standing)
+      if (!seated) {
+        ctx.fillStyle = '#2a1a10';
+        ctx.fillRect(x - bodyW / 2 + 3, y + bodyH - 4, 8, 14);
+        ctx.fillRect(x + bodyW / 2 - 11, y + bodyH - 4, 8, 14);
+        // Boots
+        ctx.fillStyle = '#1a0e06';
+        ctx.fillRect(x - bodyW / 2 + 2, y + bodyH + 8, 10, 5);
+        ctx.fillRect(x + bodyW / 2 - 12, y + bodyH + 8, 10, 5);
+      }
+      // Body
+      ctx.fillStyle = bodyColor;
+      ctx.fillRect(x - bodyW / 2, y, bodyW, bodyH);
+      // Vest/detail overlay
+      if (vestColor) {
+        ctx.fillStyle = vestColor;
+        ctx.fillRect(x - bodyW / 2 + 4, y + 4, bodyW - 8, bodyH - 6);
+      }
+      // Shoulders
+      ctx.fillStyle = bodyColor;
+      ctx.fillRect(x - bodyW / 2 - 4, y, 6, 10);
+      ctx.fillRect(x + bodyW / 2 - 2, y, 6, 10);
+      // Arms
+      if (arms && !sling) {
+        ctx.fillStyle = headColor;
+        ctx.fillRect(x - bodyW / 2 - 5, y + 10, 6, 16);
+        ctx.fillRect(x + bodyW / 2 - 1, y + 10, 6, 16);
+      }
+      if (sling) {
+        // Good arm
+        ctx.fillStyle = headColor;
+        ctx.fillRect(x - bodyW / 2 - 5, y + 10, 6, 16);
+        // Sling arm
+        ctx.strokeStyle = '#c0b090';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x + bodyW / 2 - 2, y + 2);
+        ctx.lineTo(x + bodyW / 2 + 4, y + 14);
+        ctx.lineTo(x + 2, y + 20);
+        ctx.stroke();
+      }
+      // Neck
+      ctx.fillStyle = headColor;
+      ctx.fillRect(x - 4, y - 6, 8, 8);
+      // Head
+      ctx.fillStyle = headColor;
+      ctx.beginPath();
+      ctx.arc(x, y - headR - 4, headR, 0, Math.PI * 2);
+      ctx.fill();
+      // Hair (dark top of head)
+      ctx.fillStyle = 'rgba(30, 20, 10, 0.6)';
+      ctx.beginPath();
+      ctx.arc(x, y - headR - 6, headR - 1, Math.PI, Math.PI * 2);
+      ctx.fill();
+    };
+
+    // === Helper: draw a 3D table with shadow and optional candle ===
+    const drawTable = (tx, ty, tw, th, hasCandle) => {
+      // Floor shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath();
+      ctx.ellipse(tx + tw / 2, ty + th + 18, tw * 0.6, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Table legs (back two, darker)
+      ctx.fillStyle = '#2a1808';
+      ctx.fillRect(tx + 6, ty + th, 6, 18);
+      ctx.fillRect(tx + tw - 12, ty + th, 6, 18);
+      // Table top — 3D trapezoid (wider at front)
+      ctx.fillStyle = '#4a3018';
+      ctx.beginPath();
+      ctx.moveTo(tx - 2, ty + th);
+      ctx.lineTo(tx + tw + 2, ty + th);
+      ctx.lineTo(tx + tw - 4, ty);
+      ctx.lineTo(tx + 4, ty);
+      ctx.closePath();
+      ctx.fill();
+      // Top surface
+      ctx.fillStyle = '#5a3d20';
+      ctx.fillRect(tx + 2, ty, tw - 4, 5);
+      // Front face
+      ctx.fillStyle = '#3d2510';
+      ctx.fillRect(tx - 2, ty + th - 4, tw + 4, 6);
+      // Front legs (lighter, in front)
+      ctx.fillStyle = '#3d2510';
+      ctx.fillRect(tx + 4, ty + th, 6, 20);
+      ctx.fillRect(tx + tw - 10, ty + th, 6, 20);
+      // Candle on table
+      if (hasCandle) {
+        const cx = tx + tw / 2;
+        ctx.fillStyle = '#c0b080';
+        ctx.fillRect(cx - 2, ty - 10, 4, 10);
+        const flick = Math.sin(this.flickerPhase * 3.5 + tx) * 1.5;
+        ctx.fillStyle = `rgba(255, 200, 50, ${0.7 + Math.sin(this.flickerPhase * 2.5 + tx) * 0.2})`;
+        ctx.beginPath();
+        ctx.ellipse(cx, ty - 14 + flick, 2.5, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Candle glow on table
+        const cGlow = ctx.createRadialGradient(cx, ty - 10, 2, cx, ty - 10, 30);
+        cGlow.addColorStop(0, 'rgba(255, 180, 50, 0.12)');
+        cGlow.addColorStop(1, 'rgba(255, 150, 30, 0)');
+        ctx.fillStyle = cGlow;
+        ctx.fillRect(cx - 30, ty - 40, 60, 50);
+      }
+    };
+
+    // === Bar counter — left side (3D perspective) ===
     const barX = 40;
     const barY = 220;
     const barW = 180;
     const barH = 120;
 
+    // Bar shadow on floor
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(barX + barW / 2, barY + barH + 55, barW * 0.6, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bar front face (3D — wider at bottom)
+    ctx.fillStyle = '#2a1808';
+    ctx.beginPath();
+    ctx.moveTo(barX - 10, barY + barH);
+    ctx.lineTo(barX + barW + 20, barY + barH);
+    ctx.lineTo(barX + barW + 25, barY + barH + 60);
+    ctx.lineTo(barX - 15, barY + barH + 60);
+    ctx.closePath();
+    ctx.fill();
+    // Plank lines on bar front
+    for (let i = 0; i < 4; i++) {
+      const py = barY + barH + 12 + i * 14;
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(barX - 12, py, barW + 37, 1);
+    }
+    // Bar front wood grain
+    ctx.fillStyle = 'rgba(60, 40, 20, 0.1)';
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(barX + 10 + i * 60, barY + barH + 5, 40, 50);
+    }
+
     // Bar counter top surface (perspective — wider at bottom)
-    ctx.fillStyle = '#3d2510';
+    ctx.fillStyle = '#4a3018';
     ctx.beginPath();
     ctx.moveTo(barX, barY);
     ctx.lineTo(barX + barW, barY);
@@ -1649,176 +2055,189 @@ export class TavernState {
     ctx.fill();
 
     // Bar top edge highlight
+    ctx.fillStyle = '#6a4a28';
+    ctx.fillRect(barX, barY, barW, 5);
+    // Bar top inner edge
     ctx.fillStyle = '#5a3818';
-    ctx.fillRect(barX, barY, barW, 4);
+    ctx.fillRect(barX, barY + 5, barW, 2);
 
-    // Bar front face
+    // Back shelf (behind bar)
+    ctx.fillStyle = '#3d2510';
+    ctx.fillRect(barX + 10, barY - 50, barW - 20, 6);
+    ctx.fillRect(barX + 10, barY - 85, barW - 20, 6);
+    // Shelf brackets
     ctx.fillStyle = '#2a1808';
-    ctx.fillRect(barX - 10, barY + barH, barW + 30, 60);
-    // Plank lines on bar front
-    for (let i = 0; i < 4; i++) {
-      const py = barY + barH + 12 + i * 14;
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.fillRect(barX - 10, py, barW + 30, 1);
-    }
+    ctx.fillRect(barX + 25, barY - 50, 4, 10);
+    ctx.fillRect(barX + barW - 30, barY - 50, 4, 10);
 
-    // Bottles on back shelf
-    const bottleColors = ['#4a2020', '#2a4a20', '#3a2a50', '#5a4020', '#204040'];
-    for (let i = 0; i < 5; i++) {
-      const bx = barX + 20 + i * 30;
-      const by = barY - 40;
-      // Bottle body
-      ctx.fillStyle = bottleColors[i];
-      ctx.fillRect(bx, by, 12, 30);
-      // Bottle neck
-      ctx.fillStyle = bottleColors[i];
-      ctx.fillRect(bx + 3, by - 10, 6, 12);
-      // Cork/cap
+    // Bottles on shelf (with glass highlights)
+    const bottleColors = ['#6a2020', '#2a5a20', '#4a2a60', '#6a5020', '#205050', '#6a3030', '#305a30'];
+    for (let i = 0; i < 7; i++) {
+      const bx = barX + 18 + i * 22;
+      const by = i < 4 ? barY - 80 : barY - 45;
+      const bh = 18 + seed(i, 70) * 8;
+      ctx.fillStyle = bottleColors[i % bottleColors.length];
+      ctx.fillRect(bx, by, 10, bh);
+      ctx.fillRect(bx + 3, by - 8, 4, 10);
       ctx.fillStyle = '#5a4a30';
-      ctx.fillRect(bx + 4, by - 12, 4, 4);
-      // Highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.08)';
-      ctx.fillRect(bx + 2, by + 2, 3, 20);
+      ctx.fillRect(bx + 3, by - 10, 4, 3);
+      // Glass highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(bx + 2, by + 2, 2, bh - 4);
     }
 
-    // Mugs on bar
+    // Mugs on bar top
     for (let i = 0; i < 3; i++) {
       const mx = barX + 30 + i * 50;
       const my = barY + 10;
-      // Mug body
       ctx.fillStyle = '#5a3818';
-      ctx.fillRect(mx, my, 18, 22);
-      // Handle
+      ctx.fillRect(mx, my, 16, 20);
       ctx.strokeStyle = '#5a3818';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(mx + 20, my + 11, 8, -Math.PI / 2, Math.PI / 2);
+      ctx.arc(mx + 18, my + 10, 7, -Math.PI / 2, Math.PI / 2);
       ctx.stroke();
-      // Ale inside
       ctx.fillStyle = '#8a6020';
-      ctx.fillRect(mx + 2, my + 4, 14, 16);
-      // Foam
+      ctx.fillRect(mx + 2, my + 4, 12, 14);
       ctx.fillStyle = '#d4c490';
-      ctx.fillRect(mx + 1, my + 2, 16, 4);
+      ctx.fillRect(mx + 1, my + 2, 14, 4);
     }
 
-    // === Aldric behind bar (simple figure) ===
+    // === Aldric behind bar (proportioned, broad shoulders, white apron) ===
     const aldricX = barX + barW / 2;
-    const aldricY = barY - 20;
-    // Head
-    ctx.fillStyle = '#c08060';
-    ctx.beginPath();
-    ctx.arc(aldricX, aldricY - 30, 14, 0, Math.PI * 2);
-    ctx.fill();
-    // Body (apron)
-    ctx.fillStyle = '#3a2a18';
-    ctx.fillRect(aldricX - 16, aldricY - 16, 32, 36);
-    // Apron front
-    ctx.fillStyle = '#5a4a38';
-    ctx.fillRect(aldricX - 10, aldricY - 10, 20, 30);
+    const aldricY = barY - 30;
+    drawNPC(aldricX, aldricY, {
+      headColor: '#c08060', bodyColor: '#3a2a18', vestColor: '#d0c8b8',
+      headR: 12, bodyW: 28, bodyH: 34, seated: false
+    });
+    // Aldric's towel over shoulder
+    ctx.fillStyle = '#c8c0a8';
+    ctx.fillRect(aldricX + 12, aldricY + 2, 8, 16);
 
     // === Bessa's supply corner (right side) ===
     const bessaX = 530;
     const bessaY = 220;
-    // Supply crates
+
+    // Supply crates (3D)
+    // Back crate
     ctx.fillStyle = '#2a1a0e';
-    ctx.fillRect(bessaX, bessaY + 20, 40, 35);
-    ctx.fillRect(bessaX + 45, bessaY + 25, 35, 30);
+    ctx.fillRect(bessaX, bessaY + 18, 42, 38);
     ctx.strokeStyle = '#3d2814';
     ctx.lineWidth = 1;
-    ctx.strokeRect(bessaX, bessaY + 20, 40, 35);
-    ctx.strokeRect(bessaX + 45, bessaY + 25, 35, 30);
-    // Cross straps on crates
-    ctx.strokeStyle = '#4a3018';
+    ctx.strokeRect(bessaX, bessaY + 18, 42, 38);
+    // Crate top (angled)
+    ctx.fillStyle = '#3d2510';
+    ctx.fillRect(bessaX - 1, bessaY + 16, 44, 4);
+    // Front crate (offset)
+    ctx.fillStyle = '#2a1a0e';
+    ctx.fillRect(bessaX + 42, bessaY + 24, 38, 32);
+    ctx.strokeRect(bessaX + 42, bessaY + 24, 38, 32);
+    ctx.fillStyle = '#3d2510';
+    ctx.fillRect(bessaX + 41, bessaY + 22, 40, 4);
+    // Cross straps
+    ctx.strokeStyle = '#5a3d1e';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(bessaX + 2, bessaY + 22);
-    ctx.lineTo(bessaX + 38, bessaY + 53);
-    ctx.moveTo(bessaX + 38, bessaY + 22);
-    ctx.lineTo(bessaX + 2, bessaY + 53);
+    ctx.moveTo(bessaX + 2, bessaY + 20);
+    ctx.lineTo(bessaX + 40, bessaY + 54);
+    ctx.moveTo(bessaX + 40, bessaY + 20);
+    ctx.lineTo(bessaX + 2, bessaY + 54);
     ctx.stroke();
 
-    // Shelves behind Bessa
-    ctx.fillStyle = '#3d2510';
-    ctx.fillRect(bessaX - 10, bessaY - 30, 110, 6);
-    ctx.fillRect(bessaX - 10, bessaY - 60, 110, 6);
-    // Potion bottles on shelves
-    const potionColors = ['#a03030', '#3060a0', '#30a030', '#a0a030'];
+    // Shelves behind Bessa (with depth shadow)
+    ctx.fillStyle = '#4a3018';
+    ctx.fillRect(bessaX - 10, bessaY - 30, 110, 7);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(bessaX - 10, bessaY - 23, 110, 3);
+    ctx.fillStyle = '#4a3018';
+    ctx.fillRect(bessaX - 10, bessaY - 65, 110, 7);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(bessaX - 10, bessaY - 58, 110, 3);
+
+    // Potion bottles (with glow)
+    const potionColors = ['#c03030', '#3080c0', '#30c030', '#c0a030'];
     for (let i = 0; i < 4; i++) {
       const px = bessaX + i * 24;
       ctx.fillStyle = potionColors[i];
-      ctx.fillRect(px, bessaY - 55, 10, 20);
-      ctx.fillRect(px + 3, bessaY - 60, 4, 7);
+      ctx.fillRect(px, bessaY - 58, 10, 22);
+      ctx.fillRect(px + 3, bessaY - 64, 4, 8);
+      // Glass highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(px + 2, bessaY - 56, 2, 16);
+      // Potion glow
+      const pGlow = ctx.createRadialGradient(px + 5, bessaY - 47, 2, px + 5, bessaY - 47, 12);
+      pGlow.addColorStop(0, `rgba(${potionColors[i].slice(1, 3)}, ${potionColors[i].slice(3, 5)}, ${potionColors[i].slice(5, 7)}, 0.15)`);
+      pGlow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = pGlow;
+      ctx.fillRect(px - 8, bessaY - 60, 26, 26);
     }
 
-    // Bessa figure
-    const bessaFigX = bessaX + 40;
-    const bessaFigY = bessaY - 10;
-    ctx.fillStyle = '#b08060';
+    // Bessa figure (hooded, merchant)
+    const bessaFigX = bessaX + 45;
+    const bessaFigY = bessaY - 16;
+    drawNPC(bessaFigX, bessaFigY, {
+      headColor: '#b08060', bodyColor: '#4a3028', vestColor: '#6a4a30',
+      headR: 10, bodyW: 22, bodyH: 30, seated: false
+    });
+    // Hood
+    ctx.fillStyle = '#3a2820';
     ctx.beginPath();
-    ctx.arc(bessaFigX, bessaFigY - 28, 12, 0, Math.PI * 2);
+    ctx.arc(bessaFigX, bessaFigY - 15, 14, Math.PI, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#4a3028';
-    ctx.fillRect(bessaFigX - 14, bessaFigY - 16, 28, 34);
-    // Merchant vest
-    ctx.fillStyle = '#6a4a30';
-    ctx.fillRect(bessaFigX - 8, bessaFigY - 12, 16, 26);
+    ctx.fillRect(bessaFigX - 14, bessaFigY - 15, 28, 10);
 
     // === Mira at table with maps (lower left) ===
     const miraTableX = 60;
     const miraTableY = 380;
-    // Table
-    ctx.fillStyle = '#3d2510';
-    ctx.fillRect(miraTableX, miraTableY, 100, 50);
-    ctx.strokeStyle = '#5a3818';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(miraTableX, miraTableY, 100, 50);
-    // Table legs
-    ctx.fillStyle = '#2a1808';
-    ctx.fillRect(miraTableX + 5, miraTableY + 50, 8, 20);
-    ctx.fillRect(miraTableX + 87, miraTableY + 50, 8, 20);
+    drawTable(miraTableX, miraTableY, 100, 45, true);
     // Maps / parchments on table
-    ctx.fillStyle = '#4a3a28';
-    ctx.fillRect(miraTableX + 10, miraTableY + 5, 30, 20);
+    ctx.fillStyle = '#5a4a32';
+    ctx.fillRect(miraTableX + 10, miraTableY + 8, 30, 18);
     ctx.save();
-    ctx.translate(miraTableX + 60, miraTableY + 15);
+    ctx.translate(miraTableX + 60, miraTableY + 14);
     ctx.rotate(0.15);
-    ctx.fillStyle = '#3a2a18';
+    ctx.fillStyle = '#4a3a22';
     ctx.fillRect(-15, -10, 30, 20);
     ctx.restore();
-    // Ink stains
-    ctx.fillStyle = 'rgba(20, 20, 40, 0.4)';
-    ctx.beginPath();
-    ctx.arc(miraTableX + 45, miraTableY + 30, 5, 0, Math.PI * 2);
-    ctx.fill();
+    // Ink well
+    ctx.fillStyle = '#1a1a2a';
+    ctx.fillRect(miraTableX + 80, miraTableY + 10, 8, 10);
+    ctx.fillStyle = '#2a2a40';
+    ctx.fillRect(miraTableX + 79, miraTableY + 8, 10, 4);
 
-    // Mira figure (seated)
-    ctx.fillStyle = '#a08060';
-    ctx.beginPath();
-    ctx.arc(miraTableX + 50, miraTableY - 20, 11, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#2a3a4a';
-    ctx.fillRect(miraTableX + 38, miraTableY - 9, 24, 28);
-    // Ink-stained hands
-    ctx.fillStyle = '#90705a';
-    ctx.fillRect(miraTableX + 35, miraTableY + 5, 8, 6);
-    ctx.fillRect(miraTableX + 57, miraTableY + 5, 8, 6);
+    // Mira figure (seated, blue tunic)
+    const miraX = miraTableX + 50;
+    const miraY = miraTableY - 12;
+    drawNPC(miraX, miraY, {
+      headColor: '#a08060', bodyColor: '#2a3a4a', vestColor: '#3a4a5a',
+      headR: 10, bodyW: 22, bodyH: 26, seated: true
+    });
 
     // === Notice Board on back wall (center) ===
     const nbX = 330;
     const nbY = 90;
     const nbW = 120;
     const nbH = 70;
+    // Board shadow on wall
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(nbX + 4, nbY + 4, nbW, nbH);
     // Board
     ctx.fillStyle = '#2a1808';
     ctx.fillRect(nbX, nbY, nbW, nbH);
     ctx.strokeStyle = '#5a3d20';
     ctx.lineWidth = 3;
     ctx.strokeRect(nbX, nbY, nbW, nbH);
-    // Nails
-    ctx.fillStyle = '#888';
-    ctx.beginPath(); ctx.arc(nbX + 8, nbY + 8, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(nbX + nbW - 8, nbY + 8, 3, 0, Math.PI * 2); ctx.fill();
+    // Board inner frame
+    ctx.strokeStyle = '#3d2510';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(nbX + 4, nbY + 4, nbW - 8, nbH - 8);
+    // Nails (metallic)
+    for (const [nx, ny] of [[nbX + 8, nbY + 8], [nbX + nbW - 8, nbY + 8]]) {
+      ctx.fillStyle = '#999';
+      ctx.beginPath(); ctx.arc(nx, ny, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#bbb';
+      ctx.beginPath(); ctx.arc(nx - 0.5, ny - 0.5, 1.5, 0, Math.PI * 2); ctx.fill();
+    }
     // Pinned parchments
     const notes = [
       { x: nbX + 10, y: nbY + 16, w: 35, h: 25, rot: -0.05 },
@@ -1830,20 +2249,25 @@ export class TavernState {
       ctx.save();
       ctx.translate(note.x + note.w / 2, note.y + note.h / 2);
       ctx.rotate(note.rot);
-      ctx.fillStyle = '#4a3a28';
+      // Parchment with aged edges
+      ctx.fillStyle = '#5a4a32';
       ctx.fillRect(-note.w / 2, -note.h / 2, note.w, note.h);
-      ctx.strokeStyle = '#3a2a18';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(-note.w / 2, -note.h / 2, note.w, note.h);
+      ctx.fillStyle = '#4a3a22';
+      ctx.fillRect(-note.w / 2 + 1, -note.h / 2 + 1, note.w - 2, note.h - 2);
       // Pin
-      ctx.fillStyle = '#a04020';
+      ctx.fillStyle = '#c04020';
       ctx.beginPath();
       ctx.arc(0, -note.h / 2 + 3, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e06040';
+      ctx.beginPath();
+      ctx.arc(-0.5, -note.h / 2 + 2.5, 1.5, 0, Math.PI * 2);
       ctx.fill();
       // Text lines
       ctx.fillStyle = '#1a1208';
       for (let li = 0; li < 3; li++) {
-        ctx.fillRect(-note.w / 2 + 4, -note.h / 2 + 8 + li * 5, note.w - 8, 1);
+        const lw = note.w - 8 - seed(li + note.x, note.y) * 12;
+        ctx.fillRect(-note.w / 2 + 4, -note.h / 2 + 8 + li * 5, lw, 1);
       }
       ctx.restore();
     }
@@ -1857,80 +2281,78 @@ export class TavernState {
     // === Orin Vane at table (center-right, seated, arm in sling) ===
     const orinTableX = 380;
     const orinTableY = 380;
-    // Table
-    ctx.fillStyle = '#3d2510';
-    ctx.fillRect(orinTableX, orinTableY, 80, 45);
-    ctx.strokeStyle = '#5a3818';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(orinTableX, orinTableY, 80, 45);
-    // Table legs
-    ctx.fillStyle = '#2a1808';
-    ctx.fillRect(orinTableX + 5, orinTableY + 45, 8, 18);
-    ctx.fillRect(orinTableX + 67, orinTableY + 45, 8, 18);
+    drawTable(orinTableX, orinTableY, 80, 42, true);
     // Mug on table
     ctx.fillStyle = '#5a3818';
-    ctx.fillRect(orinTableX + 15, orinTableY + 8, 14, 18);
+    ctx.fillRect(orinTableX + 15, orinTableY + 8, 14, 16);
     ctx.fillStyle = '#8a6020';
-    ctx.fillRect(orinTableX + 17, orinTableY + 12, 10, 12);
+    ctx.fillRect(orinTableX + 17, orinTableY + 12, 10, 10);
     ctx.fillStyle = '#d4c490';
     ctx.fillRect(orinTableX + 16, orinTableY + 10, 12, 3);
-    // Orin figure (seated, facing left)
-    // Head
-    ctx.fillStyle = '#b08060';
+
+    // Orin figure (seated, arm in sling, leather armor)
+    const orinX = orinTableX + 55;
+    const orinY = orinTableY - 10;
+    drawNPC(orinX, orinY, {
+      headColor: '#b08060', bodyColor: '#4a3020', vestColor: '#6a4828',
+      headR: 11, bodyW: 24, bodyH: 28, sling: true, seated: true
+    });
+    // Scar on face
+    ctx.strokeStyle = '#905040';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(orinTableX + 55, orinTableY - 18, 12, 0, Math.PI * 2);
-    ctx.fill();
-    // Body
-    ctx.fillStyle = '#4a3020';
-    ctx.fillRect(orinTableX + 42, orinTableY - 6, 26, 30);
-    // Leather vest
-    ctx.fillStyle = '#6a4828';
-    ctx.fillRect(orinTableX + 46, orinTableY - 2, 18, 22);
-    // Sling (right arm bandaged across chest)
-    ctx.strokeStyle = '#c0b090';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(orinTableX + 46, orinTableY - 2);
-    ctx.lineTo(orinTableX + 60, orinTableY + 12);
-    ctx.lineTo(orinTableX + 50, orinTableY + 18);
+    ctx.moveTo(orinX - 4, orinY - 18);
+    ctx.lineTo(orinX + 2, orinY - 10);
     ctx.stroke();
-    // Left arm on table
-    ctx.fillStyle = '#a07050';
-    ctx.fillRect(orinTableX + 38, orinTableY + 5, 8, 6);
 
     // === Table Seven (Elden or empty chair) — lower right ===
     const t7X = 590;
     const t7Y = 390;
-    // Small round table
-    ctx.fillStyle = '#2a1a0e';
+
+    // Round table with shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath();
-    ctx.ellipse(t7X + 30, t7Y + 10, 35, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(t7X + 30, t7Y + 38, 30, 8, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#3d2510';
-    ctx.lineWidth = 2;
-    ctx.stroke();
     // Table leg
     ctx.fillStyle = '#2a1808';
-    ctx.fillRect(t7X + 26, t7Y + 28, 8, 30);
-
-    // Chair
+    ctx.fillRect(t7X + 26, t7Y + 20, 8, 22);
+    // Table top (ellipse)
     ctx.fillStyle = '#3d2510';
-    ctx.fillRect(t7X + 50, t7Y + 20, 20, 30);
-    ctx.fillRect(t7X + 52, t7Y - 5, 16, 25);
+    ctx.beginPath();
+    ctx.ellipse(t7X + 30, t7Y + 10, 35, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#4a3018';
+    ctx.beginPath();
+    ctx.ellipse(t7X + 30, t7Y + 8, 33, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Chair (3D)
+    ctx.fillStyle = '#3d2510';
+    ctx.fillRect(t7X + 52, t7Y + 18, 18, 28);
+    // Chair back
+    ctx.fillStyle = '#4a3018';
+    ctx.fillRect(t7X + 53, t7Y - 8, 16, 28);
+    ctx.strokeStyle = '#3d2510';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(t7X + 53, t7Y - 8, 16, 28);
 
     if (fragments >= 2) {
-      // Elden's ghostly figure
-      ctx.globalAlpha = 0.4 + Math.sin(this.flickerPhase * 0.8) * 0.1;
-      // Head (ghostly)
-      ctx.fillStyle = '#8888CC';
-      ctx.beginPath();
-      ctx.arc(t7X + 60, t7Y - 10, 10, 0, Math.PI * 2);
-      ctx.fill();
-      // Body
-      ctx.fillStyle = '#6666AA';
-      ctx.fillRect(t7X + 50, t7Y, 20, 25);
+      // Elden's ghostly figure — ethereal, translucent
+      const eldenAlpha = 0.35 + Math.sin(this.flickerPhase * 0.8) * 0.1;
+      ctx.globalAlpha = eldenAlpha;
+      drawNPC(t7X + 62, t7Y - 4, {
+        headColor: '#8888CC', bodyColor: '#6666AA', vestColor: '#7777BB',
+        headR: 9, bodyW: 18, bodyH: 24, seated: true
+      });
+      // Ghostly aura
+      const ghostGlow = ctx.createRadialGradient(t7X + 62, t7Y + 5, 5, t7X + 62, t7Y + 5, 40);
+      ghostGlow.addColorStop(0, 'rgba(130, 130, 200, 0.15)');
+      ghostGlow.addColorStop(1, 'rgba(130, 130, 200, 0)');
+      ctx.fillStyle = ghostGlow;
+      ctx.fillRect(t7X + 22, t7Y - 35, 80, 80);
       // Ghostly cup on table
-      ctx.fillStyle = 'rgba(136, 136, 204, 0.4)';
+      ctx.fillStyle = 'rgba(136, 136, 204, 0.5)';
       ctx.fillRect(t7X + 20, t7Y + 2, 10, 12);
       ctx.globalAlpha = 1.0;
     }
