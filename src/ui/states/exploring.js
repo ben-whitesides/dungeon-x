@@ -87,8 +87,17 @@ export class ExploringState {
   }
 
   render(layers, world) {
-    // 1. Render First-Person view to 'floor' layer
+    // Clear ALL layers to prevent tavern/other state bleed-through
+    for (const name of Object.keys(layers)) {
+      if (layers[name] && layers[name].clearRect) {
+        layers[name].clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      }
+    }
+
+    // 1. Render First-Person view to 'floor' layer (full canvas, black bg)
     if (layers.floor) {
+      layers.floor.fillStyle = '#08080e';
+      layers.floor.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       this.fpRenderer.render(
         layers.floor, world.tileMap,
         world.player.x, world.player.y, world.player.facing
@@ -98,7 +107,6 @@ export class ExploringState {
     // 2. Render UI elements to 'ui' layer
     const uiCtx = layers.ui;
     if (uiCtx) {
-      uiCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
       // Dungeon info bar (top center)
       this.uiRenderer.renderDungeonInfo(uiCtx, world.dungeonName, world.floor, world.turnCount);

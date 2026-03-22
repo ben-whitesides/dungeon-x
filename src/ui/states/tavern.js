@@ -422,7 +422,8 @@ export class TavernState {
         const quest = this.noticeBoardQuests[this.selectedQuest];
         if (quest && world.party.getMembers().length > 0) {
           world.dungeonType = quest.id;
-          const dungeonName = quest.name || quest.id;
+          world.dungeonName = quest.name || quest.id;
+          const dungeonName = world.dungeonName;
           // Push transition screen, then exploring when it completes
           world.stateStack.pushDungeonTransition(dungeonName, () => {
             world.stateStack.pop(); // Remove transition

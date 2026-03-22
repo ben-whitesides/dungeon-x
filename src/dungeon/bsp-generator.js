@@ -19,7 +19,7 @@ export function generateDungeon(rng, width = DUNGEON_WIDTH, height = DUNGEON_HEI
 
     connectBSP(map, root, rng);
 
-    if (map.rooms.length >= 2) {
+    if (map.rooms.length >= 4) {
       const first = map.rooms[0];
       const last = map.rooms[map.rooms.length - 1];
       map.set(first.cx, first.cy, TILE.STAIRS_UP);
