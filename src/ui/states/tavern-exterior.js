@@ -121,6 +121,54 @@ export class TavernExteriorState {
       ctx.fill();
     }
 
+    // === Distant horizon buildings (far background, very dark) ===
+    ctx.fillStyle = '#0a0910';
+    // Distant church/tower silhouette
+    ctx.fillRect(W * 0.06, H * 0.34, 18, H * 0.08);
+    ctx.beginPath();
+    ctx.moveTo(W * 0.06, H * 0.34);
+    ctx.lineTo(W * 0.06 + 9, H * 0.30);
+    ctx.lineTo(W * 0.06 + 18, H * 0.34);
+    ctx.fill();
+    // Distant rooftops
+    ctx.fillStyle = '#08080e';
+    ctx.fillRect(W * 0.10, H * 0.38, 40, H * 0.04);
+    ctx.beginPath();
+    ctx.moveTo(W * 0.10, H * 0.38);
+    ctx.lineTo(W * 0.12, H * 0.35);
+    ctx.lineTo(W * 0.14, H * 0.38);
+    ctx.fill();
+    // Right side distant buildings
+    ctx.fillStyle = '#0b0a10';
+    ctx.fillRect(W * 0.88, H * 0.36, 35, H * 0.06);
+    ctx.beginPath();
+    ctx.moveTo(W * 0.88, H * 0.36);
+    ctx.lineTo(W * 0.90, H * 0.32);
+    ctx.lineTo(W * 0.88 + 35, H * 0.36);
+    ctx.fill();
+    ctx.fillRect(W * 0.93, H * 0.37, 25, H * 0.05);
+
+    // === Moonlight volumetric rays ===
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let ri = 0; ri < 5; ri++) {
+      const rayX = moonX - 40 + ri * 25;
+      const rayW = 8 + ri * 3;
+      const rayAlpha = 0.015 + Math.sin(this.phase * 0.3 + ri * 1.5) * 0.005;
+      const rayGrad = ctx.createLinearGradient(rayX, moonY + 20, rayX - 30, H * 0.6);
+      rayGrad.addColorStop(0, `rgba(160, 170, 200, ${rayAlpha})`);
+      rayGrad.addColorStop(0.5, `rgba(120, 130, 160, ${rayAlpha * 0.5})`);
+      rayGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = rayGrad;
+      ctx.beginPath();
+      ctx.moveTo(rayX, moonY + 20);
+      ctx.lineTo(rayX + rayW, moonY + 20);
+      ctx.lineTo(rayX - 30 + rayW, H * 0.6);
+      ctx.lineTo(rayX - 30, H * 0.6);
+      ctx.fill();
+    }
+    ctx.restore();
+
     // === Ground / horizon ===
     const groundY = H * 0.42;
     const groundGrad = ctx.createLinearGradient(0, groundY, 0, H);
@@ -450,6 +498,69 @@ export class TavernExteriorState {
       }
     }
 
+    // === Weathervane on roof peak ===
+    ctx.strokeStyle = '#3d2814';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(W / 2, roofPeak);
+    ctx.lineTo(W / 2, roofPeak - 22);
+    ctx.stroke();
+    // Crossbar
+    ctx.beginPath();
+    ctx.moveTo(W / 2 - 12, roofPeak - 18);
+    ctx.lineTo(W / 2 + 12, roofPeak - 18);
+    ctx.stroke();
+    // Arrow
+    ctx.fillStyle = '#4a3018';
+    ctx.beginPath();
+    ctx.moveTo(W / 2 + 12, roofPeak - 18);
+    ctx.lineTo(W / 2 + 18, roofPeak - 20);
+    ctx.lineTo(W / 2 + 12, roofPeak - 16);
+    ctx.fill();
+
+    // === Ivy / moss on tavern walls ===
+    const ivyColor = 'rgba(15, 28, 10, 0.5)';
+    // Left wall ivy
+    for (let iv = 0; iv < 6; iv++) {
+      const ix = bldgX + Math.abs(Math.sin(iv * 47.3) * bldgW * 0.15);
+      const iy = splitY + iv * 15 + Math.abs(Math.sin(iv * 73.1) * 20);
+      const iw = 12 + Math.abs(Math.sin(iv * 31.7) * 18);
+      const ih = 10 + Math.abs(Math.sin(iv * 91.3) * 12);
+      ctx.fillStyle = ivyColor;
+      ctx.beginPath();
+      ctx.ellipse(ix + iw / 2, iy + ih / 2, iw / 2, ih / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Right wall ivy
+    for (let iv = 0; iv < 5; iv++) {
+      const ix = bldgX + bldgW - 30 - Math.abs(Math.sin(iv * 53.7) * 25);
+      const iy = splitY + 5 + iv * 18;
+      ctx.fillStyle = ivyColor;
+      ctx.beginPath();
+      ctx.ellipse(ix, iy, 10 + iv * 2, 7 + iv, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // === Moss patches on stone foundation ===
+    ctx.fillStyle = 'rgba(18, 32, 12, 0.35)';
+    ctx.fillRect(bldgX + 10, bldgBot - 15, 30, 8);
+    ctx.fillRect(bldgX + bldgW - 50, bldgBot - 12, 25, 6);
+    ctx.fillStyle = 'rgba(20, 35, 14, 0.25)';
+    ctx.fillRect(bldgX + bldgW * 0.4, bldgBot - 10, 35, 5);
+
+    // === Cracks in stone wall ===
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bldgX + bldgW * 0.25, splitY + 10);
+    ctx.lineTo(bldgX + bldgW * 0.27, splitY + 35);
+    ctx.lineTo(bldgX + bldgW * 0.24, splitY + 55);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(bldgX + bldgW * 0.7, splitY + 20);
+    ctx.lineTo(bldgX + bldgW * 0.72, splitY + 50);
+    ctx.stroke();
+
     // === Door ===
     const doorW = 50;
     const doorH = 80;
@@ -635,6 +746,57 @@ export class TavernExteriorState {
     ctx.fillText('THE RUSTY FLAGON', signCX + 1, signY + 26);
     ctx.fillStyle = '#FFD700';
     ctx.fillText('THE RUSTY FLAGON', signCX, signY + 25);
+
+    // === Scattered stones and puddles along path ===
+    // Small stones
+    ctx.fillStyle = '#1a1612';
+    for (let si = 0; si < 8; si++) {
+      const sx = W / 2 - 100 + Math.abs(Math.sin(si * 97.3) * 200);
+      const sy = H * 0.62 + Math.abs(Math.sin(si * 43.1) * H * 0.25);
+      if (Math.abs(sx - W / 2) < 40) continue;
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 3 + Math.abs(Math.sin(si * 71.3)) * 4, 2 + Math.abs(Math.sin(si * 53.7)) * 2, Math.sin(si) * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Puddles reflecting moonlight
+    for (let pi = 0; pi < 3; pi++) {
+      const px = W * 0.2 + pi * W * 0.25 + Math.sin(pi * 47) * 30;
+      const py = H * 0.65 + pi * 20;
+      if (Math.abs(px - W / 2) < 60) continue;
+      const pw = 20 + pi * 8;
+      const ph = 5 + pi * 2;
+      // Puddle
+      ctx.fillStyle = 'rgba(10, 12, 18, 0.6)';
+      ctx.beginPath();
+      ctx.ellipse(px, py, pw, ph, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Moonlight reflection
+      ctx.fillStyle = `rgba(150, 160, 190, ${0.06 + Math.sin(this.phase * 0.8 + pi) * 0.02})`;
+      ctx.beginPath();
+      ctx.ellipse(px + 3, py - 1, pw * 0.4, ph * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // === Path lantern (ground level, left of path) ===
+    const lanternX = W / 2 - 70;
+    const lanternY = H * 0.68;
+    // Post
+    ctx.fillStyle = '#2a1a0e';
+    ctx.fillRect(lanternX - 2, lanternY - 20, 4, 22);
+    // Lantern housing
+    ctx.fillStyle = '#3d2814';
+    ctx.fillRect(lanternX - 5, lanternY - 28, 10, 10);
+    // Lantern light
+    const lanternFlick = Math.sin(this.phase * 2.8) * 0.04;
+    ctx.fillStyle = `rgba(255, 180, 60, ${0.6 + lanternFlick})`;
+    ctx.fillRect(lanternX - 3, lanternY - 26, 6, 6);
+    // Lantern glow on ground
+    const lGlow = ctx.createRadialGradient(lanternX, lanternY, 3, lanternX, lanternY, 50);
+    lGlow.addColorStop(0, `rgba(255, 160, 40, ${0.1 + lanternFlick})`);
+    lGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = lGlow;
+    ctx.fillRect(lanternX - 50, lanternY - 40, 100, 80);
 
     // === Ground fog / mist ===
     for (let fi = 0; fi < 8; fi++) {
