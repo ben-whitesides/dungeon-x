@@ -1,6 +1,6 @@
 // Dungeon X Service Worker for PWA offline functionality
-const CACHE_NAME = 'dungeon-x-v4.5.0';
-const STATIC_CACHE_NAME = 'dungeon-x-static-v4.5.0';
+const CACHE_NAME = 'dungeon-x-v5.0.0';
+const STATIC_CACHE_NAME = 'dungeon-x-static-v5.0.0';
 
 // Files to cache for offline play
 const STATIC_FILES = [

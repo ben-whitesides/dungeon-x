@@ -33,6 +33,11 @@ export const CLASS_DATA = {
       { id: 'water-flask', name: 'Water Flask', quantity: 2 },
     ],
     portrait: { m: 'fighter_m', f: 'fighter_f' },
+    starterDeck: [
+      'fighter_strike', 'fighter_strike', 'fighter_strike', 'fighter_strike',
+      'fighter_defend', 'fighter_defend',
+      'fighter_shield_bash', 'fighter_second_wind', 'fighter_cleave', 'fighter_battle_cry'
+    ],
   },
 
   ranger: {
@@ -67,6 +72,11 @@ export const CLASS_DATA = {
       { id: 'snare-trap', name: 'Snare Trap', quantity: 1 },
     ],
     portrait: { m: 'ranger_m', f: 'ranger_f' },
+    starterDeck: [
+      'ranger_quick_shot', 'ranger_quick_shot', 'ranger_quick_shot', 'ranger_quick_shot',
+      'ranger_defend', 'ranger_defend',
+      'ranger_hunters_mark', 'ranger_volley', 'ranger_eagle_eye', 'ranger_snare_trap'
+    ],
   },
 
   mage: {
@@ -103,6 +113,11 @@ export const CLASS_DATA = {
       { id: 'spell-scroll-fire', name: 'Fire Scroll', quantity: 1 },
     ],
     portrait: { m: 'mage_m', f: 'mage_f' },
+    starterDeck: [
+      'mage_arcane_bolt', 'mage_arcane_bolt', 'mage_arcane_bolt',
+      'mage_defend', 'mage_defend',
+      'mage_fireball', 'mage_ice_shard', 'mage_arcane_shield', 'mage_scry', 'mage_magic_missile'
+    ],
   },
 
   cleric: {
@@ -139,6 +154,11 @@ export const CLASS_DATA = {
       { id: 'health-potion', name: 'Health Potion', quantity: 1 },
     ],
     portrait: { m: 'cleric_m', f: 'cleric_f' },
+    starterDeck: [
+      'cleric_holy_strike', 'cleric_holy_strike', 'cleric_sacred_word',
+      'cleric_defend', 'cleric_defend',
+      'cleric_heal', 'cleric_bless', 'cleric_turn_undead', 'cleric_divine_light', 'cleric_prayer'
+    ],
   },
 
   // Bonus classes beyond the core 4 bible classes
@@ -173,6 +193,11 @@ export const CLASS_DATA = {
       { id: 'lockpick', name: 'Lockpick', quantity: 3 },
     ],
     portrait: { m: 'rogue_m', f: 'rogue_f' },
+    starterDeck: [
+      'rogue_shiv', 'rogue_shiv', 'rogue_backstab', 'rogue_strike', 'rogue_strike',
+      'rogue_defend', 'rogue_defend',
+      'rogue_envenom', 'rogue_dodge_roll', 'rogue_preparation'
+    ],
   },
 
   paladin: {
@@ -205,5 +230,11 @@ export const CLASS_DATA = {
       { id: 'water-flask', name: 'Water Flask', quantity: 2 },
     ],
     portrait: { m: 'paladin_m', f: 'paladin_f' },
+    starterDeck: [
+      'paladin_strike', 'paladin_strike', 'paladin_strike',
+      'paladin_defend', 'paladin_defend',
+      'paladin_divine_smite', 'paladin_lay_on_hands', 'paladin_divine_shield',
+      'paladin_smite_evil', 'paladin_aura_of_courage'
+    ],
   },
 };
