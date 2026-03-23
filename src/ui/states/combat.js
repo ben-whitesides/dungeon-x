@@ -136,8 +136,7 @@ export class CombatState {
       return;
     }
 
-    // 3. Draw 5 cards
-    this.deckManager.endTurn(); // discard previous hand first (if any on turn 1, hand is empty)
+    // 3. Draw 5 cards (previous hand already discarded at end of last turn)
     this.deckManager.draw(this.deckManager.cardsPerDraw, aliveMembers);
 
     // Reset UI state
@@ -160,6 +159,9 @@ export class CombatState {
         }
       }
     }
+
+    // Discard remaining hand (Retain cards kept, Ethereal cards exhausted)
+    this.deckManager.endTurn();
 
     // Check party wipe from burn
     if (!aliveMembers.some(m => m.isAlive())) {
@@ -352,9 +354,10 @@ export class CombatState {
       this.deckManager.discard(card);
     }
 
-    // Check victory
+    // Check victory — but if party is also dead, it's a defeat
     if (!this.enemies.some(e => e.currentHP > 0)) {
-      this.phase = 'victory';
+      const partyAlive = this.party.getMembers().some(m => m.currentHP > 0);
+      this.phase = partyAlive ? 'victory' : 'defeat';
       return true;
     }
 
@@ -1093,9 +1096,10 @@ export class CombatState {
 
       ctx.textAlign = 'left';
 
-      // Touch hit zone for member selection
+      // Touch hit zone for member/ally selection
       if (world.input && world.input.touch && !isDead) {
-        world.input.touch.registerHitZone(startX, y, portraitW, portraitH, `_member_${i}`);
+        const zoneCode = this.uiStep === 'selectAlly' ? `_ally_${i}` : `_member_${i}`;
+        world.input.touch.registerHitZone(startX, y, portraitW, portraitH, zoneCode);
       }
     });
   }

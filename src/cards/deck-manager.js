@@ -61,12 +61,14 @@ export class DeckManager {
     const aliveClasses = new Set((aliveMembers || []).map(m => m.class));
     let remaining = count;
 
-    while (remaining > 0) {
+    let safetyCounter = this.fullDeck.length * 3; // Prevent infinite loop if all cards are dead class
+    while (remaining > 0 && --safetyCounter > 0) {
       if (this.hand.length >= this.maxHandSize) break;
 
       if (this.drawPile.length === 0) {
         if (this.discardPile.length === 0) break; // No cards left anywhere
         this.reshuffle();
+        if (this.drawPile.length === 0) break; // Still nothing after reshuffle
       }
 
       const card = this.drawPile.pop();

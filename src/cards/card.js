@@ -155,23 +155,23 @@ export class Card {
         }
 
         case 'block': {
-          let base = this._scaledValue(effect.value, effect.scaling, caster);
-          // Apply Dexterity buff bonus
-          const dexBonus = statusTracker ? statusTracker.getStacks(caster, 'dexterity') : 0;
-          base += dexBonus;
-          // Apply Frail debuff (25% less block)
-          const frailStacks = statusTracker ? statusTracker.getStacks(caster, 'frail') : 0;
-          if (frailStacks > 0) {
-            base = Math.floor(base * 0.75);
-          }
-          base = Math.max(0, base);
-
+          const baseBlock = this._scaledValue(effect.value, effect.scaling, caster);
           const targets = this._resolveTargets(effect.target, targetEnemy, allEnemies, allAllies, caster);
           for (const t of targets) {
-            if (blockManager) {
-              blockManager.addBlock(t, base);
+            // Apply Dexterity buff bonus from TARGET (not caster)
+            let blockAmt = baseBlock;
+            const dexBonus = statusTracker ? statusTracker.getStacks(t, 'dexterity') : 0;
+            blockAmt += dexBonus;
+            // Apply Frail debuff from TARGET (25% less block)
+            const frailStacks = statusTracker ? statusTracker.getStacks(t, 'frail') : 0;
+            if (frailStacks > 0) {
+              blockAmt = Math.floor(blockAmt * 0.75);
             }
-            results.push({ type: 'block', target: t, amount: base });
+            blockAmt = Math.max(0, blockAmt);
+            if (blockManager) {
+              blockManager.addBlock(t, blockAmt);
+            }
+            results.push({ type: 'block', target: t, amount: blockAmt });
           }
           break;
         }

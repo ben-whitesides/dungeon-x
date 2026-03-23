@@ -128,9 +128,13 @@ export function executeIntent(enemy, intent, aliveMembers, blockManager, statusT
     case INTENT_TYPE.ATTACK: {
       const target = aliveMembers[Math.floor(Math.random() * aliveMembers.length)];
       let dmg = intent.damage || 5;
-      // Apply enemy Strength buff
+      // Apply enemy Strength buff and Weak debuff
       if (statusTracker) {
         dmg += statusTracker.getStacks(enemy, 'strength');
+        // If enemy is Weak, -25% damage
+        if (statusTracker.getStacks(enemy, 'weak') > 0) {
+          dmg = Math.floor(dmg * 0.75);
+        }
         // If target is Vulnerable, +50%
         if (statusTracker.getStacks(target, 'vulnerable') > 0) {
           dmg = Math.floor(dmg * 1.5);
@@ -157,6 +161,9 @@ export function executeIntent(enemy, intent, aliveMembers, blockManager, statusT
         let dmg = intent.damage || 3;
         if (statusTracker) {
           dmg += statusTracker.getStacks(enemy, 'strength');
+          if (statusTracker.getStacks(enemy, 'weak') > 0) {
+            dmg = Math.floor(dmg * 0.75);
+          }
           if (statusTracker.getStacks(target, 'vulnerable') > 0) {
             dmg = Math.floor(dmg * 1.5);
           }
