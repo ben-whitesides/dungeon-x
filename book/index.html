@@ -1,379 +1,493 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Codex of the Shattered Circle — Prologue & Chapter One</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Cinzel:wght@400;600;700&display=swap');
-  
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  
-  body {
-    background: #0d0e08;
-    color: #c8b880;
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 19px;
-    line-height: 1.8;
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 40px 24px 100px;
-  }
-  
-  h1 {
-    font-family: 'Cinzel', serif;
-    font-size: 2.4em;
-    color: #d4a634;
-    text-align: center;
-    margin: 60px 0 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-  }
-  
-  h2 {
-    font-family: 'Cinzel', serif;
-    font-size: 1.6em;
-    color: #d4a634;
-    text-align: center;
-    margin: 50px 0 20px;
-    letter-spacing: 2px;
-  }
-  
-  h3 {
-    font-family: 'Cinzel', serif;
-    font-size: 1.1em;
-    color: #6b8a45;
-    text-align: center;
-    margin: 0 0 40px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    font-weight: 400;
-  }
-  
-  .section-num {
-    font-family: 'Cinzel', serif;
-    font-size: 1.3em;
-    color: #d4a634;
-    text-align: center;
-    margin: 50px 0 30px;
-    letter-spacing: 2px;
-  }
-  
-  p {
-    margin: 0 0 20px;
-    text-indent: 2em;
-  }
-  
-  p:first-of-type, .no-indent { text-indent: 0; }
-  
-  .illustration {
-    width: 100%;
-    max-width: 500px;
-    display: block;
-    margin: 40px auto;
-    border: 3px solid #3a4a20;
-    border-radius: 4px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-  }
-  
-  .illustration-wide {
-    max-width: 600px;
-  }
-  
-  .divider {
-    text-align: center;
-    margin: 40px 0;
-    color: #4a5a2a;
-    font-size: 1.4em;
-    letter-spacing: 12px;
-  }
-  
-  .bessa-frame {
-    font-style: italic;
-    color: #8aad55;
-    border-left: 2px solid #4a6a2a;
-    padding-left: 20px;
-    margin: 30px 0;
-  }
-  
-  .bessa-frame p { text-indent: 0; }
-  
-  em { color: #b8c878; }
-  
-  .title-page {
-    text-align: center;
-    padding: 80px 0 60px;
-    border-bottom: 1px solid #3a4a20;
-    margin-bottom: 60px;
-  }
-  
-  .title-page h1 { font-size: 2.8em; margin-bottom: 15px; }
-  
-  .imprint {
-    font-family: 'Cinzel', serif;
-    font-size: 0.8em;
-    color: #4a5a2a;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    margin-top: 30px;
-  }
-  
-  .chapter-end {
-    text-align: center;
-    margin: 60px 0;
-    color: #4a5a2a;
-    font-family: 'Cinzel', serif;
-    font-size: 0.9em;
-    letter-spacing: 3px;
-  }
-  
-  .word-count {
-    text-align: center;
-    color: #3a4a20;
-    font-size: 0.8em;
-    margin-top: 40px;
-  }
-  
-  @media (max-width: 600px) {
-    body { font-size: 17px; padding: 20px 16px 80px; }
-    h1 { font-size: 1.8em; }
-    h2 { font-size: 1.3em; }
-    .illustration { max-width: 100%; }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Codex of the Shattered Circle — Prologue, Chapter One & Chapter Two</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d0e08;
+            color: #c8b880;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 720px;
+            width: 100%;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Cinzel', serif;
+            color: #d4a634;
+            text-align: center;
+            margin-top: 2em;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            border-bottom: 1px solid #d4a634;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 1.5em;
+        }
+
+        p {
+            margin-bottom: 1.5em;
+        }
+
+        em {
+            font-style: italic;
+            color: #d4a634;
+            display: block;
+            text-align: center;
+            margin: 2em 0;
+        }
+
+        hr {
+            border: 0;
+            height: 1px;
+            background-image: linear-gradient(to right, rgba(212, 166, 52, 0), rgba(212, 166, 52, 0.75), rgba(212, 166, 52, 0));
+            margin: 3em 0;
+        }
+
+        a {
+            color: #d4a634;
+            text-decoration: none;
+            transition: opacity 0.3s;
+        }
+
+        a:hover {
+            opacity: 0.7;
+        }
+
+        nav {
+            text-align: center;
+            margin-bottom: 4em;
+            border: 1px solid #d4a634;
+            padding: 20px;
+        }
+
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        nav li {
+            display: inline;
+            margin: 0 15px;
+        }
+
+        .toc-title {
+            font-family: 'Cinzel', serif;
+            font-size: 1rem;
+            display: block;
+            margin-bottom: 10px;
+            color: #d4a634;
+        }
+    </style>
 </head>
 <body>
-
-<div class="title-page">
-  <h1>The Codex of the<br><span style="color:#4acd28;">Shattered Circle</span></h1>
-  <img src="https://raw.githubusercontent.com/ben-whitesides/dungeon-x/main/book/sunstone.jpg" alt="The Sunstone" class="illustration" style="max-width:350px; margin:30px auto 20px;">
-  <h3>A Dark Fantasy Lore Book</h3>
-  
-  <p class="imprint" style="margin-top:15px; color:#3a3020;">Early Draft — Prologue & Chapter One</p>
-</div>
-
-<!-- PROLOGUE -->
-
-<h2>Prologue</h2>
-<h3>The Merchant's Warning</h3>
-
-<p class="no-indent">The Rusty Flagon smells the way all taverns do at the end of a long night — spilled mead, woodsmoke, and the particular sadness of people who came looking for courage and found the bottom of a cup instead.</p>
-
-<p class="no-indent">I'm Bessa. I sell things.</p>
-
-<p>Potions, mostly. Maps sometimes, though the good ones cost more than you'd think and the cheap ones will get you killed. Dried herbs for the cautious. Blades for the stupid. Information for the desperate.</p>
-
-<p>I've been behind this counter for twenty-three years. Before that, I was behind a different counter in a different village that doesn't exist anymore. Before that — well, you don't need that story. Not yet.</p>
-
-<p>What you need is this one.</p>
-
-<p>You came in tonight the way they all come in. Mud on your boots, fire in your eyes, a hand resting on a weapon you've never used on anything that fought back. You looked at the notice board. You looked at the skull ratings. You looked at the word <em>CRYPT</em> and your pulse quickened instead of slowing, which tells me everything I need to know about how long you'll last.</p>
-
-<p>But you asked, so I'll tell you.</p>
-
-<p>I'll tell you about the Sunstone, because that's where it starts. Everything starts there — the light, the dark, the things that crawl through the spaces between. I'll tell you about the Aureate Circle, because they thought they were gods and learned otherwise. I'll tell you about the Fracture, because you need to understand what you're walking into before you walk into it.</p>
-
-<p>I'll tell you about Vyke, because his name is carved into walls you haven't reached yet. I'll tell you about the death cards, because you'll find one eventually and you should know whose handwriting you're reading.</p>
-
-<p>And I'll tell you about Dorevus. But not yet. That part... that part comes at the end. When you're ready. If you're ready.</p>
-
-<p>Some of what I'm about to say is true. Some of it's what people say when they've had too much mead and too little sleep. Some of it was told to me by people who were told by people who claimed they were there.</p>
-
-<p>The difference doesn't matter as much as you'd think.</p>
-
-<p>What matters is this: the dungeons are real. The fragments are real. The things that guard them are older than this tavern, older than Thornhaven, older than the language you're speaking right now. They don't negotiate. They don't tire. And they've had three thousand years to practice.</p>
-
-<p>Aldric — that's the barkeep, the tall one who looks like he was carved from the same stone as the hearth — he'll tell you the Sunstone is a fairy tale. Mira the cartographer will sell you a map and call it "a useful fantasy for selling parchment." The regulars will buy you a drink and say the dungeons are just caves with a reputation.</p>
-
-<p>They're not wrong. They're just not right in the way that keeps you alive.</p>
-
-<p>So sit down. Order something. I don't care what — I'm not the barkeep.</p>
-
-<p>And listen.</p>
-
-<p>Because the story I'm about to tell you is the only weapon that works in every dungeon, against every enemy, in every darkness you'll face down there.</p>
-
-<p>Knowledge.</p>
-
-<p>Everything else — the swords, the spells, the potions I'll sell you at a reasonable markup — those are just tools. Tools break. Tools run out. Tools fail at the worst possible moment.</p>
-
-<p>But once you know what happened to the world, once you understand why the crypt doesn't care that it's your first time, once you've heard the names and the numbers and the terrible mathematics of what one man did when eleven people told him no...</p>
-
-<p>Then at least you'll know what you're dying for.</p>
-
-<p>That's more than most get.</p>
-
-<div class="divider">⬥ ⬥ ⬥</div>
-
-<div class="bessa-frame">
-<p>Bessa pushes her untouched mug to the side and leans forward. The fire behind her throws her shadow across the wall — too tall, too sharp, like something is standing behind her that wasn't there a moment ago.</p>
-<p>She begins.</p>
-</div>
-
-<div class="divider">⬥ ⬥ ⬥</div>
-
-<!-- CHAPTER ONE -->
-
-<h1>Chapter One</h1>
-<h3>The Sunstone</h3>
-
-<div class="section-num">I.</div>
-
-<p class="no-indent">Three thousand years before you walked through my door, the world had a heartbeat.</p>
-
-<p>Not a metaphor. Not poetry. A real, measurable pulse of light that emanated from a single point in the city of Aldenmere, in the great chamber beneath the Scholars' Dome, from an artifact that should not have existed in any world governed by the laws we pretend to understand.</p>
-
-<p>The Sunstone.</p>
-
-<p>It was not a sun. It was not a stone, not really, though that's the word we use because language fails at the edges of things this large. What it was — what the oldest texts describe, in language that trembles at its own inadequacy — was a crystallized fragment of the first dawn. The collision point between the planes of Light and Shadow, captured in the instant before either existed cleanly. Frozen. Held. Made solid.</p>
-
-<p>Imagine holding a piece of the moment before the world decided what it was.</p>
-
-<p>That's what sat on the pedestal in Aldenmere. That's what lit their cities, powered their forges, fed their fields, healed their sick. That's what thirty-one scholars built a civilization around, and that's what one man cracked open because he thought he knew better than the other thirty.</p>
-
-<p>But I'm getting ahead of myself. The crack comes later. First, the light.</p>
-
-<div class="section-num">II.</div>
-
-<p class="no-indent">The Age of Radiance lasted four hundred and twelve years.</p>
-
-<p>I want you to sit with that number for a moment. Four hundred and twelve years of unbroken prosperity. Your great-great-great-grandparents hadn't been born yet when the Sunstone was already old. Empires you've never heard of rose and fell while Aldenmere simply... continued. It's the kind of stability that makes people forget the word <em>disaster</em> exists. Which, in my experience, is exactly when disaster starts paying attention.</p>
-
-<p>The city was built in concentric rings around the Scholars' Dome, which itself was built around the chamber, which itself was built around the Sunstone. Everything oriented toward the light. Streets radiated outward like the spokes of a wheel. The further you walked from the center, the dimmer the glow — but even at the outermost walls, three miles from the Dome, the light was enough to read by. At midnight. In winter.</p>
-
-<p>They didn't have torches in Aldenmere. They didn't need them. They also didn't have thieves, poverty, or famine, which tends to happen when you've got a magical crystal doing the work of ten thousand suns. The trick, of course, is keeping the crystal happy. Or at least keeping the people who manage the crystal from getting ideas.</p>
-
-<p>The Aureate Circle governed this city. Thirty-one seats, filled by scholars who had proven — through examination, through contribution, through the ruthless peer review that only academics can inflict on each other — that they understood the Sunstone well enough to be trusted near it.</p>
-
-<p>They weren't kings. They weren't priests. They were, in the most literal sense, keepers. Their job was to maintain the Sunstone's output, regulate its use, and — this is the part that matters — ensure that no one tried to use it for anything beyond its established capacity.</p>
-
-<p>The Sunstone lit cities. It healed the sick. It could purify water, accelerate crop growth, and power mechanisms that we would call engines but they called <em>instruments of continuation</em>. It could inscribe thoughts onto crystalline tablets that held them perfectly for centuries — a trick the Circle used for their records and, much later, one their descendants would attempt to use for protection. But I'll tell you about the ward-cards another time. That's Sable's story, not the Circle's.</p>
-
-<p>What the Sunstone was not supposed to do, what the Circle's founding charter explicitly prohibited, was pierce the boundary between the living and the dead.</p>
-
-<p>Not because it couldn't.</p>
-
-<p>Because three thousand years ago, thirty-one scholars were wise enough to understand that the question was not <em>can we</em>, but <em>should we</em>. And for four hundred and twelve years, the answer was no.</p>
-
-<p>The oldest member of the Circle — a woman named Tessaly Vorne, who had held the first seat for sixty-one years and had the temperament of a glacier with a grudge — once said that the charter's prohibition wasn't about capability. "The Sunstone could boil the ocean," she told an assembly of new members. "We don't do that either. Capability is not permission. Write that down. You'll forget it otherwise."</p>
-
-<p>They wrote it down. And then one of them forgot it anyway.</p>
-
-<div class="section-num">III.</div>
-
-<p class="no-indent">I know what you're thinking. You're thinking about the thirty-first seat.</p>
-
-<p>You're right to.</p>
-
-<p>His name was Dorevus Aelm. Born in the Northern Quarter. Physician first, then scholar, then the newest member of the Circle — the thirty-first seat, which is to say the least important one. The seat they gave to promising newcomers so they could observe without influence. The seat closest to the door.</p>
-
-<p>Dorevus specialized in what he called <em>theoretical recombination</em>. The mathematics of putting broken things back together. He could describe, in equations more elegant than any poem, exactly how a shattered vase would reassemble if you reversed the force that broke it. How a torn page would re-knit if you could unwrite the cut. How a wound would close if you could convince time to run backward, just for a moment, just in that one specific place.</p>
-
-<p>Beautiful work. Brilliant, even. The other Circle members read his papers with the careful admiration you give to something that impresses you and frightens you in equal measure. Tessaly Vorne read it twice, set it down, and said, "Keep an eye on this one." She didn't mean it as a compliment.</p>
-
-<p>Because Dorevus's mathematics didn't stop at vases and pages and wounds.</p>
-
-<p>The logical extension — the one he wrote in his private journals but never published, the one his cousin Juris found after the Fracture and spent the rest of his short life trying to destroy — was that death itself was a form of breaking. And if you could reverse the force that caused it...</p>
-
-<p>But this is the wrong way to tell it. I'm making him sound like a villain, and that's the easy story. The real story is worse.</p>
-
-<p>Dorevus wasn't a villain. He was a physician.</p>
-
-<p>He'd spent six years before joining the Circle treating patients in the Northern Quarter. Children, mostly. The poor ones, the ones who couldn't afford the Circle's healers, the ones who came to his clinic with fevers and fractures and the particular desperate hope of parents who have exhausted every other option.</p>
-
-<p>He lost patients. All physicians do. But Dorevus couldn't stop calculating. He'd stand at a child's bedside and watch the life leave their eyes and think: <em>I can write the equation for what just happened. I can describe mathematically exactly what broke. And if I can describe it, I can reverse it.</em></p>
-
-<p>The Sunstone had the power. He had the math. Between the two of them, death was a problem with a solution.</p>
-
-<p>The Circle said no.</p>
-
-<p>They voted eleven to one. Dorevus was the one.</p>
-
-<p>And that vote — that simple, reasonable, correct vote by eleven wise people who understood exactly what they were protecting the world from — is the reason you're sitting in a tavern three thousand years later, asking a merchant about dungeons.</p>
-
-<div class="section-num">IV.</div>
-
-<p class="no-indent">I should tell you about the vote. Not because it changes what happened — the Fracture was coming regardless, the way storms come, the way the ground gives beneath a building whose foundation was always insufficient — but because you should understand the mathematics of it.</p>
-
-<p>Thirty-one seats. Twenty were absent. The vote on Dorevus's proposal — "An Inquiry Into the Reversal of Terminal Biological Cessation Via Directed Sunstone Application," he called it, because academics have a gift for making the apocalypse sound like a research paper — was held on a rest day. Most of the Circle was attending a festival in the outer rings.</p>
-
-<p>I've always wondered about that. Twenty scholars, absent for the most important vote in the history of their civilization. Off watching dancers and eating honeyed figs while one man asked permission to break the world. If there's a lesson in that, I suppose it's this: the apocalypse doesn't wait for full attendance.</p>
-
-<p>Eleven members were present. It required a simple majority to approve new applications of the Sunstone. Dorevus needed six votes.</p>
-
-<p>He got one. His own.</p>
-
-<p>The other ten said no. Clearly, firmly, with the conviction of people who understand that some doors are meant to stay closed. Juris Aelm — Dorevus's cousin, his closest friend on the Circle — was among the ten. He was the one who wrote the formal rejection. He was the one who looked Dorevus in the eye afterward and said, "This is not what the Sunstone is for."</p>
-
-<p>Tessaly Vorne didn't even speak during the vote. She simply held up one hand, palm outward — the Circle's gesture for absolute refusal. She'd seen the equations. She'd seen where they led. When younger members asked her afterward why she hadn't argued against Dorevus's proposal, she said, "You don't argue with an avalanche. You get out of the way."</p>
-
-<p>She didn't get out of the way in time.</p>
-
-<p>Dorevus accepted the vote. He thanked the council for their time. He returned to his quarters in the Northern Quarter. He sat at his desk and opened his private journal.</p>
-
-<p>And then he did it anyway.</p>
-
-<div class="section-num">V.</div>
-
-<p class="no-indent">The Sunstone cracked at exactly the moment you would expect — not when Dorevus began the ritual, not when the equations aligned, not when the boundary between life and death began to thin and shimmer and bend.</p>
-
-<p>It cracked when it worked.</p>
-
-<p>For one heartbeat — one impossible, incandescent, never-to-be-repeated heartbeat — the barrier between the living and the dead did not exist. For one heartbeat, every person in Aldenmere who had ever lost someone felt them. Felt them close. Felt their breath, their warmth, their presence, as real as the floor beneath their feet.</p>
-
-<p>Mothers felt children. Soldiers felt brothers. Old men felt wives thirty years gone. The city, for one heartbeat, was whole in a way it had never been.</p>
-
-<p>And then the Sunstone cracked.</p>
-
-<p>Not shattered. Cracked. The distinction matters, though it took three thousand years for anyone to understand why. A shattered stone would have been dead. A cracked stone was alive — alive and broken and screaming, if light can scream, and I promise you it can because seven hundred and four people heard it and none of them survived long enough to forget.</p>
-
-<p>Seven hundred and four people died in the initial burst. The twelve Circle members who were in the Dome were gone instantly — not killed, not burned, not destroyed. Erased. As though they had never been. Their seats remained. Their robes pooled on the marble floor. But the people inside them were simply... subtracted. Tessaly Vorne's first-seat robe settled into a shape that still held the impression of her shoulders. No body. No ash. Just the absence of a woman who had spent sixty-one years saying <em>no</em> to the right things.</p>
-
-<p>Dorevus was not killed. He was unmade. His body ceased to exist in the present, but his consciousness survived — anchored to the ten shards of the Sunstone as they flew across the world, each embedding itself in a different place.</p>
-
-<p>High mountain peaks. Deep ocean caves. Ancient ruins. Volcanic chambers. Frozen tundra. Places where the earth was thin and the world was already strange.</p>
-
-<p>Wherever a fragment landed, something changed.</p>
-
-<p>Light behaved differently there. The air tasted of copper and regret. Old things woke up. And the land around each fragment became... hungry. Not alive, not thinking, but absorbent — like a wound that doesn't close, that draws in everything it touches. The fragments didn't just change the land. They made it remember. Made it keep things. Things that wandered too close. Things that died in its reach.</p>
-
-<p>But that part of the story — the keeping, the voices, the things the dungeons hold that aren't enemies and aren't treasure and aren't anything you can fight with a sword — that comes later. When you're deeper. When you can hear them.</p>
-
-<p>And the world — the bright, warm, four-hundred-and-twelve-year-old world of the Aureate Circle — went dark.</p>
-
-<div class="section-num">VI.</div>
-
-<p class="no-indent">That's the story every child in Thornhaven knows.</p>
-
-<p>They tell it wrong, of course. In the children's version, Dorevus is a wicked wizard and the Sunstone is a magic gem and the moral is <em>listen to your elders</em>. It's a tidy version. Satisfying. The kind of story that makes people feel safe because it locates evil in a single person and says: <em>if we just avoid being that person, we'll be fine.</em></p>
-
-<p>The real version is worse because the real version asks a question you can't answer comfortably:</p>
-
-<p>What would you do if you had the power to unmake death, and the only thing standing between you and a world without grief was a committee vote?</p>
-
-<p>I've sold potions to a hundred delvers who would've done what Dorevus did. Half of them were in this room tonight. The one with the scarred hands and the prayer beads? She lost a daughter to the fever three winters ago. The tall one who ordered ale and didn't drink it? He's been carrying his brother's shield since the border wars. People don't come to Thornhaven because they're happy. They come because they've run out of places to be sad.</p>
-
-<p>The difference between them and Dorevus is that they don't have the math.</p>
-
-<div class="divider">⬥ ⬥ ⬥</div>
-
-<div class="bessa-frame">
-<p>Bessa pauses. The fire in the hearth has burned low. Someone in the back of the tavern coughs — the wet, rattling cough of a person who's spent too long in cold places underground.</p>
-<p>She reaches for her mug, realizes it's empty, doesn't bother refilling it.</p>
-<p>"The fragments," she says. "You want to know about the fragments. Everyone does. That's the part where the maps start and the stories stop being useful."</p>
-<p>She looks at you the way a doctor looks at someone who's about to hear something they can't un-hear. For a moment — just a moment — you wonder how a merchant learned to look at people like that.</p>
-<p>"Fine. Ten fragments. Ten wounds. Let me tell you what happened to the world when the light fell out of it."</p>
-<p>Outside, the wind picks up. And somewhere beneath the floorboards of the Rusty Flagon — so faint you might have imagined it — something whispers.</p>
-</div>
-
-<div class="chapter-end">— END OF CHAPTER ONE —</div>
-
-<div class="word-count">
-  <p>Prologue: ~900 words | Chapter One: ~5,400 words</p>
-  <p>The Codex of the Shattered Circle — Early Draft</p>
-  <p style="margin-top:20px; color:#2a2520;">© 2026 Ben Whitesides. All rights reserved.</p>
-</div>
-
+    <div class="container">
+        <h1>The Codex of the Shattered Circle</h1>
+
+        <nav>
+            <span class="toc-title">Table of Contents</span>
+            <ul>
+                <li><a href="#prologue">Prologue</a></li>
+                <li><a href="#chapter-one">Chapter One</a></li>
+                <li><a href="#chapter-two">Chapter Two</a></li>
+            </ul>
+        </nav>
+
+        <section id="prologue">
+            <h2>Prologue</h2>
+            <p>The world was not always this way. Before the cracks, before the heavy shadows, there was a clarity that we can only dream of now. The light didn't just illuminate; it sang. It was a song of order, of mathematics, and of absolute, unwavering certainty. We lived in the golden age of the Sunstone, unaware that the very thing that sustained us was also the thing that would unmake us.</p>
+            <p>This is not a tale of heroes. It is a tale of the arithmetic of ruin. It is the record of how a single moment of human frailty tore the fabric of reality, leaving behind a world of beautiful, terrifying fragments.</p>
+        </section>
+
+        <hr>
+
+        <section id="chapter-one">
+            <h1>Chapter One: The Sunstone</h1>
+            
+            <em>[ILLUSTRATION: The Sunstone, a crystallized fragment of the first dawn, hovering above a marble pedestal. Thirty-one thrones arranged in a circle. The light is not merely bright, it is thick, casting long, violet-edged shadows.]</em>
+
+            <hr>
+
+            <h2>I.</h2>
+            <p>Three thousand years before you walked through my door, the world had a heartbeat.</p>
+            <p>I do not mean that metaphorically. I do not mean it as some poet looking for a rhyme to match the tide. I mean there was a real, measurable pulse of light that emanated from a single point in the city of Aldenmere. It came from the great chamber beneath the Scholars' Dome, from an artifact that should not have existed in any world governed by the laws we pretend to understand.</p>
+            <p>The Sunstone.</p>
+            <p>It was not a sun. It was not a stone, not really, though that is the word we use because language fails at the edges of things this large. What it was, what the oldest texts describe in language that trembles at its own inadequacy, was a crystallized fragment of the first dawn. It was the collision point between the planes of Light and Shadow, captured in the instant before either existed cleanly. Frozen. Held. Made solid.</p>
+            <p>Imagine holding a piece of the moment before the world decided what it was.</p>
+            <p>That is what sat on the pedestal in Aldenmere. That is what lit their cities, powered their forges, fed their fields, and healed their sick. That is what thirty-one scholars built a civilization around, and that is what one man cracked open because he thought he knew better than the other thirty.</p>
+            <p>But I am getting ahead of myself. The crack comes later. First, we must speak of the light.</p>
+
+            <hr>
+
+            <h2>II.</h2>
+            <p>The Age of Radiance lasted four hundred and twelve years.</p>
+            <p>I want you to sit with that number for a moment. Four hundred and twelve years of unbroken prosperity. Your great-great-great-grandparents had not been born yet when the Sunstone was already old. During those centuries, the Thalassic Hegemony rose to claim the southern seas and fell to dust, all while Aldenmere simply continued.</p>
+            <p>To understand the light, you have to understand the city. I remember my grandmother telling me how the streets of Aldenmere felt like walking through a living thing. The city was built in concentric rings around the Scholars' Dome. As you walked from the outer rim toward the center, the very air changed. In the fifth ring, the light was a pale, lemon yellow, soft enough for the weavers to work their looms without squinting. By the third ring, where the markets swelled with the scent of crushed cinnamon and roasted goat, the light turned a vibrant, honeyed amber that warmed your skin like a summer afternoon, even in the dead of winter.</p>
+            <p>By the time you reached the inner sanctum, the light was no longer a color. It was a presence. It hummed against your teeth. It cast shadows that were not black, but a deep, bruised violet, moving with a weight that felt almost physical.</p>
+            <p>They did not use torches in Aldenmere. They did not need them. They did not even need the sun.</p>
+            <p>The Aureate Circle governed this city. Thirty-one seats, filled by scholars who had proven, through examination, through contribution, and through the ruthless peer review that only academics can inflict on each other, that they understood the Sunstone well enough to be trusted near it.</p>
+            <p><em>[ILLUSTRATION: The Aureate Circle. Twelve scholars in heavy, gold-threaded robes gathered around the Sunstone. One figure stands in the shadows of the doorway, looking toward the light.]</em></p>
+            <p>They were not kings. They were not priests. They were, in the most literal sense, keepers. Their job was to maintain the Sunstone's output, regulate its use, and ensure that no one tried to use it for anything beyond its established capacity.</p>
+            <p>There was a cost to the light, of course. One does not simply pull warmth from the dawn without a debt being recorded. The scholars knew this. To draw too much, to pull too deeply from the Stone's reservoir, caused the light to dim for days, leaving the city in a grey, choking twilight. More dangerously, those who channeled it too often found their own vitality leeched away. I have seen the portraits of the old keepers, men and women who looked a hundred years older than their actual age, their skin translucent and their eyes clouded by the very radiance they tended.</p>
+            <p>To maintain the Stone, the Circle had to perform the Morning Tithe. Every dawn, a scholar would step into the resonance and offer a piece of their own memory to steady the light. They didn't lose their minds, not all at once, but they lost the small things. The smell of rain on hot stone, the exact shade of their mother’s eyes, the feeling of a first kiss. They traded their humanity to keep the world bright, believing that a city with a perfect summer was worth a few forgotten afternoons.</p>
+            <p>The Sunstone could purify water, accelerate crop growth, and power mechanisms that we would call engines, but they called instruments of continuation. What it was not supposed to do, what the Circle's founding charter explicitly prohibited, was pierce the boundary between the living and the dead.</p>
+            <p>Not because it could not. It was because three thousand years ago, thirty-one scholars were wise enough to understand that the question was not <em>can we</em>, but <em>should we</em>. And for four hundred and twelve years, the answer was no.</p>
+
+            <hr>
+
+            <h2>III.</h2>
+            <p>I know what you are thinking. You are thinking about the thirty-first seat.</p>
+            <p>You are right to.</p>
+            <p>His name was Dorevus Aelm. Born in the Northern Quarter. Physician first, then scholar, then the newest member of the Circle. The seat they gave to promising newcomers so they could observe without influence. The seat closest to the door.</p>
+            <p>Dorevus specialized in what he called theoretical recombination. The mathematics of putting broken things back together. He could describe, in equations more elegant than any poem, exactly how a shattered vase would reassemble if you reversed the force that broke it. How a torn page would re-knit if you could unwrite the cut. How a wound would close if you could convince time to run backward, just for a moment, just in that one specific place.</p>
+            <p>The other Circle members read his papers with the careful admiration you give to something that impresses you and frightens you in equal measure.</p>
+            <p>There were others in the Circle, of course. There was Magister Valerius, a man whose temper was as short as his beard was white, known for obsessing over the vibrational frequency of the light until he could hear it in his sleep. There was Elara of the Third Ring, a woman who spoke in riddles and had a habit of counting every person who entered her chamber, her fingers tapping a rhythmic, nervous code against her silken robes. And then there was Kaelen, a man so profoundly bored by the sanctity of the Stone that he spent his sessions sketching caricatures of the other scholars in the margins of holy texts.</p>
+            <p>But Dorevus was different.</p>
+            <p>Dorevus's mathematics did not stop at vases and pages and wounds. The logical extension, the one he wrote in his private journals but never published, was that death itself was a form of breaking. And if you could reverse the force that caused it, death was merely a mistake in the equation.</p>
+            <p>I am making him sound like a villain, and that is the easy story. The real story is worse. Dorevus was not a villain. He was a man who had looked at too much grief.</p>
+            <p>Before he joined the Circle, he had been a physician in the slums. He had watched a baker named Tomas, a man who could knead dough with the grace of a dancer, collapse in his flour-dusted shop. He had watched a mother in the fourth ring, singing a lullaby to a child who would never finish the sentence, her voice breaking as the light flickered. He had seen the small, unwritten lives of the city snuffed out by things the Sunstone should have been able to prevent.</p>
+            <p>He had spent six years watching the math of mortality fail. He thought the Sunstone was the missing variable.</p>
+            <p>The Circle said no. They voted eleven to one. Dorevus was the one.</p>
+
+            <hr>
+
+            <h2>IV.</h2>
+            <p>I should tell you about the vote. Not because it changes what happened, but because you should understand the weight of it.</p>
+            <p>Thirty-one seats. Twenty were absent. The vote on Dorevus's proposal, which he had titled An Inquiry Into the Reversal of Terminal Biological Cessation Via Directed Sunstone Application, was held on a rest day. Most of the Circle was attending a festival in the outer rings.</p>
+            <p>Eleven members were present. It required a simple majority to approve new applications of the Sunstone. Dorevus needed six votes.</p>
+            <p>He got one. His own.</p>
+            <p>The other ten said no. They said no with the heavy, suffocating finality of a courtroom verdict. Juris Aelm, his own cousin, sat in the chair directly across from him. Juris was a man of iron principles, a man who believed that the sanctity of the Stone was the only thing keeping the world from dissolving into chaos.</p>
+            <p>There was also Magister Hestia, a woman whose entire life had been dedicated to the preservation of the status quo. Her argument was not one of morality, but of terrifyingly sound logic. She argued that if the Sunstone were used to reverse death, the city would eventually be populated by a trillion ghosts, all demanding their share of the light, until the sun itself starved to death trying to feed a graveyard. She argued that death was not an enemy to be defeated, but a necessary drain on the system, a way for the world to clear its ledger. And as much as it pains me to say, she was likely right.</p>
+            <p>Juris did not yell. He did not even look angry. He simply looked at Dorevus with a profound, crushing disappointment.</p>
+            <p>"This is not what the Sunstone is for," Juris had said. The words hung in the air, heavier than the golden light.</p>
+            <p>Dorevus accepted the vote. He thanked the council for their time. He returned to his quarters in the Northern Quarter, sat at his desk, and opened his private journal.</p>
+            <p>He did not go home to sleep. He went to the Stone.</p>
+
+            <hr>
+
+            <h2>V.</h2>
+            <p>The Sunstone cracked at exactly the moment you would expect. It did not crack when Dorevus began the ritual, nor when the equations aligned, nor when the boundary between life and death began to shimmer.</p>
+            <p>It cracked when it worked.</p>
+            <p>For one heartbeat, the barrier between the living and the dead did not exist. For one heartbeat, every person in Aldenmere who had ever lost someone felt them. A baker felt the hand of his dead wife on his shoulder. A soldier felt the warmth of a brother long lost to the frontier. The city was, for one impossible instant, whole.</p>
+            <p>And then the Sunstone cracked.</p>
+            <p>It did not shatter into dust. A shattered stone would have been dead. A cracked stone was alive. It was alive and broken and screaming, if light can scream, and I promise you it can, because seven hundred and four people heard it and none of them survived long enough to forget.</p>
+            <p>The seven hundred and four were not just numbers. They were the people in the immediate vicinity of the Dome. There was Lyra, the girl who was delivering flowers to the inner ring, her basket spilling white petals across the marble just as the light struck. There was Master Harlen, the scribe who was halfway through recording the day's tithes. There were the guards, the cleaners, the scholars. They were not killed, not burned, not destroyed. They were subtracted. They were simply removed from the sum of the world.</p>
+            <p>The twelve Circle members who were in the Dome were gone instantly. Their robes pooled on the marble floor, empty and hollow, as if the people inside them had never been more than a trick of the light.</p>
+            <p>Dorevus was not killed. He was unmade. His body ceased to exist in the present, but his consciousness survived, anchored to the ten shards of the Sunstone as they flew across the world.</p>
+            <p>Wherever a fragment landed, the world became heavy. The magic of the present is a glitchy, broken thing, a shadow of what it was. In the places where the shards fell, the air tastes of copper and regret. The light is wrong. It feels thick, like moving through water, and the shadows it casts are long and hungry.</p>
+            <p>The bright, warm, four-hundred-and-twelve-year-old world went dark.</p>
+
+            <hr>
+
+            <h2>VI.</h2>
+            <p>That is the story every child in Thornhaven knows.</p>
+            <p>They tell it wrong, of course. In the children's version, Dorevus is a wicked wizard and the Sunstone is a cursed gem and the moral is to listen to your elders. It is a tidy version. It is the kind of story that makes people feel safe because it locates evil in a single person and says that if we avoid being that person, we will be fine.</p>
+            <p>But I have seen the way the light behaves in the ruins of the old empire. I have seen the way the magic drags at your soul when you try to cast a simple cantrip. The magic is heavy now. It is tired.</p>
+            <p>The real version asks a question you cannot answer.</p>
+            <p>What would you do if you had the power to unmake death, and the only thing standing between you and a world without grief was a committee vote?</p>
+            <p>I have sold potions to a hundred delvers who would have done exactly what Dorevus did. Half of them are sitting in this tavern right now, nursing their ales and dreaming of glory.</p>
+            <p>The difference between them and Dorevus is that they do not have the math.</p>
+            <p><em>[Bessa pauses. She reaches for her mug, realizes it is empty, and does not bother to refill it. She looks at you with eyes that have seen too much of the dark.]</em></p>
+            <p>"The fragments," she says. "You want to know about the fragments. Everyone does. That is the part where the maps start and the stories stop being useful."</p>
+            <p>"Fine. Ten fragments. Ten wounds. Let me tell you what happened to the world when the light fell out of it."</p>
+
+            <hr>
+
+            <h2>VII.</h2>
+            <p>Dorevus did not walk into that chamber as a conqueror. He walked in as a man who had been bullied by the universe for forty years.</p>
+            <p>He sat on the floor, not a throne, but the cold, unyielding marble that had been polished by the feet of three hundred years of scholars. He had his journals, his charcoal pencils, and a small, copper bowl of mountain spring water. He did not use a staff or a wand. He used a slide rule and a steadying breath.</p>
+            <p>The air in the Dome was thick that night. It wasn't the usual honeyed amber. It was a pressurized gold, the kind of light that feels like it’s trying to push its way into your lungs. The Sunstone was humming. It wasn't a sound, really. It was a vibration in the bone.</p>
+            <p>He began the calculation.</p>
+            <p>It was a beautiful sequence of numbers. A spiral that tightened around the concept of <em>is</em> and <em>was</em> until the distinction dissolved. He was essentially trying to convince the light that the present moment was a lie. He was trying to prove that the past was simply a different frequency, one that the Sunstone could tune into if only the dial was turned far enough.</p>
+            <p>His hands shook. Not from fear, but from the sheer, terrifying weight of the mathematics. To hold a truth that large is to feel your own skin become an inconvenience. He felt thin. He felt like a sketch of a man, waiting for the ink to dry.</p>
+            <p>He reached out. He did not touch the stone, that would have been suicide. He reached into the light. He used the copper bowl to catch a single, refracted beam, aiming it toward the center of the stone’s own internal geometry.</p>
+            <p>He was a physician. He knew that to heal a bone, you must first align the fragments. He thought he was merely aligning the fragments of life.</p>
+            <p>He was wrong. He was tilting the axis of everything.</p>
+
+            <hr>
+
+            <h2>VIII.</h2>
+            <p>There is a specific kind of silence that follows a catastrophe. It is not the absence of noise. It is the presence of a vacuum.</p>
+            <p>When the Sunstone cracked, it didn't sound like breaking glass. It sounded like a mountain sighing. It was a deep, resonant <em>thrum</em> that moved through the earth, through the stone of the city, and through the marrow of every living thing within five miles.</p>
+            <p>Then, the light changed.</p>
+            <p>It turned from gold to white. Not a pure white, but a violent, blinding bleaching that stripped the color from the world. For three seconds, there was no shadow. There was no depth. There was only the glare.</p>
+            <p>And then, the subtractive event began.</p>
+            <p>I told you about the seven hundred and four. I spoke of them as a mass, but a mass is just a way to avoid the cruelty of the individual.</p>
+            <p>Think of Elara’s youngest, a boy named Pip who had been playing with a wooden knight in the third ring. He didn't die. He wasn't crushed. One moment, he was lunging at a shadow, his laughter bright and jagged. The next, the knight was hitting the cobblestones with a hollow <em>clack</em>, and the boy was simply... gone. The space he occupied didn't even ripple. The air just rushed in to fill the void, a sudden, sharp intake of breath from the world itself.</p>
+            <p>Think of the baker, Tomas. He had been in the outer rim, far from the Dome, but the light was a hungry thing once it broke. He was reaching for a loaf of rye, his hands dusted with flour, when the frequency hit. The flour didn't fall. It suspended in the air, a white cloud shaped like a man, and then it settled on an empty floor.</p>
+            <p>There were mothers who were mid-sentence, their voices cut off by a sudden, impossible emptiness in their arms. There were guards whose spears remained upright, braced against nothing.</p>
+            <p>It was an arithmetic of erasure.</p>
+            <p>The math is what haunts the survivors. The city of Aldenmere had a census. At the moment of the Fracture, there were exactly three thousand and eleven souls registered within the inner and middle rings.</p>
+            <p>Seven hundred and four were removed.</p>
+            <p>That is not a casualty rate. That is a mutilation. You do not recover from a wound that large. You simply learn to walk with the limp.</p>
+
+            <hr>
+
+            <h2>IX.</h2>
+            <p>The Dome did not collapse. The city did not burn. That would have been merciful.</p>
+            <p>Instead, Aldenmere became a wound that refused to scab.</p>
+            <p>The center of the city, where the Scholars' Dome stood, became the Scar. It is a place where the geometry is wrong. You can walk in a straight line and find yourself walking in a circle. You can look at a wall and see a hallway that isn't there. The light there is bruised, a sickly, pulsing violet that smells of ozone and old copper.</p>
+            <p>The people who remained, the two thousand, three hundred and seven, they did not rebuild. They could not. How do you rebuild a civilization when the very foundation of your reality has proven itself to be unstable?</p>
+            <p>The Aureate Circle was gone. The scholars were gone. The laws were gone. The light, once a steady, warming presence, became a flickering, unpredictable thing. It became the thing you had to guard against.</p>
+            <p>The Hegemony rose from the chaos, of course. They were scavengers. They saw the darkened rings of Aldenmere and they saw opportunity. They built their empires on the scraps of the old world, using the dying embers of the Sunstone's secondary conduits to power their wars. But they never understood the Stone. They treated it like a coal mine. They kept digging, deeper and deeper, never realizing that they were digging into a corpse.</p>
+            <p>The Sunstone did not die. It broke into ten pieces.</p>
+            <p>Ten shards of a broken dawn.</p>
+            <p>They flew. They did not fall like stones; they traveled like arrows, driven by a momentum that ignored gravity and wind. They streaked across the sky in a blinding web of gold, a celestial fracture that people still talk about in the old songs.</p>
+            <p>One landed in the salt flats of the south, turning the sand into glass that hums when the moon is full. Another fell into the Deepwood, and now the trees there grow in patterns that make men go mad. Another is lost, buried under a mountain, or perhaps sitting in the vault of a king who thinks he is clever because he owns a glowing rock.</p>
+            <p>The world changed from a place of light to a place of shadows. We stopped looking up at the stars and started looking down at our feet, watching for the cracks.</p>
+
+            <hr>
+
+            <h2>X.</h2>
+            <p><em>[Bessa leans forward. The candlelight in the tavern seems to shrink away from her, as if she is drawing the warmth into herself. She reaches out and taps the table, a single, sharp sound.]</em></p>
+            <p>"You look disappointed," she says. Her voice is low, stripped of its previous warmth. "You were expecting a map. You were expecting me to tell you exactly where the shards are, so you can go find them, slay a dragon, and save the world. You want the hero's math."</p>
+            <p>She shakes her head, a slow, tired movement.</p>
+            <p>"The shards aren't prizes. They are infections. They are pieces of a broken god, and they are leaking. Every time someone finds one, every time someone tries to use its power to do what Dorevus did, to fix something that is meant to be broken, the leak gets wider. The shadows get longer."</p>
+            <p>She looks toward the door, where the night is pressing hard against the glass.</p>
+            <p>"The math is changing. The debt is coming due. And I think you've come here because you've noticed the light in your own village is starting to flicker. Or maybe you've noticed that the shadows are starting to move when you aren't looking."</p>
+            <p>She stands up. She is taller than she looked sitting down, or perhaps it is just the way she carries the weight of her knowledge.</p>
+            <p>"I don't have a map. But I have a direction. And if you have enough coin and enough stupidity, I might be able to show you the way."</p>
+            <p>She gestures to the empty seat beside her.</p>
+            <p>"Sit. Drink. And for the love of the light, stop looking for a happy ending. In this world, we don't get happy endings. We only get continuations."</p>
+
+            <hr>
+
+            <h2>XI.</h2>
+            <p>You want to understand the arithmetic of it. You want to know why seven hundred and four is a number that ruins a man's sleep.</p>
+            <p>It was not a random culling. If a storm had leveled the district, we could blame the wind. If a plague had swept the rings, we could blame the humors of the blood. But this was a subtraction. It was precise. It was mathematical.</p>
+            <p>The census recorded three thousand and eleven souls within the protected inner and middle rings. When the light flared, when the Stone groaned and split, the numbers did not merely drop. They were excised.</p>
+            <p>Seven hundred and four people were removed from the sum of existence.</p>
+            <p>That leaves two thousand, three hundred and seven. That is the number of the broken. That is the number of people who woke up in a city that no longer made sense, staring at empty chairs and half-finished meals. It is a number that does not divide cleanly. It leaves a remainder of grief that the historians try to smooth over with talk of "societal shifts" and "economic restructuring."</p>
+            <p>But a remainder is never just a number. It is the ghost in the machine. It is the child who grows up talking to a space where a mother used to be. It is the baker who still reaches for a second loaf of bread before remembering he is alone.</p>
+            <p>The city did not fall to an army. It fell to the silence.</p>
+            <p>The Scar, as we call it now, is the epicenter of that silence. The center of Aldenmere is no longer a place of governance. It is a place of wrongness. You can walk into the heart of the old Scholars' Dome and feel the geometry failing you. You can walk a straight path and find yourself back where you started, three minutes later, with the copper taste of old blood in your mouth. The light there is not light at all. It is a bruised, pulsing violet that moves like it is breathing. It is a wound that refuses to scab.</p>
+            <p>The scholars thought they were masters of the light. They thought they had harnessed the dawn. They didn't realize they were just holding a handful of lightning and calling it a candle.</p>
+
+            <hr>
+
+            <h2>XII.</h2>
+            <p>And then there were the shards.</p>
+            <p>The Sunstone did not just break; it scattered. It threw its pieces across the world like a man throwing stones in a fit of madness. Ten fragments. Ten pieces of a broken dawn.</p>
+            <p>They did not fall like rocks. They moved with a purpose, streaking across the sky in a web of gold that people still sing about in the low taverns. They defied gravity. They ignored the wind. They sought out places where the world was already thin, places where the shadows were already deep.</p>
+            <p>One landed in the southern salt flats, turning the sand into a sheet of singing glass that hums when the moon is full. Another fell into the Deepwood, and now the trees there grow in impossible, spiraling patterns that turn a man's mind to mush if he stares too long. One is buried beneath a mountain that hasn't felt warmth in an age. Another is likely sitting in a velvet box in some king's treasury, a "holy relic" that he uses to light his cigars, never realizing he is holding a piece of the apocalypse.</p>
+            <p>Each fragment is a leak. Each fragment is a hole in the fabric of what we call reality.</p>
+            <p>Where a shard rests, the magic is not pure. It is heavy. It is tired. It is a jagged, broken thing that drags at your soul when you try to use it. We call it "the weight." You feel it in your bones when you cast a spell. You feel it in the air when you enter a forest near a fallen fragment. It is the sensation of trying to swim through honey or breathe through smoke.</p>
+            <p>The world became a place of shadows because we lost our sun. We stopped looking up at the heavens and started looking down at our feet, watching for the cracks.</p>
+
+            <hr>
+
+            <h2>XIII.</h2>
+            <p><em>[Bessa reaches for her mug, finds it truly empty, and sets it down with a heavy thud. She stares at the dark liquid clinging to the bottom, then looks up. Her eyes are hard, bright, and entirely too old for her face.]</em></p>
+            <p>"You have that look," she says. "The look of someone who thinks they can fix the math. You think if you find enough fragments, if you stitch them back together, you can turn the lights back on. You think you can undo the subtraction."</p>
+            <p>She leans back, the shadows of the tavern swallowing the edges of her shoulders.</p>
+            <p>"Do not. There is no such thing as a perfect repair. You can mend a vase, but the cracks will always be there. You can heal a wound, but the scar will always tell the story of how you were broken."</p>
+            <p>She stands up, smoothing her apron. The movement is slow, deliberate.</p>
+            <p>"The shards are not prizes. They are infections. And the world is getting very, very sick."</p>
+            <p>She pauses, looking toward the door. Beyond the wood and glass, the night is thick, pressing against the tavern like a living thing.</p>
+            <p>"I don't have a map for you. But I know where the first crack is forming. If you're as brave as you look, or as foolish as you sound, follow me."</p>
+            <p>She turns toward the exit, her silhouette sharp against the dim light.</p>
+            <p>"But leave your hope at the door. You won't have any use for it where we're going."</p>
+            <p><em>[Bessa exits into the night. The door swings shut, leaving the tavern in a sudden, heavy silence.]</em></p>
+
+            <hr>
+
+            <p><em>[END OF CHAPTER ONE]</em></p>
+        </section>
+
+        <hr>
+
+        <section id="chapter-two">
+            <h1>Chapter Two: The Fracture</h1>
+            
+            <em>[Illustration: A charcoal sketch of a cracked, glowing sphere. The light does not radiate outward, but seems to be sucked into the fissures. Small, jagged lines bleed from the center, trailing off into a darkness that dominates the edges of the page.]</em>
+
+            <p>Sit down. No, not there. That stool has a wobble that will ruin your evening, and I just fixed the floorboards around it. Sit by the hearth. It is warmer, and frankly, you are going to need the heat once we get into this.</p>
+            <p>I see you looking at the empty mug. I am not refilling it yet. You have to earn the next round by listening. In the first chapter, I told you about the Sunstone as if it were a campfire story. I made it sound like a bit of magic, a bright bauble that once kept the world spinning. I lied. Or rather, I softened the edges. I gave you the shape of the truth without the teeth.</p>
+            <p>But you are not here for bedtime stories. You are here because you want to know why the world feels so thin. You want to know why, when you walk through the woods at night, the shadows seem to have a weight to them. You want to know why the light sometimes feels like it is trying to escape from the very air.</p>
+            <p>We are leaving the era of wonder behind. We are entering the era of consequence.</p>
+            <p>If the Sunstone was the heartbeat of the world, then the Fracture was the moment the heart stopped, stuttered, and then began to beat with a rhythm that was fundamentally, horribly wrong. It was not a quiet death. It was not a gentle fading. It was a breaking.</p>
+            <p>I need a drink before this part. Truly. Give me a moment to find the heavy stuff. The stuff that burns the memory out of your throat.</p>
+
+            <hr>
+
+            <h2>I. The Eleven and the One</h2>
+            
+            <em>[Illustration: A high-angle view of a circular chamber. Twelve figures in heavy, ornate robes stand around a central pedestal. Eleven of the figures are turned away, toward the edges of the room. One figure stands alone, leaning over the pedestal, his shadow stretching long and distorted across the floor.]</em>
+
+            <p>To understand the breaking, you have to understand the argument.</p>
+            <p>History likes to pretend that great tragedies happen because of grand, sweeping cosmic forces. It wants to tell you that gods fought, or that the stars aligned in a way that demanded blood. That is nonsense. History happens because a group of very smart, very arrogant people sat in a room and couldn't agree on a single thing.</p>
+            <p>The year was 412 of the Aureate Age. The setting was the High Sanctum of Aldenmere, a place that, in those days, felt as though it were built of solidified sunlight rather than stone. There were twelve of them. The Aureate Circle. They were the finest minds the world had ever produced, the keepers of the light, the scholars who understood the mathematics of existence.</p>
+            <p>And they were divided.</p>
+            <p>Dorevus the Pale. You might know him as Dorevus Aelm if you have read the old, dusty texts that most scholars treat as heresy. He was the thirty-first seat of the Circle, though he occupied it with the intensity of a man who intended to hold it for eternity. He was not a man of small ambitions. He did not care for the slow, methodical preservation of magic that the others championed.</p>
+            <p>Dorevus looked at the Sunstone and saw a door.</p>
+            <p>The other eleven members of the Circle saw a shield. They saw a regulator. They saw a sacred object that maintained the delicate balance between the seen and the unseen, the living and the dead. To them, the Sunstone was the anchor that kept the world from drifting into the void.</p>
+            <p>But Dorevus? Dorevus had a different theory. He believed that the barrier between life and death was not a natural law. He believed it was a malfunction. He argued, with a passion that bordered on the manic, that the Sunstone could be used to unmake death itself. He believed the stone was the key to a door that should never have been locked. He thought that if they could just turn the key, they could bring back everything the world had lost. Every hero, every child, every love that had been snatched away by the passage of time.</p>
+            <p>It was a beautiful idea. It was also a suicidal one.</p>
+            <p>The debate lasted for months. It echoed through the halls of the Sanctum. It was documented in scrolls that were later burned, in letters that were never sent. The tension was thick enough to choke on. They argued about the metaphysics of the soul, the stability of the light, the ethics of resurrection.</p>
+            <p>In the end, the vote was taken. It was not a close call. It was not a heated tie that was broken by a single vote. It was eleven to one.</p>
+            <p>Eleven scholars, standing on the foundation of caution and tradition, voting against the one man who believed he could conquer the ultimate end. They told him to cease. They told him his theories were dangerous. They told him he was playing with the very fabric of reality.</p>
+            <p>Dorevus did not listen. Men like that never do. They do not hear the word "no" as a boundary. They hear it as a challenge. They hear it as a lack of imagination.</p>
+            <p>He did not leave the Sanctum in shame. He did not retreat to a library to weep over his lost influence. He stayed. He waited. He waited for the moment when the Circle was distracted, or perhaps he simply relied on the fact that they believed they had already stopped him.</p>
+            <p>He performed the ritual alone.</p>
+            <p>He sat in that circular chamber, surrounded by the silence of his peers, and he reached for the sun. He did not use a hammer. He did not use a spell of destruction. He used the very tools he had spent his life perfecting. He used resonance, alignment, and the precise application of light. He thought he was opening a door. He thought he was a liberator.</p>
+            <p>He was just a man with a key that was too big for the lock.</p>
+
+            <hr>
+
+            <h2>II. The Sound of the Snap</h2>
+            <p>There is a specific kind of silence that follows a catastrophe. It is not the absence of sound. It is a heavy, pressurized thing. It is the silence of a room where a scream has just been cut short. It is the silence of a world that has just realized it has changed forever.</p>
+            <p>The explosion was not a sound you heard with your ears. It was a sound you felt in your marrow. It was a vibration that turned the air into glass and the stone into liquid.</p>
+            <p>When the Sunstone cracked, it did not simply break into pieces. It tore the concept of stability apart. The light did not explode outward like a firework. It shattered like a mirror, and the shards did not fall to the ground. They flew. They tore through the fabric of space, slicing through the air of Aldenmere as if the atmosphere were nothing more than silk.</p>
+            <p>The twelve scholars of the Aureate Circle were the first to go. They were right there, at the epicenter. They did not have time to scream. They did not even have time to realize they were dying. In a single, blinding instant, their bodies were gone. Not burned, not crushed. Just... gone. One moment they were the most powerful minds in the world, and the next, they were nothing more than a memory of light.</p>
+            <p>But they were the lucky ones. In a way. They died instantly. They were part of the initial burst, the sudden, violent release of energy that redefined the geography of the province.</p>
+            <p>Aldenmere was a jewel of the Aureate Age. It was a city of white stone, of hanging gardens, of canals that flowed with water as clear as mountain air. It was a place of peace. And in a heartbeat, it was a slaughterhouse of light.</p>
+            <p>The casualties were not just the scholars. The shockwave of the Fracture rippled outward through the streets, through the villas, through the markets. It struck people in their beds. It struck people as they were making bread. It struck people as they were laughing in the plazas.</p>
+            <p>Seven hundred and four.</p>
+            <p>I know that number sounds small to you. You think of the wars in the histories, the dragons that leveled cities, the plagues that wiped out kingdoms. You think seven hundred and four is a statistic. A footnote.</p>
+            <p>But I want you to think about those seven hundred and four people. I want you to think about the baker who was halfway through kneading dough when the light hit him. I want you to think about the mother who was singing a lullaby, only for the song to be swallowed by a crack in reality. I want you to think about the blacksmith, the scribe, the stable boy, the lady of the manor. </p>
+            <p>They were not numbers. They were lives. They had names. They had debts. They had favorite colors and fears and people they loved. And they were gone. Not killed by a sword, or a beast, or a fever. They were erased by a mistake. They were the price of a single man's arrogance.</p>
+            <p>And the most terrifying thing about the Fracture was not the explosion itself. It was what happened in the aftermath.</p>
+            <p>The light in Aldenmere changed. It stopped being something that illuminated. It became something that observed. The shadows grew long and jagged, even at noon. The sun seemed to hang in the sky like a bruised eye, casting a light that felt cold against the skin.</p>
+            <p>And then there was the Scar.</p>
+            <p>Where the Sunstone once sat, there is now a hole. It is not a crater. It is not a ruin. It is a scar of absolute, perfect darkness. It is a void the size of a village square, a piece of nothingness that sits in the center of the wreckage of the Sanctum. It is a place where light goes to die. You can throw a torch into it, and the flame will simply vanish. You can shine the brightest magical lantern, and the beam will be swallowed whole.</p>
+            <p>Nothing enters that darkness. And nothing, not a stone, not a soul, not a stray breeze, ever returns from it. It is a puncture wound in the world. It is a constant, silent reminder that the universe can, and will, break.</p>
+            <p><em>[Illustration: A wide shot of the ruins of Aldenmere. The architecture is elegant but broken. In the center, a pitch-black, perfectly circular void sits amidst the rubble. There is no smoke, no fire, just a terrifying, hollow stillness.]</em></p>
+
+            <hr>
+
+            <h2>III. The Unmaking of Dorevus</h2>
+            <p>Now, you might be wondering about the man himself. You might be sitting there, thinking, "Surely, the man who caused all this must have paid the price. Surely, he died in his own fire."</p>
+            <p>That would be too simple. That would be too kind.</p>
+            <p>Dorevus the Pale did not die. Death is a state of being. Death is a destination. To die, you must first exist in a way that can be ended. But Dorevus... Dorevus was unmade.</p>
+            <p>When the Sunstone fractured, it did not just release energy. It released the fundamental tension that holds reality together. Dorevus was at the very heart of that tension. He was the conductor of the ritual, the focal point of the resonance. When the stone snapped, it did not strike him like a physical object. It struck him like a mathematical error.</p>
+            <p>His body ceased to exist. Not as if he had been disintegrated by fire, but as if he had never been written into the ledger of the world at all. There was no corpse for his colleagues to bury. There was no ghost to haunt the ruins. There was only a void where a man had been.</p>
+            <p>But the consciousness... the consciousness is a stubborn thing.</p>
+            <p>It turns out that the soul does not care about the integrity of the body. The soul is a pattern, and even when the canvas is shredded, the pattern seeks to remain. Dorevus’s mind survived. His awareness, his ego, his terrible, brilliant, broken ego, remained anchored to the very things he had created.</p>
+            <p>The Sunstone did not just break into pieces. It shattered into ten fragments.</p>
+            <p>Ten shards of crystallized light, each one carrying a piece of the original's power, and each one carrying a piece of the man who broke it. They did not fall in one place. They were flung across the world like seeds sown in a storm. They flew over mountains, through oceans, and into the deepest, darkest corners of the known lands.</p>
+            <p>Each fragment embedded itself somewhere new. And wherever a fragment landed, the world changed.</p>
+            <p>In one place, the trees began to glow with a pale, sickly luminescence, and the animals there grew eyes that could see into the spirit realm. In another, the seasons ceased to turn, leaving a valley trapped in a perpetual, frozen twilight. In a third, the very laws of gravity became suggestions, and stones floated like autumn leaves.</p>
+            <p>But the fragments were not just physical objects. They were anchors. They were the life-support systems for a consciousness that had no right to exist.</p>
+            <p>Dorevus is still there. He is in the shard that sleeps beneath the desert sands. He is in the shard that pulses in the heart of the Great Frost. He is in the shard that hums in the depths of the Sunken Sea. He is a passenger in the very things that have warped the world.</p>
+            <p>He is not a god. He is not a demon. He is a ghost in the machinery of reality. He is an observer, trapped in ten different places at once, watching the chaos he has wrought. He is a man without a face, a mind without a vessel, a memory without a home.</p>
+            <p>He is waiting. He is watching. And he is calculating.</p>
+
+            <hr>
+
+            <h2>IV. The Arithmetic of the Fracture</h2>
+            <p>I see that look on your face. You think it's all just madness, don't you? You think it's just a story about a mad mage and a broken rock. You want to see the logic. You want to see the reason.</p>
+            <p>Well, I will give you the reason. I will give you the numbers. Because the numbers are the only thing that makes sense of this nightmare.</p>
+            <p>After the Fracture, the scholars who survived the initial shock, the few who were far enough away to keep their limbs and their minds, began to try and make sense of what had happened. They tried to map the dispersal of the shards. They tried to measure the deviation in the light. They tried to quantify the loss.</p>
+            <p>And that is when they discovered the arithmetic.</p>
+            <p>It is a cold, hard piece of math that haunts every historian who dares to study the Aureate Age.</p>
+            <p>On one side of the equation, you have the dead. Seven hundred and four souls. Lost in the instant of the Fracture. Seven hundred and four lives extinguished, their futures erased, their stories ended in a flash of white light.</p>
+            <p>On the other side of the equation, you have the living.</p>
+            <p>The Fracture changed the world so fundamentally that it created new possibilities. It opened cracks in the old laws. It allowed for types of magic that were previously impossible. It changed the way life could cling to the edges of existence.</p>
+            <p>Three thousand and eleven.</p>
+            <p>That is the number of souls born in the three thousand years following the Fracture who exist <em>because</em> the Fracture happened. If the Sunstone had never broken, if the world had remained stable and predictable, those three thousand and eleven people would never have been born. Their lineages would never have crossed in those specific, broken ways. The magical anomalies that shaped their lives would never have existed. The very conditions of their birth were forged in the fire of Dorevus's mistake.</p>
+            <p>So, there is the math.</p>
+            <p>Seven hundred and four dead against three thousand and eleven living.</p>
+            <p>The numbers favor the Fracture. The consequence has outweighed the cause. The world is more populated, more complex, and more magical because the stone was broken. The math says the Fracture was a net gain. The math says the universe is better off for the tragedy.</p>
+            <p>But Dorevus... Dorevus does not care about the net gain.</p>
+            <p>He is still calculating. He has spent three thousand years running the numbers in the silence of his fragmented mind. He is computing the weight of each soul. He is weighing the seven hundred and four against the three thousand and eleven. He is looking for the error. He is looking for the way to balance the scales.</p>
+            <p>He is trying to decide which number is heavier.</p>
+            <p>It is a madness of the highest order. To live for three millennia not as a man, but as a living equation. To spend eternity trying to solve a problem that has no solution. He wants to undo the cause to undo the consequence. He wants to reach back through the shards and pull the world back into its broken, stable, boring shape.</p>
+            <p>But he cannot. Because the math is flawed. Not because he got the numbers wrong, but because he forgot the most important variable.</p>
+
+            <hr>
+
+            <h2>V. The Shaking Hands</h2>
+            <p>Let me tell you something about Dorevus. Not the mage. Not the seat of the thirty-first circle. Not the unmade consciousness.</p>
+            <p>Tell you about the man.</p>
+            <p>I have seen his notes. Not the official histories, not the sanitized versions they teach in the academies. I have seen the scraps. The real papers. The ones that were written in the frantic hours before the ritual.</p>
+            <p>Dorevus was a genius. There is no other word for it. His forty pages of equations were a masterpiece of cosmic engineering. He had accounted for everything. He had accounted for the pull of the moon, the resonance of the crystalline structure, the temperature of the ritual chamber, the alignment of the celestial spheres. He had accounted for the tensile properties of crystallized light itself. He had calculated the exact frequency required to vibrate the barrier between worlds until it became translucent.</p>
+            <p>Every single number was correct. Every single variable was accounted for.</p>
+            <p>If you were to look at his work today, you would weep. You would see the perfection of his logic. You would see a man who had, for all intents and purposes, mastered the universe with a pen and a piece of parchment.</p>
+            <p>And yet, the stone broke.</p>
+            <p>The stone broke not because his math was wrong. The stone broke because he failed to account for a variable that cannot be measured with a compass or a slide rule.</p>
+            <p>He did not account for the fact that his hands were shaking.</p>
+            <p>He was afraid.</p>
+            <p>In the moment when he reached for the Sunstone, in the moment when he prepared to turn the key and unmake death, he felt a tremor in his soul. He felt the weight of the responsibility. He felt the terrifying, lonely realization that he was about to change everything forever.</p>
+            <p>And that fear, that tiny, human, infinitesimal tremor, translated into his touch.</p>
+            <p>A micro-fraction of a second of misalignment. A slight, unsteady pressure on the surface of the light. A deviation in the resonance that was caused by the physical manifestation of a trembling finger.</p>
+            <p>He put the force into the equation. He put the heat into the equation. He put the alignment into the equation. But he did not put the fear into the equation. He thought he could be a god. He thought he could be a machine. He thought he could strip away the humanity of the moment to achieve the perfection of the result.</p>
+            <p>But the universe does not care about your perfection. The universe only cares about what you actually do.</p>
+            <p>Seven hundred and four people died because a man was scared. They died because a scholar forgot that even the most brilliant mind is still housed in a body that can tremble. They died because the variable of human weakness was left out of the calculation.</p>
+            <p>So, when you walk through the world, and you see the light behaving strangely, or you see the shards of the Sunstone casting their long, warped shadows, don't think of it as a grand cosmic design. Don't think of it as the will of the gods.</p>
+            <p>Think of it as a mistake. Think of it as a tremor.</p>
+            <p>Think of it as the cost of being human.</p>
+            <p>Now, drink your ale. The night is long, and we have only just begun to talk about the things that are still breaking.</p>
+
+            <hr>
+
+            <h2>VI. The Long Silence</h2>
+            <p>The silence was the worst part.</p>
+            <p>In the days following the snap, there was no weeping. There was no mourning. You cannot mourn when your lungs feel like they are full of static. You cannot weep when the very concept of salt and water feels alien to your body. The survivors of Aldenmere did not walk through the streets. They did not gather in the plazas to discuss the loss. They simply sat. They sat in the dirt, or on the scorched remains of their doorsteps, staring at the Scar.</p>
+            <p>I knew a man named Kaelen. He was a clockmaker by trade. He had a shop in the Lower District, a place filled with the steady, comforting rhythm of ticking brass and swinging pendulums. He was one of the few who escaped the initial burst because he had been in the cellar, fixing a spring for a merchant's pocket watch.</p>
+            <p>When he emerged, the world was different. The clocks in his shop had not just stopped. They had melted. Not from heat, but from a sudden, violent shift in the way time interacted with metal. The gears had fused into single, solid lumps of bronze. The pendulums hung at impossible angles, as if gravity had forgotten which way was down.</p>
+            <p>Kaelen sat in the middle of his ruined shop for three days. He did not eat. He did not move. He just watched his melted clocks. He was waiting for the sound of a second hand. He was waiting for a single, rhythmic tick to tell him that the world was still a place where things happened in a sequence.</p>
+            <p>But the tick never came. The world had become a series of disconnected moments.</p>
+            <p>The weeks that followed were a slow, agonizing crawl toward realization. The news traveled. It moved like a sickness through the provinces. It reached the coastal villages. It reached the mountain keeps. It reached the nomadic camps in the Great Wastes. </p>
+            <p>At first, people thought it was a war. They thought the Aureate Empire had fallen to an invasion. They waited for the smoke of burning armies. They waited for the sound of marching boots. But there were no armies. There was only the light. A strange, flickering, inconsistent light that seemed to pulse with a heartbeat that was not its own.</p>
+            <p>Then came the confusion. The doctors in the southern reaches reported that wounds were no longer healing. A simple cut would stay open, not bleeding, but simply refusing to close, as if the flesh had forgotten how to meet itself. The priests in the east found that their prayers fell flat, hitting the air like stones thrown into a well of oil.</p>
+            <p>And then, the people began to change.</p>
+            <p>It was not a sudden transformation. It was a subtle, creeping wrongness. A child in a fishing village would be born with eyes that reflected colors that did not exist in the natural spectrum. A farmer in the grain belt would find that his wheat grew in patterns that resembled geometry rather than biology. A scholar in a distant library would wake up one morning and find that he could no longer remember the word for "sun."</p>
+            <p>The world was decompressing. The pressure of the Sunstone had been the thing that kept the reality tight, the rules firm, the edges clean. Without that pressure, the universe began to leak.</p>
+            <p>I remember hearing a story about a group of refugees who tried to walk back toward the ruins of Aldenmere. They were driven by a desperate, foolish hope that if they could just reach the center, if they could just touch the site of the miracle, they might find a way to mend it. They were a group of forty. They were men, women, and children, all of them marked by the light.</p>
+            <p>They never reached the outskirts of the city. They didn't die of hunger, and they didn't die of thirst. They simply walked into a pocket of distorted space. To an observer, it would have looked as if they had stepped behind a curtain. One moment they were a line of tired, dusty travelers, and the next, they were gone.</p>
+            <p>They weren't killed. They were just... misplaced. They became a permanent part of the geography. Somewhere, in a fold of the air that no traveler will ever find, those forty people are still walking, still talking, still searching for a road that no longer exists.</p>
+            <p>That is the reality of the Fracture. It is not a tragedy of death. It is a tragedy of displacement. It is the sudden, violent realization that the ground beneath your feet is not solid, and the air around your head is not empty. It is the permanent loss of certainty.</p>
+
+            <hr>
+
+            <h2>VII. The Ten Wounds</h2>
+            <p>The shards did not just fall. They hunted.</p>
+            <p>They moved through the sky like fallen stars, tearing through clouds and singing a note so high it shattered glass for miles. They did not strike the earth with the weight of stone. They struck with the weight of ideas.</p>
+            <p>The First Shard fell into the heart of the Whispering Woods. The trees did not break. They simply stopped being wood. They became a forest of calcified song, where every leaf is a frozen note and the wind produces a melody that can drive a man to madness if he listens for too long.</p>
+            <p>The Second Shard struck the Great Salt Flats. The salt did not splash. It rose. It formed a crystalline spire that reaches toward the heavens, a jagged needle of white that hums with the memory of the sea that dried up a thousand years ago.</p>
+            <p>The Third Shard landed in the belly of the Obsidian Peaks. The mountains did not crumble. They began to breathe. Now, when the moon is full, the very stone heaves with a slow, tectonic respiration, and the caves emit a heat that tastes like copper.</p>
+            <p>The Fourth Shard plunged into the Sunken Sea. The water did not boil. It turned to glass. A vast, underwater plain of transparent, unmoving liquid exists now, miles beneath the waves, where prehistoric leviathans are frozen in mid-strike, preserved in a tomb of silent, liquid light.</p>
+            <p>The Fifth Shard hit the Iron Deserts. The sand did not scatter. It became magnetic. Now, the dunes move in perfect, geometric spirals, and the wind carries a fine dust that pulls the iron from a man's blood if he stays too long in the storm.</p>
+            <p>The Sixth Shard found the Valley of Eternal Dusk. The sun did not set there. It stalled. The sky remains trapped in that bruised, purple moment just before nightfall, a permanent twilight where shadows have a life of their own and things move in the corners of your vision when you turn your head.</p>
+            <p>The Seventh Shard struck the High Steppes. The grass did not burn. It turned to gold. Not the metal, but a substance that looks like it and feels like it, a field of shimmering, metallic blades that cut through leather and bone with the same ease.</p>
+            <p>The Eighth Shard fell into the Maw of the World. The canyon did not widen. It deepened. It became a vertical labyrinth of impossible geometry, a crack in the earth that defies measurement, where gravity is a matter of opinion and the bottom is a myth.</p>
+            <p>The Ninth Shard landed in the Cloud-Reach Isles. The islands did not sink. They rose. They drifted higher into the atmosphere, anchored to the world only by threads of shimmering, ethereal light that pulse like the veins of a god.</p>
+            <p>And the Tenth Shard.</p>
+            <p>The Tenth Shard did not land. It stayed. It is the only piece that did not leave. It is the shard that remains at the center of the Scar, the piece that is still broken, still bleeding, still feeding the void. It is the heart of the wound. It is the source of the silence.</p>
+            <p><em>[Illustration: A collage of ten small, distinct symbols. A singing leaf, a crystal spire, a breathing mountain, a glass wave, a magnetic dune, a purple twilight, a golden blade, a geometric crack, a floating isle, and a black void. The symbols are interconnected by thin, jagged lines that resemble cracks in a mirror.]</em></p>
+
+            <hr>
+
+            <h2>VIII. The Weight of the Remnant</h2>
+            <p><em>[Bessa sets her mug down on the wooden table with a heavy, final thud. The sound echoes in the small room. She leans back, her face partially obscured by the dancing shadows of the hearth. She looks at you, really looks at you, with eyes that seem far older than her face suggests.]</em></p>
+            <p>"Do not look so grim. You are not the one who has to live in the broken world. You are just the one who has to learn how to navigate it."</p>
+            <p>You think this is a history lesson. You think you can read these words, tuck them into your satchel, and go back to your life, believing that the world is a stable place that simply had a bad day in the year 412.</p>
+            <p>You cannot.</p>
+            <p>Once you know the numbers, you cannot un-know them. Once you understand that the ground is a lie and the light is a witness, you are no longer a spectator. You are a participant. You are part of the consequence.</p>
+            <p>The Fracture was not the end of the story. It was not the final chapter of the Aureate Age. It was the prologue to everything that is happening right now.</p>
+            <p>Every time you feel that sudden chill in a warm room, every time you see a shadow move against the wind, every time you wonder why the stars look just a little bit too far away, you are feeling the pulse of the shards. You are feeling the reach of Dorevus.</p>
+            <p>The ten wounds in the earth are still bleeding. And the world is still trying to decide if it wants to heal, or if it wants to finish the job and break entirely.</p>
+            <p>But that is a conversation for another night. And for that, you are going to need a much stronger drink.</p>
+            <p><em>[The candle on the table flickers and dies, leaving only the dying red glow of the embers. The darkness in the corners of the room seems to lean in, just a little bit closer.]</em></p>
+        </section>
+    </div>
 </body>
 </html>
-
